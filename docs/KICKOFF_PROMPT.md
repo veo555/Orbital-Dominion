@@ -1,5 +1,10 @@
 # Kickoff prompt for the coding environment
 
+> **Update 6 Oct 2026 (3.1):** parts of the work plan below are already done, **in Chromium emulation only** — step 2 (touch UX, responsive HUD, lifecycle; not save/resume), part of step 3
+> (adaptive quality, battery tier) and step 4's accessibility/haptics items, plus web release plumbing and optional web payments. Still open and still the first thing to do on real hardware: **step 1
+> (the S0 device spike)**, save/resume, the tutorial and the store work. Start from `README.md` §0 and `docs/BACKLOG.md` ("Status after 3.1"). The rule "no real-money features" is superseded for the
+> web builds by `docs/MONETIZATION.md` (in-game currency is still never sold).
+
 Open the extracted folder as the repository root in your coding environment (Claude Code, Cursor, VS Code + an agent,
 etc.), make the first commit, and paste the prompt below. It is written so an agent that has never seen the project can
 start productively and will not make the mistakes already made once.

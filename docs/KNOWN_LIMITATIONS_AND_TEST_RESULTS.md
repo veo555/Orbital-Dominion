@@ -17,6 +17,31 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
 | Autopilot strength (headless) | 24 matches × 18 game-minutes vs built-in **Normal** AI, factions = `seed % 3` vs next faction: **10 W / 9 undecided / 5 L**, score 0.60 (W = 1, undecided = ½), SE ≤ 0.10 | `node tests/sim/match2.js <seeds> 18 normal` with `RS=11` |
 | Step cost | 0.31 ms per `step()` (Autopilot, dozens of agents, ~8 game-min); Autopilot-off is slightly cheaper | `e2e_perf.py` |
 
+### 1.0 Added in 3.1 (all in headless/emulated Chromium on Linux, software rendering)
+
+| Claim | Evidence | Reproduce |
+|---|---|---|
+| Phone layouts fit: no HUD element clipped, command buttons ≥ 40 px, map share 62 % (844 × 390) / 74 % (412 × 915) | `e2e_touch.py` | `python3 tests/e2e/e2e_touch.py` |
+| Touch gestures work (tap select, tap command, pan, pinch, hold-box-select, double-tap, hold-add, minimap, command card, placement with confirm bar, groups, long-press help without firing) | same, real multi-touch via DevTools | same |
+| App lifecycle: auto-pause on hide, Back = pause in an installed app, install flow shown for an iPhone user-agent, settings persist | `e2e_platform.py` | `python3 tests/e2e/e2e_platform.py` |
+| Web app: manifest valid, Chrome installability verdict clean (checker proven sensitive with a broken manifest), service worker activates, **reload and a full match work with the network off**, update waits for consent, no off-origin requests | `e2e_pwa.py` | `python3 tests/e2e/e2e_pwa.py` |
+| HD terrain tiles: 1× base map unchanged (seeds 7/21/99), tiles deterministic, tile joins ≤ 13/255 vs one reference bake, memory bounded (≤ 14 tiles even at 4K), decals replayed, tier switch drops tiles | `e2e_terrain.py` | `python3 tests/e2e/e2e_terrain.py` |
+| Payments (client): off by default and inert; link-mode and API-mode flows against a mocked backend; hostile redirects refused; perks cosmetic (identical game state); store/native hide it; zero stray requests | `e2e_support.py` (28 checks) | `python3 tests/e2e/e2e_support.py` |
+| Payments (server): signature verification, server-side pricing, tokens, CORS, refund revocation, no secret leakage — **5 injected security bugs all caught** | `server/stripe-worker/test/worker.test.mjs` (9 tests) | `cd server/stripe-worker && npm test` |
+| Colour tokens: primary text 12.6–17.2:1, all data colours ≥ 5.2:1 on every surface; colour-blind-safe pair ΔE00 ≥ 54 under protan/deutan/tritan (default pairs fall to 17–18) | `tools/design_check.py` | `python3 tools/design_check.py` |
+| Simulation untouched: determinism hash (`9183bd53`) and swarm-off ≡ v2 baseline unchanged | `tests/sim/smoke.js` | `node tests/sim/smoke.js` |
+| Render cost (software raster, relative only): high tier at DPR 1 = 14.9 ms vs 14.5 ms in 3.0; DPR 2 / zoom 1.7 with tiles +23 ms; first draw of a tile spikes 25–50 ms | `tools/perf.py` | `python3 tools/perf.py --dpr 1 2 --zoom 1 1.7` |
+
+**Test-quality incidents found and fixed while building 3.1** (so you know the gates earned their keep, and which assertions had to be repaired):
+* the original `e2e_smoke.py` clicked an element *handle* that the re-rendering Swarm panel had already replaced — **the unmodified 3.0 build failed it 2 times in 6**; now selector-based;
+* a touch-test assertion ended in `||true` (vacuous) and was replaced by a check that a long-press does not fire the pressed button;
+* the CDP installability check returns `[]` for *any* manifest in the default headless shell; the PWA test now uses the full Chromium build and was verified against a deliberately broken manifest;
+* a 500 ms click-suppression window after long-press swallowed legitimate quick taps (measured: taps up to ≈ 450 ms later were lost); now 120 ms;
+* the adaptive quality scaler first read a blocked main thread as "slow GPU" and downgraded the tier; stalls and background tabs are now ignored;
+* high-quality image resampling on the large terrain canvas cost +140 % frame time; restricted to sprites;
+* tile cache could exceed its memory cap on huge viewports; now only the nearest 14 tiles are baked;
+* in portrait the floating info card covered the control-group chips; relocated.
+
 ### 1.1 Reading the balance numbers correctly
 * One match is a noisy Bernoulli-like outcome; with N = 24 the standard error of a win-rate/score is up to
   √(0.25/24) ≈ 0.10. **Any claim of the form "change X improved results" needs ≥ 24 paired seeds and a difference
@@ -41,8 +66,11 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
    supply checks.
 
 ## 3. NOT verified (do not assume)
-* **No real device has ever run this.** Only headless Chromium (Linux, software rendering). No Safari/WebKit, Firefox,
-  Android WebView, WKWebView, no GPU, no thermal throttling, no low-memory conditions.
+* **No real device has ever run this — including after 3.1.** "Works on iPhone and Android" currently means: *Chromium emulating their viewport, pixel density, touch input and (for iPhone) the user-agent string*.
+  Specifically **unverified**: Safari/WebKit behaviour (Add to Home Screen, audio unlock and the silent switch, 100vh/URL-bar resizing, notch safe areas, canvas memory limits — iOS Safari caps a canvas at ≈ 16.7 Mpx and total canvas memory),
+  Android WebView / Chrome on real GPUs, Firefox, thermal throttling, low-memory kills, 120 Hz panels, real thumbs on glass, haptics, the on-screen keyboard, fullscreen/orientation APIs, `beforeinstallprompt` (cannot be triggered in emulation).
+  The code is written defensively for these (try/catch around every optional API, feature detection) but defensive is not verified.
+* No Safari/WebKit, Firefox, Android WebView, WKWebView, no GPU, no thermal throttling, no low-memory conditions.
 * **Audio is untested in any real browser** (WebAudio synthesis + `speechSynthesis`); iOS autoplay/mute-switch/
   interruption behaviour is unknown.
 * **No human playtest**: balance, difficulty curve, clarity of the swarm UI, and fun are unmeasured.
@@ -51,13 +79,9 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
 * No security review — but the attack surface is currently nil (no network, no storage except settings).
 
 ## 4. Known limitations of the product
-1. **Input is mouse + keyboard only.** Browsers synthesise mouse events from taps, so a single tap selects, but there is
-   no pan/zoom gesture, no box-select, no right-click equivalent, no long-press tooltip. See `screenshots/mobile_*`.
-2. **Fixed HUD geometry.** `TOPBAR = 44` and `BOTTOM = 198` px are JS constants used in camera math; on an 844 × 390
-   phone in landscape the bottom panel takes ~51 % of the height and leaves ~150 px of map; in portrait the command
-   card overflows the viewport width.
-3. No save/load; the settings in `localStorage` are the only persistence. No pause on tab/app backgrounding (the
-   sim keeps running if the page stays alive; `window.blur` only clears held keys).
+1. *(3.0 limitation, resolved in 3.1 — emulation only)* Touch input and phone layouts now exist; see §1.0 and `docs/TOUCH_SPEC.md`. The `screenshots/mobile_*` files in this package show the **3.0** layout, not the current one (regenerate with `tools/shots.py`).
+2. *(resolved in 3.1)* HUD geometry is measured, not fixed. Remaining: on a 390-px-tall screen the map gets 62 % of the height, below the 70 % goal.
+3. **No save/load**: a match is lost if the OS or browser discards the page. The game now auto-pauses when hidden, so a backgrounded-but-alive page resumes intact. Settings (and the optional-payment supporter flag) persist in `localStorage` only.
 4. Rendering has no interpolation; the sim runs at 30 Hz.
 5. 1v1 vs AI on one map size; no campaign, no multiplayer, no tutorial beyond the objectives list.
 6. The built-in AI "knows" your corner; the Overseer scouts honestly. Autopilot cannot dodge **instant** hero spells,

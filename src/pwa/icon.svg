@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="34%" r="80%"><stop offset="0" stop-color="#1a3159"/><stop offset=".55" stop-color="#0a1426"/><stop offset="1" stop-color="#04070d"/></radialGradient>
+    <radialGradient id="pl" cx="36%" cy="30%" r="74%"><stop offset="0" stop-color="#bfe0ff"/><stop offset=".38" stop-color="#4b97ff"/><stop offset=".8" stop-color="#173a82"/><stop offset="1" stop-color="#0a1c44"/></radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#27d3a2"/><stop offset=".45" stop-color="#8fc8ff"/><stop offset="1" stop-color="#e6f2ff"/></linearGradient>
+    <linearGradient id="gem" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".55" stop-color="#f6c04a"/><stop offset="1" stop-color="#d4801a"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#f6c04a" stop-opacity=".55"/><stop offset="1" stop-color="#f6c04a" stop-opacity="0"/></radialGradient>
+    <clipPath id="front"><rect x="-40" y="258" width="600" height="300"/></clipPath>
+  </defs>
+  <g id="art">
+    <rect id="plate" width="512" height="512" rx="116" fill="url(#bg)"/>
+    <g fill="#cfe2ff"><circle cx="86" cy="96" r="2.4" opacity=".8"/><circle cx="410" cy="70" r="1.8" opacity=".6"/><circle cx="452" cy="196" r="2.2" opacity=".7"/><circle cx="62" cy="352" r="1.8" opacity=".55"/><circle cx="134" cy="446" r="2" opacity=".6"/><circle cx="388" cy="452" r="2.4" opacity=".7"/><circle cx="238" cy="52" r="1.6" opacity=".5"/></g>
+    <g id="emblem">
+      <g transform="rotate(-22 256 262)"><ellipse cx="256" cy="262" rx="206" ry="70" fill="none" stroke="url(#ring)" stroke-width="15" opacity=".42"/></g>
+      <circle cx="256" cy="256" r="112" fill="url(#pl)"/>
+      <path d="M170 226c34-44 98-62 154-40" fill="none" stroke="#ffffff" stroke-opacity=".28" stroke-width="10" stroke-linecap="round"/>
+      <g transform="rotate(-22 256 262)"><g clip-path="url(#front)"><ellipse cx="256" cy="262" rx="206" ry="70" fill="none" stroke="url(#ring)" stroke-width="17"/></g></g>
+      <circle cx="402" cy="176" r="54" fill="url(#glow)"/>
+      <path d="M402 134l24 34-24 56-24-56z" fill="url(#gem)" stroke="#7a4a08" stroke-opacity=".45" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M402 134l24 34h-48z" fill="#fff7d6" opacity=".55"/>
+      <circle cx="104" cy="300" r="13" fill="#b985ff"/><circle cx="104" cy="300" r="26" fill="#b985ff" opacity=".22"/>
+    </g>
+  </g>
+</svg>

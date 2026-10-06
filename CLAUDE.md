@@ -5,13 +5,17 @@ App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `d
 
 ## Commands
 - Build: `python3 build.py` → `dist/orbital_dominion_v3.html`
-- Gates (run before every commit): `bash tests/run_all.sh` (build + `tests/sim/smoke.js` + `tests/e2e/e2e_smoke.py`)
+- Gates (run before every commit): `bash tests/run_all.sh` (~5 min): build, `tools/design_check.py`, `tests/sim/smoke.js`, and the browser gates `e2e_smoke` (desktop), `e2e_touch` (phones),
+  `e2e_terrain` (HD tiles), `e2e_platform` (lifecycle), `e2e_pwa` (offline/install/update), `e2e_support` (payments, client), plus `server/stripe-worker` unit tests. Playwright must be **1.56** to match the preinstalled Chromium (`pip install playwright==1.56.0`); never run `playwright install`.
+- Variants: `python3 build.py [standalone|pwa|store]` → `dist/orbital_dominion_v3.html`, `dist/pwa/`, `dist/store/`. Commit `dist/`.
+- Visuals: `python3 tools/shots.py --tag x desktop iphone-land pixel-port` (device screenshots), `python3 tools/perf.py` (render cost; software raster, relative only).
 - Balance/regression probes: see README §1 (`tests/sim/match2.js`, `eco.js`, `off.js`, `tools/ab.sh`)
 
 ## Ground rules
 1. **No globals leaking, no external requests.** The whole game is one IIFE assembled by `build.py`; files load in
    alphabetical order (`00_core` … `90_main`). Add new modules with the right numeric prefix. The browser gate asserts
-   zero network requests — keep it that way unless a deliberate feature needs one.
+   zero network requests — keep it that way. The only deliberate exceptions are the **opt-in** payment calls (`77_support.js`, off unless `src/support.config.json` enables them, only after a player action)
+   and the PWA service-worker registration (`BUILD.variant==='pwa'`, http(s) only).
 2. **The simulation is headless-testable.** Modules `00,10,20,25,26,27,30,40` must not touch DOM, canvas or audio
    directly (the Node harness loads only these, stubbing `toast/sfx/say/uiDirty/onVision/onStepEnd/onGameOver`).
    UI code lives in `50+`. If you add a sim → UI call, add a stub for it in `tests/sim/simlib3.js`.
@@ -30,6 +34,12 @@ App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `d
 8. **Balance changes need numbers.** Use `tools/ab.sh` over ≥ 24 seeds (SE of a win-rate on 24 matches ≈ 0.10) — a
    single-seed result is noise (see KNOWN_LIMITATIONS §3).
 9. Don't claim "perfect". Release gates are in `docs/QA_CHECKLIST.md`.
+10. **Never hard-code the HUD size.** `TOPBAR`/`BOTTOM` are measured (`measureHud`); panels position with `--tH/--bH`. Three layouts exist (desktop / `compact` / `compact portrait`, plus additive `touch`) — a UI change must be checked in all of them (`tools/shots.py`).
+11. **Touch contract:** mouse handlers stay as they are; `74_touch.js` handles only `pointerType` `touch`/`pen` and cancels their compat mouse events. Panel buttons keep `mousedown` + `data-act` (browsers synthesise them from taps). Anything hover-only needs a long-press path. See `docs/TOUCH_SPEC.md`.
+12. **Rendering-only modules** (`53,60,62,63,7x`) must never write simulation state. Quality/FX/terrain-tile code may use `Math.random`/`performance.now`; sim modules may not.
+13. **Payments are cosmetic and optional.** Never sell in-game currency or anything that affects balance; never put a secret in the page; the `store` variant and native runtimes must stay payment-free (`docs/MONETIZATION.md`).
+14. **Colours come from the tokens** in `style.css :root` (and faction data in `00_core.js`); run `python3 tools/design_check.py` after changing one.
+15. **A green test that cannot fail is worthless.** Three assertions in this repo were vacuous when first written (always-true expression; CDP installability check that returns `[]` in the headless shell; a handle-based click that raced a re-render). Mutate the code (or the manifest, or the data) and watch the test fail before trusting it.
 
 ## Known traps (each cost real time before)
 - The command card buttons have no `data-tip`; find them through `__RTS.ui.cmds` names.
@@ -37,3 +47,8 @@ App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `d
 - `page.fill()` in Playwright focuses the input — subsequent hotkeys then go into the text box.
 - Headless `fps` numbers come from software rendering; they say nothing about phones.
 - The enemy AI knows where your start corner is (it does not scout). Autopilot's recon is real, the enemy's is not.
+- A headless pointer sits at (0,0), which **edge-scrolls the camera** away from your base; move the mouse to mid-screen first (`pg.mouse.move`) or use touch emulation (edge scroll is off in touch mode).
+- Don't hold a Playwright `ElementHandle` across a panel re-render (the Swarm panel replaces its `innerHTML` several times a second); click through the selector instead.
+- `imageSmoothingQuality='high'` on the big terrain/fog canvases costs +140 % frame time; it is applied to sprites only.
+- Chrome's installability check (`Page.getInstallabilityErrors`) returns `[]` for ANY manifest in the default headless shell; use `channel='chromium'`.
+- A moving target makes tap tests flaky: stop the unit (`u.order={t:'idle'}`) and pick verified-empty ground (`entityAt(...)===null`).

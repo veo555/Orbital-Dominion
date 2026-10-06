@@ -87,6 +87,38 @@ def run(p, name, w, h, dpr):
         ph.tap(spot['x'], spot['y']); pg.wait_for_timeout(200)
         ok(ph.ev(f"()=>{{const u=__RTS.G.units.find(u=>u.id=={hid['id']});return u.order.t==='move'}}"), f'{name}: tapping empty ground with a unit selected issues a move order')
 
+    # ---- double-tap: every Hauler on screen; hold on a unit: add it to the selection -----------------------------------------
+    two = ph.ev("""()=>{const R=__RTS,hs=R.G.units.filter(u=>u.team===0&&u.type==='hauler'&&!u.dead);for(const u of hs){u.order={t:'idle'};u.oq=[]}
+      const cx=hs.reduce((a,u)=>a+u.x,0)/hs.length,cy=hs.reduce((a,u)=>a+u.y,0)/hs.length;R.cam.z=R.cam.tz=0.8;R.centerOn(cx,cy);R.setSel([]);R.render(1);
+      const pts=hs.map(u=>({id:u.id,...R.w2s(u.x,u.y)})).filter(p=>p.x>30&&p.x<innerWidth-130&&p.y>"""+str(g['top'])+"""+20&&p.y<innerHeight-"""+str(g['bot'])+"""-20);return{n:hs.length,pts}}""")
+    if len(two['pts']) >= 2:
+        a, c = two['pts'][0], two['pts'][1]
+        ph.tap(a['x'], a['y']); ph.tap(a['x'], a['y']); pg.wait_for_timeout(150)
+        n2 = ph.ev("()=>__RTS.ui.sel.length")
+        ok(n2 >= 2, f'{name}: double-tap selects every Hauler on screen ({n2} selected)')
+        ph.ev(f"()=>{{const R=__RTS,u=R.G.units.find(u=>u.id=={a['id']});R.setSel([u])}}"); pg.wait_for_timeout(100)
+        ph.drag(c['x'], c['y'], c['x'], c['y'], steps=1, hold=520); pg.wait_for_timeout(150)
+        ids = ph.ev("()=>__RTS.ui.sel.map(e=>e.id).sort((a,b)=>a-b)")
+        ok(ids == sorted([a['id'], c['id']]), f'{name}: holding a unit adds it to the selection {ids}')
+        ph.ev("()=>__RTS.setSel([])")
+    else:
+        ok(False, f'{name}: not enough Haulers on screen for the double-tap test ({len(two["pts"])})')
+
+    # ---- control groups without a keyboard: the "+" chip stores the selection, a group chip recalls it --------------------------
+    ph.ev("()=>{const R=__RTS;R.ui.groups={};const hs=R.G.units.filter(u=>u.team===0&&u.type==='hauler'&&!u.dead).slice(0,3);R.setSel(hs)}"); pg.wait_for_timeout(900)
+    add = ph.ev("()=>{const e=document.querySelector('#groups .gchip.add');if(!e)return null;const r=e.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2,r.width,r.height]}")
+    ok(add is not None and min(add[2], add[3]) >= 34, f'{name}: a touch-sized "+" chip appears while units are selected {add}')
+    if add:
+        ph.tap(add[0], add[1]); pg.wait_for_timeout(200)
+        ok(ph.ev("()=>(__RTS.ui.groups[1]||[]).length===3"), f'{name}: tapping "+" saves the selection as group 1')
+        ph.ev("()=>__RTS.setSel([])"); pg.wait_for_timeout(900)
+        chip = ph.ev("()=>{const e=document.querySelector('#groups .gchip[data-grp=\"1\"]');if(!e)return null;const r=e.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2]}")
+        ok(chip is not None, f'{name}: group 1 shows as a chip')
+        if chip:
+            ph.tap(*chip); pg.wait_for_timeout(200)
+            ok(ph.ev("()=>__RTS.ui.sel.length===3"), f'{name}: tapping the group chip recalls the three units')
+    ph.ev("()=>{__RTS.ui.groups={};__RTS.setSel([])}")
+
     # ---- pan ----------------------------------------------------------------------------------------
     c0 = ph.ev("()=>({x:__RTS.cam.x,y:__RTS.cam.y})")
     ph.drag(w * 0.5, g['top'] + 60, w * 0.5 - 140, g['top'] + 60 + 20); pg.wait_for_timeout(500)

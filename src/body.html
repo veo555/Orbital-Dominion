@@ -55,8 +55,20 @@
 <div id="menu" class="overlay">
   <div class="mcard">
     <div class="mhead">
-      <h1>Orbital Dominion</h1>
+      <div class="brand"><svg class="logo" viewBox="40 60 432 400" width="76" height="70" role="img" aria-label="Orbital Dominion logo"><defs>
+        <radialGradient id="lgp" cx="36%" cy="30%" r="74%"><stop offset="0" stop-color="#bfe0ff"/><stop offset=".38" stop-color="#4b97ff"/><stop offset=".8" stop-color="#173a82"/><stop offset="1" stop-color="#0a1c44"/></radialGradient>
+        <linearGradient id="lgr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#27d3a2"/><stop offset=".45" stop-color="#8fc8ff"/><stop offset="1" stop-color="#e6f2ff"/></linearGradient>
+        <linearGradient id="lgg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".55" stop-color="#f6c04a"/><stop offset="1" stop-color="#d4801a"/></linearGradient>
+        <radialGradient id="lgl" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#f6c04a" stop-opacity=".55"/><stop offset="1" stop-color="#f6c04a" stop-opacity="0"/></radialGradient>
+        <clipPath id="lgf"><rect x="-40" y="258" width="600" height="300"/></clipPath></defs>
+        <g transform="rotate(-22 256 262)"><ellipse cx="256" cy="262" rx="206" ry="70" fill="none" stroke="url(#lgr)" stroke-width="15" opacity=".42"/></g>
+        <circle cx="256" cy="256" r="112" fill="url(#lgp)"/>
+        <path d="M170 226c34-44 98-62 154-40" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="10" stroke-linecap="round"/>
+        <g transform="rotate(-22 256 262)"><g clip-path="url(#lgf)"><ellipse cx="256" cy="262" rx="206" ry="70" fill="none" stroke="url(#lgr)" stroke-width="17"/></g></g>
+        <circle cx="402" cy="176" r="54" fill="url(#lgl)"/><path d="M402 134l24 34-24 56-24-56z" fill="url(#lgg)" stroke="#7a4a08" stroke-opacity=".45" stroke-width="3" stroke-linejoin="round"/><path d="M402 134l24 34h-48z" fill="#fff7d6" opacity=".55"/>
+        <circle cx="104" cy="300" r="13" fill="#b985ff"/><circle cx="104" cy="300" r="26" fill="#b985ff" opacity=".22"/></svg><h1>Orbital Dominion</h1></div>
       <div class="sub">REAL-TIME STRATEGY · CRYSTAL · ETHER · EMPIRE</div>
+      <div id="supBadge" class="badge hidden">♥ Supporter</div>
       <p class="pitch">Build a colony, mine crystals and ether, keep your people happy, trade across the map, raise a hero and break the enemy base. High ground hides secrets, nights hide armies, and every faction plays differently.</p>
     </div>
     <div class="mopts">
@@ -69,7 +81,8 @@
       <h3>Difficulty</h3>
       <div class="diffrow" id="diffRow"></div>
     </div>
-    <div class="mfoot"><div class="row actions"><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button></div></div>
+    <div class="mfoot"><div class="row actions"><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button></div>
+      <div class="row links"><button class="btn link hidden" id="bInstall">⬇ Install app</button><button class="btn link hidden" id="bFull">⛶ Fullscreen</button><button class="btn link hidden" id="bShare">↗ Share</button><button class="btn link hidden" id="bSupport">♥ Support</button></div></div>
   </div>
 </div>
 
@@ -80,6 +93,8 @@
       <button class="btn big" id="bResume">Resume</button>
       <button class="btn" id="bPHelp">How to play</button>
       <button class="btn" id="bPSet">Settings</button>
+      <button class="btn" id="bPMute">Sound: on</button>
+      <button class="btn hidden" id="bPFull">Fullscreen</button>
       <button class="btn" id="bRestart">Restart (new map)</button>
       <button class="btn danger" id="bSurr">Surrender</button>
       <button class="btn" id="bToMenu">Main menu</button>
@@ -104,12 +119,35 @@
     <label class="chk"><input type="checkbox" id="set_swarmHints"> Swarm hints and notifications</label>
     <label class="set">Graphics quality
       <select id="set_quality"><option value="auto">Auto (recommended)</option><option value="battery">Battery saver</option><option value="balanced">Balanced</option><option value="high">High</option><option value="ultra">Ultra HD</option></select></label>
+    <label class="set hidden" id="themeRow">Interface theme (supporters)
+      <select id="set_theme"><option value="">Faction colour</option><option value="gold">Gold</option><option value="magenta">Magenta</option><option value="ice">Ice</option></select></label>
     <label class="chk"><input type="checkbox" id="set_cb"> Colour-blind-safe team colours (blue vs orange)</label>
     <label class="chk"><input type="checkbox" id="set_rm"> Reduce motion and screen shake</label>
     <label class="chk"><input type="checkbox" id="set_haptics"> Vibration feedback (phones)</label>
     <label class="chk"><input type="checkbox" id="set_wake"> Keep the screen awake during a match</label>
     <label class="chk"><input type="checkbox" id="set_fps"> Show frame-rate statistics</label>
     <div class="row end"><button class="btn big" id="bSetX">Done</button></div>
+  </div>
+</div>
+
+<div id="supportMenu" class="overlay dim hidden">
+  <div class="card narrow">
+    <h2 class="ttl" id="supTitle">Support the game</h2>
+    <p id="supBlurb" class="dim"></p>
+    <div id="supTiers" class="tiers"></div>
+    <p id="supPerks" class="dim small"></p>
+    <p id="supMsg" class="ok small" role="status"></p>
+    <p class="dim small">Payments are processed by Stripe on its own page. Orbital Dominion never sees or stores your card details.</p>
+    <div class="row end"><button class="btn big" id="bSupX">Close</button></div>
+  </div>
+</div>
+
+<div id="iosHelp" class="overlay dim hidden">
+  <div class="card narrow">
+    <h2 class="ttl">Install on iPhone</h2>
+    <ol class="steps"><li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button <span class="shr">⎋</span> in the toolbar.</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>
+    <p class="dim">The game then opens full-screen like an app and keeps working offline.</p>
+    <div class="row end"><button class="btn big" id="bIosX">Got it</button></div>
   </div>
 </div>
 

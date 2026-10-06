@@ -5,3 +5,7 @@ android/
 ios/
 *.log
 .DS_Store
+server/**/node_modules/
+server/**/.wrangler/
+.dev.vars
+*.pem

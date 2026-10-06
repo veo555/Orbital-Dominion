@@ -18,7 +18,7 @@ this package; line counts are approximate (5,900 lines of JS in 18 modules, 27 K
   canvas (`FQ = 4` sub-cells per tile) composited each frame. Icons are generated the same way (`iconURL`, `glyph`).
 * Audio is **synthesised with WebAudio** (`80_audio.js`): SFX bursts, a generative score (chords/scale/drums, echo
   bus), plus optional `speechSynthesis` voice lines (`say`). No audio files.
-* Persistence: only `localStorage` key `SETKEY` for settings (`saveSettings`). **There is no save game.**
+* Persistence: `localStorage` — settings (`SETKEY`) and, if payments are enabled, a supporter flag (`SUPKEY`); all reads/writes are try/catch-wrapped. **There is no save game** (a match is lost if the OS kills the page; BACKLOG M-07).
 * Fixed constants (`00_core.js`): `TILE = 32 px`, map `88 × 88` tiles (`WW = WH = 2816 px`), `TICK = 1/30 s`,
   `MAXSUP = 120` supply, `TOPBAR = 44`, `BOTTOM = 198` (**JS constants, used in camera math** — they must become
   variables for a responsive/mobile HUD; see BACKLOG M-04).
@@ -54,11 +54,17 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `30_systems.js` | Per-tick systems: unit/building update, skills (`castSkill`), gather/build/repair/trade steps, economy (tax/morale/market), `step()`, `endGame` | yes |
 | `40_ai.js` | The built-in opponent (`makeAI`, `aiThink`, `aiBuild`, `findSpot`, expansions, hero spells) | yes |
 | `50_art.js`, `51_art_b.js`, `52_terrain.js` | Procedural unit/building/neutral art, glyphs/icons, terrain + decals | no (canvas) |
-| `60_render.js` | Camera, fog, `render()`, minimap, ghost placement, night lighting | no |
+| `53_terrain_hd.js` | Sharp 2×/3× terrain tiles near the camera, replayed battle decals (§9) | no |
+| `60_render.js` | Camera, fog, `render()`, minimap, ghost placement, night lighting; **layout classes and measured HUD geometry** (`applyLayoutClasses`, `measureHud`) | no |
+| `62_quality.js` | Graphics tiers (`battery/balanced/high/ultra`) and the adaptive scaler | no |
+| `63_fx.js` | Vignette + grade, additive glows, parallax dust | no |
 | `70_ui.js` | Selection, control groups, orders, command card (`buildCommands`, `runCmd`), toasts | no |
 | `71_hud.js` | HUD/panels (`hudUpdate`, info card, objectives, economy panel, tooltips) | no |
 | `72_menus.js` | Menus, help text (`HELP_HTML`), end screen + chart | no |
 | `73_swarm_ui.js` | Swarm panel: tabs `ov` (Overseer), `ro` (Roster), `mk` (Market), `lg` (Ledger); command box; role assignment; world overlays (agent badges) | no |
+| `74_touch.js` | Pointer-Events touch layer: gestures, minimap, long-press help, touch dock, placement bar (`docs/TOUCH_SPEC.md`) | no |
+| `75_platform.js` | Lifecycle (auto-pause, wake-lock, Back), fullscreen, install helpers, service-worker registration | no |
+| `77_support.js` | Optional payments UI + entitlement logic (`docs/MONETIZATION.md`) | no |
 | `80_audio.js` | WebAudio SFX + music + speech | no |
 | `90_main.js` | Input binding (mouse/keyboard), main loop, boot, `window.__RTS` test export | no |
 
@@ -163,9 +169,9 @@ auto-enroll + hunt + assault), `advisor` (all advise), `manual` (swarm off). The
   the contract the E2E tests depend on. Tooltips: `data-tip` + `showTipHTML` (hover only).
 * Command card: 12 slots (`SLOT_KEYS = q w e r / a s d f / z x c v`), built by `buildCommands()` from the selection;
   sub-menus (build pages, role menus) replace the grid until `Escape`.
-* Responsive CSS: breakpoints at 1180 / 900 / 760 px hide lower-priority top-bar chips; **the bottom panel height is
-  a fixed 198 px** (see `screenshots/mobile_phone_landscape_844x390_game.png`).
-* Input is bound in `bindInput()` to **mouse and keyboard events only**: `mousedown/mouseup/mousemove/wheel/
+* Responsive CSS (3.1): desktop keeps its breakpoints; `applyLayoutClasses()` adds `compact` / `portrait` / `touch` to `<html>` and `measureHud()` writes the **measured**
+  bar heights to `--tH/--bH` and to the camera's `TOPBAR/BOTTOM` (now `let`). Never hard-code those sizes again. `docs/DESIGN_SYSTEM.md` §5.
+* Input: the original `bindInput()` keeps **mouse and keyboard** (`mousedown/mouseup/mousemove/wheel/
   contextmenu` and `keydown/keyup`. No Pointer/Touch events exist yet.
 
 ## 6. Determinism, replay and multiplayer readiness
@@ -194,3 +200,23 @@ auto-enroll + hunt + assault), `advisor` (all advise), `manual` (swarm off). The
 * **New cadence or client**: `CADS`/`CADI`, `CLIENTS`, `JOB_NAMES`; `cadenceTable` derives prices automatically.
 * **New Overseer domain**: add to `DOMAINS`, `S.dom` default in `swarmInit`, a controller called from `ovStep`, and
   wrap every action in `ovAct(dom, key, text, fn)` so advise/act/off semantics come for free.
+
+## 9. Rendering pipeline, quality tiers and resolution independence (3.1)
+
+* **Everything is vector and baked at the device density.** Sprites are drawn once into canvases at `SC×` (2/3/4 by tier) and scaled down with mip-mapped resampling
+  (`imageSmoothingQuality='high'` **only for sprites** — applying it to the large, changing terrain/fog canvases costs +140 % frame time, measured). HUD icons are stored at 2×;
+  charts, sparklines and the minimap use `hd(cv)` (backing store = CSS size × DPR).
+* **Terrain** is a resumable generator: `terrainSetup()` (once per map) + `terrainPaint(g,T)` (yields between layers). Run to completion it produces the 1× base map
+  (**bit-identical to 3.0**: `tests/e2e/e2e_terrain.py` keeps the 3.0 reference hashes for seeds 7/21/99 — `2c52c2f0`, `acbf291b`, `1ee2ff20`, FNV-1a over the PNG data URL — as a soft check, plus a determinism check). `53_terrain_hd.js` re-runs it onto 512-world-px tiles at 2×/3× when `DPR × zoom > 1.2`,
+  one generator stage (≤ 6 ms) per step inside a 5 ms per-frame budget, nearest-to-centre first, at most the nearest 14 tiles are ever baked (memory is bounded even for a 4K window at DPR 1.5, which would want ~45; the rest are evicted LRU), skipping unexplored (black) tiles. Tiles overlap by 6 px; a numeric
+  seam test against a single reference bake gives max 10–12/255 and mean 0.03–0.08 over 1.4–3.1 M pixels. Battle decals are seeded, kept in `G.decalAll` and replayed onto tiles.
+* **Quality** (`62_quality.js`): `battery` (DPR ≤ 1, SC 2, 30 fps cap) · `balanced` (DPR ≤ 1.5) · `high` (DPR ≤ 2, tiles, FX; the Auto ceiling) · `ultra` (DPR ≤ 3, SC 4, 3× tiles).
+  Auto starts from a device heuristic and moves between tiers from 2-second frame-time windows (3 slow → down, 10 fast and ≥ 30 s since the last change → up); frames > 200 ms and hidden tabs are ignored.
+  Measured (software raster, so only relative): high at DPR 1 = 14.9 ms vs 14.5 ms in 3.0; steady-state with tiles +6…+23 ms; first draw of a tile spikes 25–50 ms (lazy raster) — on a GPU this is far smaller.
+* **FX** (`63_fx.js`): vignette/grade (tier ≥ balanced), additive glows and dust (≥ high; dust off under reduce-motion). Rendering-only; the simulation never reads any of it.
+
+## 10. Build variants and the platform layer
+
+`build.py` assembles `standalone`, `pwa`, `store` (see `docs/DEPLOY.md`) and injects `BUILD` (`variant`, `id`, `version`) and `SUPPORT_CFG` as the first statements of the IIFE. The PWA registers
+`sw.js` only when `BUILD.variant==='pwa'` and the page is served over http(s). `75_platform.js` owns lifecycle and install behaviour; `77_support.js` owns payments (all of it dormant unless the config enables it).
+Test-side hooks added to `window.__RTS` (only with `window.__TEST`): `TOPBAR`, `BOTTOM`, `Q`, `DPR`, `SC`, `tch`, `tileFor`, `terrainPaint`, `TP`, `setQualityMode`, `measureHud`.

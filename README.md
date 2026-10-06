@@ -5,13 +5,26 @@ Patrizier-style market) with a **swarm-agent layer**: every unit can be an auton
 XP; a master AI ("the Overseer") directs the colony; a labour marketplace lets you hire freelancers and take jobs on
 five billing cadences (minute / hour / day / month / per task).
 
-It currently ships as **one standalone HTML file** (`dist/orbital_dominion_v3.html`, ~500 KB, no external requests,
-no libraries). This package is everything needed to continue development in a coding environment and take it to
-Google Play and the Apple App Store.
+It ships three ways from one source tree (`python3 build.py`): a **single self-contained HTML file**
+(`dist/orbital_dominion_v3.html`, ≈ 0.6 MB, no external requests, no libraries) to download and share; an **installable,
+offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) for Capacitor wrappers. See `docs/DEPLOY.md`.
 
-> **Read first:** `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores) and
-> `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified). The game is **desktop
-> mouse + keyboard only today**; touch controls and a phone layout are the largest piece of work.
+> **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
+> this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
+
+## 0. What changed in 3.1 (6 Oct 2026)
+
+| Area | Change | Evidence |
+|---|---|---|
+| **Phones and tablets** | three responsive layouts (desktop / landscape phone / portrait phone), measured HUD geometry instead of the fixed 44/198 px constants, Pointer-Events touch layer (pan with inertia, tap select / command, hold-to-box-select, pinch zoom, minimap, long-press help sheets, placement confirm bar, touch dock), iOS zoom blocking, safe-area insets. Map share of an 844 × 390 phone screen: 38 % → 62 %. | `tests/e2e/e2e_touch.py` (real multi-touch, iPhone + Pixel profiles) · `docs/TOUCH_SPEC.md` |
+| **Design** | documented colour tokens, hover only where hover exists, focus ring, reduce-motion, colour-blind-safe team palette (blue vs orange), menu reflow, touch wording | `tools/design_check.py` (WCAG contrast + CIEDE2000 under protan/deutan/tritan) · `docs/DESIGN_SYSTEM.md` |
+| **HD graphics** | quality tiers + adaptive scaler, sharp 2×/3× terrain tiles near the camera (1× base unchanged: identical pixel hashes), retina-crisp icons / charts / minimap, resampling quality only where it pays, glow / vignette / dust effects | `tools/perf.py`, seam test (tile join ≤ 12/255 vs a single bake) |
+| **App behaviour** | auto-pause and audio suspend when backgrounded, wake-lock, Android Back = pause (installed), fullscreen, install button (Android prompt / iPhone instructions), share | `tests/e2e/e2e_platform.py` |
+| **Web app** | manifest, offline-first versioned service worker with an update prompt, icons + logo, `_headers`, CI + Pages workflows | `tests/e2e/e2e_pwa.py` (offline reload and match, Chrome installability verdict, update flow) |
+| **Optional payments** | Stripe-hosted checkout (Payment Links or a Worker backend), cosmetic perks only, **off by default**, hidden in store/native builds | `tests/e2e/e2e_support.py` (28 checks) · Worker unit tests (9, mutation-tested) · `docs/MONETIZATION.md` |
+
+New commands: `bash tests/run_all.sh` now runs every gate (≈ 5 min); `python3 tools/shots.py` renders device screenshots; `python3 tools/perf.py` measures render cost;
+`python3 tools/design_check.py` verifies the colour tokens; `npm run serve` serves the web app on :8080.
 
 ---
 
@@ -73,18 +86,23 @@ docs/                         all handoff documents (below)
 | `docs/QA_CHECKLIST.md` | Release QA matrix: devices, functional, performance, lifecycle, audio, store compliance |
 | `docs/BACKLOG.md` | Prioritised work items (P0/P1/P2) with acceptance criteria |
 | `docs/KICKOFF_PROMPT.md` | A ready-to-paste first prompt for the coding environment |
+| `docs/DESIGN_SYSTEM.md` | Colour tokens with measured contrast and colour-blind safety, layouts, accessibility |
+| `docs/TOUCH_SPEC.md` | Gesture specification mapped to the tests that verify it |
+| `docs/DEPLOY.md` | Release as a file, as a web app, as store apps; checklist |
+| `docs/MONETIZATION.md` | Optional Stripe payments: modes, security model, store rules, setup, what is verified |
 
-## 4. What was deliberately dropped
+## 4. What was deliberately dropped — and what changed
 
-The earlier "real USDC wallets / peer-to-peer play" idea is **out of scope** (per the owner's decision). All
-currency in the game is virtual, there is no purchase flow and no network code, which keeps store review
-simple. If monetisation is added later (paid app, ads, in-app purchase), see the notes at the end of
-`docs/STORE_RELEASE_ROADMAP.md`.
+The earlier "real USDC wallets / peer-to-peer play" idea is **out of scope** (per the owner's decision). All in-game
+currency is virtual and is **never sold**. **Update (3.1, at the owner's request):** an *optional* "support the game"
+payment through Stripe-hosted checkout now exists for the **web distributions only** — off by default, cosmetic perks only, absent from the store build and hidden
+in native wrappers. With it left off, the game still makes **no network requests**. Details, security model and policy notes: `docs/MONETIZATION.md`.
 
 ## 5. Status in one paragraph
 
 Desktop-complete and stable in headless Chromium: 0 console errors, 0 network requests, deterministic simulation
 for a fixed seed, 0.31 ms per simulation step with 60+ agents (headless). Autopilot (the Overseer playing for you)
 does not lose to the built-in Normal AI in 19 of 24 test matches (10 wins / 9 undecided at the 18-minute limit /
-5 losses; score 0.60 with win = 1, undecided = ½, standard error ≈ 0.10). **Not done:** touch input, phone layout, save/load, app-lifecycle handling, real-device
-performance and audio testing, tutorial/onboarding, store assets and policies. The roadmap sequences them.
+5 losses; score 0.60 with win = 1, undecided = ½, standard error ≈ 0.10). **Done in 3.1 (verified only in emulation):** touch input, phone layouts, app lifecycle, installable offline web app, optional payments, HD rendering tiers.
+**Not done:** real-device testing of any kind (iOS Safari/WebKit especially), real-device performance and audio, save/load (a match is lost if the OS kills the page),
+tutorial/onboarding, store listing assets, accounts/policies. See `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` §3.

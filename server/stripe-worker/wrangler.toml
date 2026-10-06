@@ -1,0 +1,23 @@
+# Deploy:  cd server/stripe-worker && npx wrangler deploy      (see README.md for the full checklist)
+name = "orbital-dominion-payments"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Where the game lives (Stripe sends the player back here after paying). Must be https.
+GAME_URL = "https://YOUR-GAME-DOMAIN.example/"
+# Exact origins allowed to call /checkout, /verify, /entitlement from a browser (comma separated, no trailing slash).
+ALLOWED_ORIGINS = "https://YOUR-GAME-DOMAIN.example"
+# Tiers are defined HERE, on the server: the page can only name one. Either a Stripe Price id ("price") or an inline amount.
+TIERS = '[{"id":"coffee","name":"Coffee","unit_amount":300,"currency":"usd"},{"id":"backer","name":"Backer","unit_amount":900,"currency":"usd"},{"id":"founder","name":"Founder","unit_amount":2500,"currency":"usd"}]'
+
+# Optional but recommended: lets refunds/disputes revoke the perks.
+# npx wrangler kv namespace create KV   -> paste the id below
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secrets are NOT stored here:
+#   npx wrangler secret put STRIPE_SECRET_KEY        (a restricted key, see README)
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET    (whsec_... from the webhook endpoint)
+#   npx wrangler secret put ENTITLEMENT_SECRET       (any long random string: openssl rand -base64 48)

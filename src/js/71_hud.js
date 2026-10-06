@@ -147,8 +147,11 @@ function renderGroups(){
   const host=$('groups');let h='';
   for(let n=1;n<=9;n++){const arr=groupEntities(n);if(!arr.length)continue;const e=arr[0],icon=e.kind==='unit'?'u:'+e.type+':'+G.teams[0].faction:'b:'+e.type+':'+G.teams[0].faction;
     h+='<div class="gchip" data-grp="'+n+'"><b>'+n+'</b><img src="'+iconURL(icon)+'"><span>'+arr.length+'</span></div>';}
+  // touch has no Ctrl+1…9: a "+" chip stores the current selection in the next free group
+  if(ui.touchMode&&ui.sel.some(e=>e.team===0)&&nextFreeGroup())h+='<div class="gchip add" data-grpadd="1" aria-label="Save selection as a control group"><b>＋</b></div>';
   if(host.dataset.h!==h){host.innerHTML=h;host.dataset.h=h;}
 }
+function nextFreeGroup(){for(let n=1;n<=9;n++)if(!groupEntities(n).length)return n;return 0;}
 
 /* --------------------------- economy / market panel ---------------------- */
 function moraleBreakdown(team){

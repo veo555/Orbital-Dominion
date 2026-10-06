@@ -1,0 +1,10 @@
+{
+  "appId": "com.example.orbitaldominion",
+  "appName": "Orbital Dominion",
+  "webDir": "www",
+  "backgroundColor": "#050913",
+  "server": { "androidScheme": "https" },
+  "ios": { "contentInset": "never", "backgroundColor": "#050913", "allowsLinkPreview": false },
+  "android": { "backgroundColor": "#050913", "allowMixedContent": false },
+  "plugins": { "SplashScreen": { "launchAutoHide": true, "backgroundColor": "#050913", "showSpinner": false } }
+}

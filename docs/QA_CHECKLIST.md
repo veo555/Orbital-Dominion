@@ -4,7 +4,8 @@ Run the whole list on **every release candidate**. Tick = verified on the named 
 `docs/QA_LOG.md` (create it). A failed item blocks the release unless an explicit waiver is written next to it.
 
 ## 0. Automated gates (must be green first)
-- [ ] `bash tests/run_all.sh` (build + sim smoke + browser smoke) on the release commit
+- [ ] `bash tests/run_all.sh` on the release commit (build, design tokens, sim smoke, desktop / touch / terrain / platform / PWA / payments browser gates, Worker unit tests; ≈ 5 min)
+- [ ] `python3 build.py` leaves `dist/` unchanged (`git diff --exit-code -- dist`)
 - [ ] `node tests/sim/match2.js` batch (≥ 24 seeds × 18 min, `RS=11`) — no exceptions; results recorded vs previous release
 - [ ] Wrapper builds produced by CI from the tag (`.aab` targeting **API 36**, `.ipa` built with **Xcode 26+**)
 - [ ] No network requests in the packaged app (inspect with a proxy or the OS network profiler) unless a feature declares them
@@ -108,3 +109,12 @@ Also test: one device with **system font size at maximum**, one with **dark mode
 
 ## 14. Sign-off
 Release manager: ____ · Build/version: ____ · Date: ____ · Waivers: ____ · Next hot-fix owner: ____
+
+## 14. What the automated gates do NOT cover (3.1) — do these by hand on real devices
+- [ ] iPhone (Safari tab **and** Add-to-Home-Screen): menu fits, notch/home-bar insets, tap select/command, pinch, long-press help, audio starts after the first tap, silent-switch behaviour, rotate, background → returns paused
+- [ ] Android phone (Chrome tab **and** installed): same list; Back opens the pause menu; install prompt appears; fullscreen/landscape lock; wake-lock keeps the screen on
+- [ ] Offline: install, enable airplane mode, cold-start the installed app, play a match
+- [ ] Update: deploy a new build, reopen the installed app — banner appears, tap, new version runs
+- [ ] Low-end phone: Settings → frame-rate statistics; note the tier Auto settles on and the p95 frame time over a 10-minute Autopilot match
+- [ ] On-screen keyboard: type an Overseer command with the Swarm sheet open in both orientations
+- [ ] Payments (only if enabled): Stripe test mode end to end (`docs/MONETIZATION.md` §5), including a refund removing the perks; confirm the store build shows no Support button

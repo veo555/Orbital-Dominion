@@ -4,6 +4,40 @@ Priorities: **P0** = blocks a store release · **P1** = needed for a quality 1.0
 Effort: S ≤ 2 days · M ≈ 3–5 days · L ≈ 1–2 weeks · XL > 2 weeks (one engineer, estimates only).
 IDs are referenced from the other documents.
 
+## Status after 3.1 (6 Oct 2026)
+
+Legend: ✅ done and covered by an automated gate (in Chromium emulation) · ◐ partly done · ○ not started · ⚠ done but the stated acceptance criterion needs real devices/people.
+
+| ID | Status | What exists / what is missing |
+|---|---|---|
+| M-01 | ✅ | `74_touch.js` Pointer Events for touch/pen; mouse paths untouched; `touch-action:none`; `e2e_touch.py` |
+| M-02 | ⚠ | full scheme + `docs/TOUCH_SPEC.md`; **not measured:** ≥ 8 playtesters completing a match, mis-selection < 10 % |
+| M-03 | ✅ | 44/48 px command buttons, touch dock (Hub / Select / Queue / Clear), group chips with a "＋" to create groups, every hotkey has a touch route (TOUCH_SPEC §3) |
+| M-04 | ◐ | measured geometry (`measureHud`), compact + portrait layouts, safe-area insets; map share 62 % at 844 × 390 (**goal ≥ 70 %** not met — a collapsible bottom bar would close the gap) |
+| M-05 | ◐ | Swarm/Economy as side sheets / bottom sheets, 16 px inputs; on-screen-keyboard behaviour only handled by `visualViewport → resize`, **untested with a real keyboard** |
+| M-06 | ✅ | long-press help sheets for command buttons and every `data-tip` element; hover styles scoped to `(hover:hover)` |
+| M-07 | ◐ | auto-pause + audio suspend when hidden, wake-lock, Android/system Back = pause (installed), Capacitor `appStateChange`/`backButton` hooks; **save/resume does not exist** (ARCHITECTURE §6 decision still open) |
+| M-08 | ○ | settings stay in guarded `localStorage`; no Capacitor Preferences migration |
+| M-09 | ◐ | manifest `orientation: landscape`, fullscreen + landscape lock where the browser allows, iOS status-bar meta, safe areas; **no splash screen** |
+| M-10 | ◐ | `capacitor.config.json` (placeholder appId), payment-free `store` build, `npm run www`, CI workflow; **never executed** (no Android Studio/Xcode/npm access where built) |
+| P-01 | ○ | harnesses exist (`tools/perf.py`, in-game stats overlay: Settings → frame-rate statistics); **no real device has run the game** |
+| P-02 | ○ | not started; only justified if the S0 spike fails |
+| P-03 | ○ | render interpolation not done |
+| P-04 | ○ | sprite atlas not done (sprites are still baked lazily) |
+| P-05 | ✅ | quality tiers + adaptive scaler (`62_quality.js`); measured headless only |
+| P-06 | ○ | no 60-min soak |
+| P-07 | ◐ | `battery` tier (DPR ≤ 1, 30 fps cap, no FX); battery drain not measured |
+| P-08 | ○ | no loading screen |
+| B-10 | ○ | help text still hand-written (a touch section was added) |
+| B-20 / B-21 | ○ | unchanged — still ≈ 30 `Math.random()` calls in the sim |
+| B-22 | ◐ | six new asserting gates (touch, terrain, platform, PWA, payments, Worker); the old exploratory `e2e_*.py` still print only |
+| F-01 | ○ | **no tutorial**; objectives have touch wording |
+| F-03 | ◐ | colour-blind-safe team palette (measured), reduce-motion, contrast measured (AAA primary text); **no text scaling**, canvas not screen-reader accessible |
+| F-05 | ◐ | haptics (Android; iOS Safari has no vibration API), logo/icons, sound toggle in the pause menu; no splash |
+| S-04 | ◐ | icons (192/512/maskable/180), share card, `tools/shots.py` for screenshots; store listing screenshots, feature graphic, copy not produced |
+| D-01 *(new)* | ✅ | standalone file + installable offline PWA + store variant, `docs/DEPLOY.md`, `_headers`, CI/Pages workflows (workflows **not executed**) |
+| $-01 *(new)* | ✅ | optional Stripe payments (web only), cosmetic perks, Worker backend; **no live Stripe account/Worker was exercised** (`docs/MONETIZATION.md` §6) |
+
 ## M — Mobile product layer
 
 | ID | Pri | Eff | Item | Acceptance criteria |

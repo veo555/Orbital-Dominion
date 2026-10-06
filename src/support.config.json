@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "_help": "Optional 'support the game' payments through Stripe. OFF by default. See docs/MONETIZATION.md. Everything here is PUBLIC (it ships in the page): never put a Stripe secret key in this file.",
+  "title": "Support Orbital Dominion",
+  "blurb": "Orbital Dominion is free to play. If you enjoy it you can chip in, which pays for development. Payments are handled by Stripe on its own page; the game never sees your card details. Supporting unlocks cosmetic extras only: no gameplay advantage, and in-game currency is never sold.",
+  "tiers": [
+    { "id": "coffee",  "label": "Coffee",  "amount": "$3",  "paymentLink": "" },
+    { "id": "backer",  "label": "Backer",  "amount": "$9",  "paymentLink": "" },
+    { "id": "founder", "label": "Founder", "amount": "$25", "paymentLink": "" }
+  ],
+  "checkoutEndpoint": "",
+  "verifyEndpoint": "",
+  "entitlementEndpoint": "",
+  "perks": ["Supporter badge on the title screen", "Three extra interface colour themes"]
+}

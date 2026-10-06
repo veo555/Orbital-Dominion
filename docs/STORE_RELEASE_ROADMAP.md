@@ -6,6 +6,11 @@ are my estimates for **one full-time engineer** — they are planning aids, not 
 
 ---
 
+> **Update, 6 Oct 2026 (3.1):** since this roadmap was written the *web* side of Phase 2/3/4 has been built and tested **in Chromium emulation only**: Pointer-Events touch layer and phone layouts
+> (M-01…M-06), pause-on-background / Back button / audio suspend (M-07, *without* save/resume), Capacitor config + a payment-free `store` build (M-10 prerequisites), adaptive quality and a battery tier (P-05, P-07),
+> colour-blind palette and reduce-motion (F-03 partly), haptics (F-05 partly), installable offline web app. **Still open:** the S0 device spike (nothing has run on a real phone), save/resume, tutorial (F-01),
+> store assets/accounts/policies, real-device audio. §6 (monetisation) now has a concrete, store-safe answer for the *web* releases: `docs/MONETIZATION.md`. Per-item status: `docs/BACKLOG.md`.
+
 ## 0. Executive summary
 
 1. **The simulation, AI, economy and desktop UI are in good shape** (deterministic, tested, 0 errors, 0 network calls).
@@ -204,6 +209,7 @@ balance/bug patch within 2–3 weeks, plan content (maps, campaign, multiplayer)
 | Regression | `tests/run_all.sh` green on the release commit; A/B balance batch shows no regression vs the previous release |
 
 ## 6. Monetisation notes (decide later, plan now)
+* **Implemented for the web releases (3.1):** optional Stripe-hosted "support the game" payments with cosmetic perks, off by default, stripped from the store build — `docs/MONETIZATION.md`. Store apps would need StoreKit / Play Billing for any paid extras.
 * **Premium (paid upfront):** simplest — no billing code, no ads, privacy answers stay "no data collected".
 * **Free + one-time "full game" unlock:** requires **Apple in-app purchase** (3.1.1 ✔) and Google Play Billing for Play
   distribution; adds store-side complexity and receipt handling.

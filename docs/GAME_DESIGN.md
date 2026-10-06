@@ -93,7 +93,7 @@ Left click/drag select · right click context command · Shift queue · double-c
 `Q W E R / A S D F / Z X C V` command card · Ctrl+1…9 groups · F1/F2/F3 idle worker / army / hero · Space last alert ·
 Backspace hub · wheel zoom · middle-drag/arrows/edges pan · Alt health bars · `M` economy · `T` tax · `O` objectives ·
 `K` swarm panel · `J` swarm master switch · `Enter` or `/` command box · `+`/`−` speed · `P`/`Esc` pause · `H` help.
-**There is no touch scheme yet** — designing it is the first mobile deliverable (BACKLOG M-01/M-02).
+**Touch:** a full gesture scheme exists (3.1) — see `docs/TOUCH_SPEC.md`.
 
 ## 9. Content gaps worth knowing before store launch
 Single-player vs AI only (no campaign, no multiplayer); one map size; no tutorial beyond the objectives list and

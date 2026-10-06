@@ -16,6 +16,7 @@ function startGame(){
   hideOverlays();$('hud').classList.remove('hidden');overlayStack=[];measureHud();centerOn(hub.x,hub.y);
   setAccent(FACTIONS[SET.faction].col);
   setTxt('bSpeedT','1×');G.speed=1;
+  platMatchStart();
   toast(ui.touchMode?'Tap your Hub to train Haulers, then expand — destroy all enemy structures to win.':'Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');say('Mission started');
 }
 function stopSpeech(){try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch(e){}}
@@ -26,11 +27,11 @@ function startDemo(){
   $('hud').classList.add('hidden');
   const s=G.sites[0];centerOn(s.cx*TILE,s.cy*TILE);
 }
-function toMenu(){stopSpeech();startDemo();syncMenu();showOverlay('menu');overlayStack=[];}
+function toMenu(){stopSpeech();platMatchStop();startDemo();syncMenu();showOverlay('menu');overlayStack=[];}
 function togglePause(){
   if(!G||G.over||ui.demo)return;G.paused=!G.paused;
   if(G.paused){showOverlay('pauseMenu');}else{hideOverlays();overlayStack=[];}
-  setTxt('bMenuT',G.paused?'▶':'☰');
+  setTxt('bMenuT',G.paused?'▶':'☰');platPauseChanged(G.paused);
 }
 function setSpeed(dir,cycle){
   if(ui.demo)return;const L=[1,1.5,2,3];let i=L.indexOf(G.speed);if(i<0)i=0;i=cycle?(i+1)%L.length:clamp(i+dir,0,L.length-1);G.speed=L[i];setTxt('bSpeedT',G.speed+'×');toast('Game speed '+G.speed+'×','good');
@@ -144,7 +145,7 @@ function bindInput(){
     if(q){const b=ownBuildings().find(x=>x.queue.length>+q.dataset.q);if(b){cancelQueue(b,+q.dataset.q);sfx('click');}return;}
     const g=e.target.closest('[data-id]');
     if(g){const id=+g.dataset.id,ent=ui.sel.find(s=>s.id===id);if(!ent)return;if(e.shiftKey)setSel(ui.sel.filter(s=>s!==ent));else if(e.ctrlKey)setSel(ui.sel.filter(s=>s.type===ent.type));else setSel([ent]);}});
-  $('groups').addEventListener('mousedown',e=>{const g=e.target.closest('[data-grp]');if(g)groupRecall(+g.dataset.grp);});
+  $('groups').addEventListener('mousedown',e=>{const a=e.target.closest('[data-grpadd]');if(a){const n=nextFreeGroup();if(n){groupSet(n,false);ui.groupsDirty=true;$('groups').dataset.h='';}return;}const g=e.target.closest('[data-grp]');if(g)groupRecall(+g.dataset.grp);});
   for(const el of document.querySelectorAll('[data-tip]')){el.addEventListener('mouseover',()=>{if(!ui.touchMode)showTipHTML(el.dataset.tip,el.getBoundingClientRect(),false);});el.addEventListener('mouseleave',()=>{if(!ui.touchMode)hideTip();});}
   $('ecoPanel').addEventListener('mousedown',e=>{
     const b=e.target.closest('[data-act]');if(!b)return;e.preventDefault();audioInit();const a=b.dataset.act.split(':');
@@ -175,7 +176,7 @@ function bindInput(){
   for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).addEventListener('change',e=>{SET[k]=e.target.checked;saveSettings();if(k==='hints')renderObjectives();if(k==='rm')rootEl.classList.toggle('rm',SET.rm);});
   $('set_quality').addEventListener('change',e=>setQualityMode(e.target.value));
 
-  swBind();bindTouch();
+  swBind();bindTouch();platInit();supInit();
   window.addEventListener('keydown',e=>{
     if(e.target&&e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;
     const k=e.key.toLowerCase();

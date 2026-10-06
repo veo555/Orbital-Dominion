@@ -33,16 +33,17 @@ function terrainStream(ms){
   const s=tileScaleWanted();if(!s){tch.pending=0;return;}
   const z=cam.z,vx0=cam.x,vy0=cam.y,vx1=cam.x+VW/z,vy1=cam.y+VH/z,mx=(vx0+vx1)/2,my=(vy0+vy1)/2;
   const c0=Math.max(0,Math.floor(vx0/TCH)),c1=Math.min(Math.ceil(WW/TCH)-1,Math.floor(vx1/TCH)),r0=Math.max(0,Math.floor(vy0/TCH)),r1=Math.min(Math.ceil(WH/TCH)-1,Math.floor(vy1/TCH));
-  const want=[];
+  // candidate tiles: those in view with something explored (otherwise they are black fog), nearest the centre first.
+  // Only the nearest `cap` are ever baked, so memory is bounded even on a huge or zoomed-out viewport (a 4K window at DPR 1.5 would want ~45).
+  const cand=[];
   for(let cy=r0;cy<=r1;cy++)for(let cx=c0;cx<=c1;cx++){
-    // only worth a tile if some of it has been explored (otherwise it is black fog)
     if(!ui.demo&&!tileExplored(cx,cy))continue;
-    const t=tileFor(cx,cy,s,false);if(t&&t.done){t.last=tch.frame;continue;}
-    want.push({cx,cy,d:Math.hypot((cx+.5)*TCH-mx,(cy+.5)*TCH-my)});
+    cand.push({cx,cy,k:cx+','+cy+','+s,d:Math.hypot((cx+.5)*TCH-mx,(cy+.5)*TCH-my)});
   }
+  cand.sort((a,b)=>a.d-b.d);
+  const keep=cand.slice(0,tch.cap),allowed=new Set(keep.map(c=>c.k)),want=[];
+  for(const c of keep){const t=tch.map.get(c.k);if(t&&t.done){t.last=tch.frame;continue;}want.push(c);}
   tch.pending=want.length;
-  if(!want.length)return;
-  want.sort((a,b)=>a.d-b.d);
   const t0=performance.now();
   for(const w of want){
     const t=tileFor(w.cx,w.cy,s,true);t.last=tch.frame;
@@ -52,10 +53,10 @@ function terrainStream(ms){
     }
     if(performance.now()-t0>=ms)break;
   }
-  // memory bound: drop the least recently useful tiles
+  // memory bound: tiles outside the allowed (nearest `cap`) set go, least recently used first
   if(tch.map.size>tch.cap){
-    const arr=[...tch.map.values()].sort((a,b)=>a.last-b.last);
-    for(const t of arr){if(tch.map.size<=tch.cap)break;if(t.last===tch.frame)continue;t.cv.width=0;tch.map.delete(t.k);if(t.done)tch.baked--;}
+    const arr=[...tch.map.values()].filter(t=>!allowed.has(t.k)).sort((a,b)=>a.last-b.last);
+    for(const t of arr){if(tch.map.size<=tch.cap)break;t.cv.width=0;tch.map.delete(t.k);if(t.done)tch.baked--;}
   }
 }
 function tileExplored(cx,cy){

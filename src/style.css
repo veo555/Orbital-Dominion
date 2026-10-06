@@ -91,7 +91,7 @@ input,button,label,.btn{touch-action:manipulation}
 #objectives .ob.dim{color:var(--dim)}
 #groups{position:fixed;left:calc(var(--mm) + 22px);bottom:calc(var(--bH) + 6px);display:flex;gap:4px;z-index:5}
 .gchip{display:flex;align-items:center;gap:4px;height:28px;padding:0 6px 0 4px;border:1px solid var(--line);border-radius:var(--r1);background:rgba(10,22,38,.93);cursor:pointer}
-.gchip b{font-size:11px;color:var(--acc2);min-width:8px}.gchip img{width:20px;height:20px;border-radius:3px}.gchip span{font-size:11px;color:#bcd4ee}
+.gchip b{font-size:11px;color:var(--acc2);min-width:8px}.gchip.add{min-width:36px;justify-content:center;border-style:dashed}html.touch .gchip{height:38px;padding:0 9px 0 7px}.gchip img{width:20px;height:20px;border-radius:3px}.gchip span{font-size:11px;color:#bcd4ee}
 @media (hover:hover){.gchip:hover{border-color:var(--line2)}}
 #ecoPanel{right:max(10px,var(--sar));top:calc(var(--tH) + 10px);width:332px;max-height:calc(100vh - var(--tH) - var(--bH) - 24px);overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}.ph b{font-size:14px}
@@ -169,6 +169,7 @@ input,button,label,.btn{touch-action:manipulation}
 .overlay.dim{background:rgba(2,5,11,.8);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .mcard{width:min(760px,96vw);max-height:96vh;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:22px 26px}
 .mcard h1{margin:0;font-size:clamp(30px,4.6vw,52px);letter-spacing:7px;text-transform:uppercase;font-weight:800;background:linear-gradient(90deg,#fff,var(--acc2) 60%,var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 18px rgba(var(--acc-rgb),.55))}
+.brand{display:flex;align-items:center;gap:14px}.brand .logo{flex:none;filter:drop-shadow(0 0 14px rgba(var(--acc-rgb),.35))}
 .sub{color:var(--dim);letter-spacing:3px;font-size:11px;margin:2px 0 12px}
 .pitch{color:#b6cbe2;line-height:1.5;max-width:640px;margin:0 0 6px}
 h3{margin:14px 0 6px;font-size:11px;letter-spacing:2px;color:var(--acc2);text-transform:uppercase}h3 small{color:var(--dim);text-transform:none;letter-spacing:0}
@@ -365,7 +366,7 @@ html.compact #cmd{width:calc(var(--tap)*6 + 20px);grid-template-columns:repeat(6
 html.compact .cb .co{font-size:9px;right:2px;bottom:0}html.compact .cb .bg{font-size:9px}
 html.compact #objectives{top:calc(var(--tH) + 4px);width:auto;max-width:min(64vw,440px);padding:3px 11px;border-radius:14px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html.compact #objectives b{display:none}html.compact #objectives .ob{margin:0;overflow:hidden;text-overflow:ellipsis}html.compact #objectives .ob.dim{display:none}
-html.compact #groups{left:calc(max(8px,var(--sal)) + 54px)}
+html.compact #groups{left:max(8px,var(--sal))}
 html.compact #toast{top:calc(var(--tH) + 38px);max-width:min(460px,70vw);z-index:7}
 html.compact .tmsg{font-size:12px;padding:4px 12px}
 html.compact #swPanel,html.compact #ecoPanel{top:var(--tH);bottom:0;right:0;width:min(430px,66vw);max-height:none;border-radius:var(--r3) 0 0 var(--r3);border-right:none;padding-right:max(10px,var(--sar));padding-bottom:max(8px,var(--sab));z-index:8}
@@ -379,7 +380,7 @@ html.compact .mcard{width:100%;max-height:none;padding:6px 8px;display:grid;grid
 html.compact .mhead{grid-column:1;grid-row:1;align-self:center}
 html.compact .mfoot{grid-column:1;grid-row:2}
 html.compact .mopts{grid-column:2;grid-row:1 / span 2;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding-right:6px;min-height:0}
-html.compact .mcard h1{font-size:clamp(22px,5vw,32px);letter-spacing:4px}
+html.compact .mcard h1{font-size:clamp(22px,5vw,32px);letter-spacing:4px}html.compact .brand{gap:8px}html.compact .brand .logo{width:46px;height:42px}
 html.compact .sub{letter-spacing:2px;font-size:9.5px;margin-bottom:6px}
 html.compact .pitch{font-size:11.5px;line-height:1.35}
 html.compact h3{margin:6px 0 4px}
@@ -387,7 +388,7 @@ html.compact .fac{padding:6px 8px}html.compact .fac ul,html.compact .fac p{displ
 html.compact .facrow{grid-template-columns:repeat(3,1fr);gap:6px}
 html.compact .two{grid-template-columns:1fr;gap:0}
 html.compact .diffrow{grid-template-columns:repeat(3,1fr);gap:6px}html.compact .diffrow .btn span{display:none}html.compact .diffrow .btn{padding:7px 8px}
-html.compact .row.actions{position:static;margin:8px 0 0;padding:0;background:none;flex-wrap:nowrap}html.compact .row.actions .btn{padding:10px 12px;white-space:nowrap}html.compact .row.actions .btn.big{padding:10px 18px}
+html.compact .row.actions{position:static;margin:8px 0 0;padding:0;background:none;flex-wrap:wrap;gap:6px}html.compact .row.actions .btn{padding:10px 11px;font-size:13px;white-space:nowrap}html.compact .row.actions .btn.big{padding:10px 14px;font-size:14px;letter-spacing:1px}
 html.compact .btn.big{padding:11px 20px;font-size:15px}
 html.compact .card{max-height:100%;padding:12px 16px}
 html.compact .helpbody{max-height:calc(100vh - 120px)}
@@ -412,7 +413,9 @@ html.compact.portrait #info{max-height:104px}
 html.compact.portrait #info{position:absolute;left:max(8px,var(--sal));right:calc(max(8px,var(--sar)) + 96px);bottom:calc(100% + 6px);max-height:104px;background:rgba(8,17,31,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:7;box-shadow:var(--sh2)}
 html.compact.portrait #info.none{display:none}
 html.compact.portrait #objectives{max-width:calc(100vw - 16px)}
-html.compact.portrait #groups{bottom:calc(var(--bH) + 8px);left:calc(max(8px,var(--sal)) + 54px)}
+/* portrait: the floating info card covers the strip above the bar, so group chips live in the free gap between the minimap and the command grid */
+html.compact.portrait #groups{left:calc(max(8px,var(--sal)) + var(--mm) + 8px);bottom:max(8px,var(--sab));flex-direction:column;flex-wrap:wrap;max-height:150px;max-width:78px;z-index:7;align-content:flex-start}
+html.compact.portrait .gchip{height:34px;padding:0 6px}
 html.compact.portrait #swPanel,html.compact.portrait #ecoPanel{top:var(--tH);bottom:0;left:0;right:0;width:auto;border-radius:var(--r3) var(--r3) 0 0;border:1px solid var(--line);border-bottom:none}
 html.compact.portrait #toast{max-width:calc(100vw - 24px)}
 html.compact.portrait .overlay{align-items:stretch}
@@ -436,4 +439,18 @@ html.compact.portrait .mcard h1{font-size:clamp(24px,8vw,34px);letter-spacing:3p
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 #fpsBox{position:fixed;right:max(8px,var(--sar));top:calc(var(--tH) + 4px);z-index:40;font:11px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#bfe6c8;background:rgba(0,0,0,.62);padding:2px 7px;border-radius:5px;pointer-events:none}
+/* ---- support dialog ---- */
+.badge{display:inline-block;margin:0 0 8px;padding:2px 10px;border:1px solid var(--cry);border-radius:12px;color:var(--cry);font-size:11px;letter-spacing:1px;background:rgba(246,192,74,.1)}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.tier{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;border:1px solid var(--line2);border-radius:var(--r3);background:linear-gradient(#18325a,#0f2139);box-shadow:var(--hi)}
+.tier b{font-size:14px}.tier span{color:var(--cry);font-size:15px;font-weight:700}
+@media (hover:hover){.tier:hover{border-color:var(--line3);background:linear-gradient(#24477d,#143055)}}
+.small{font-size:11.5px;line-height:1.45}
+select{font:inherit;font-size:14px;color:var(--txt);background:#07101c;border:1px solid var(--line);border-radius:var(--r2);padding:6px 8px;max-width:58%}
+/* ---- secondary menu links, install helpers ---- */
+.row.links{margin-top:10px;gap:6px}
+.btn.link{padding:6px 12px;font-size:12px;background:rgba(15,28,49,.7);color:var(--txt2);border-color:var(--line)}
+.steps{margin:6px 0 10px;padding-left:20px;line-height:1.7}.steps .shr{display:inline-block;transform:translateY(-1px);color:var(--acc2);font-size:17px}
+#updBanner{position:fixed;left:50%;bottom:calc(var(--bH) + 14px);transform:translateX(-50%);z-index:90;box-shadow:var(--sh3);border-color:var(--ok);background:linear-gradient(#1f6a46,#134029);max-width:calc(100vw - 24px)}
+html.compact .row.links{margin-top:6px}
 html.rm *,html.rm *::before,html.rm *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}

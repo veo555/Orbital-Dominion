@@ -22,7 +22,7 @@ const fmtTime=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0'
 
 /* ------------------------------ settings ----------------------------- */
 const SETKEY='orbital_dominion_v3_settings';
-const SET={music:0.45,sfx:0.8,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',cb:false,rm:false,haptics:true,wake:true,fps:false};
+const SET={music:0.45,sfx:0.8,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',theme:'',cb:false,rm:false,haptics:true,wake:true,fps:false};
 try{const s=JSON.parse(localStorage.getItem(SETKEY)||'null');if(s)Object.assign(SET,s);}catch(e){}
 function saveSettings(){try{localStorage.setItem(SETKEY,JSON.stringify(SET));}catch(e){}}
 

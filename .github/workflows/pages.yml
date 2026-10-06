@@ -1,0 +1,23 @@
+# Publishes the installable web app (dist/pwa) to GitHub Pages on every push to main. Enable it once in
+# Settings -> Pages -> Source: "GitHub Actions". NOTE: GitHub Pages ignores dist/pwa/_headers (no custom headers there);
+# use Cloudflare Pages or Netlify if you want the security headers and the CSP (see docs/DEPLOY.md). Not executed where authored.
+name: Deploy web app
+on:
+  push: { branches: [main] }
+  workflow_dispatch: {}
+permissions: { contents: read, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: true }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: '${{ steps.deployment.outputs.page_url }}' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python3 build.py pwa
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist/pwa }
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -4,7 +4,19 @@
 const DIFF_DESC={easy:'Relaxed pace. No air units, no hero, no creeping.',normal:'A capable opponent: hero, air, expansions and counters.',hard:'Fast, efficient, relentless — and it reads your army.'};
 const HELP_HTML=`
 <h3>Goal</h3><p>Destroy <b>every enemy structure</b>. Both sides play by the same rules: fog of war, supply, eras, upgrades. Lose all of your structures and you are out.</p>
-<h3>Controls</h3><div class="keys">
+<h3>Touch controls <small>(phones &amp; tablets)</small></h3><div class="keys">
+<div><b>Drag</b><span>Pan the map</span></div>
+<div><b>Pinch</b><span>Zoom</span></div>
+<div><b>Tap</b><span>Select · or give the order (move, attack, mine, repair)</span></div>
+<div><b>Double-tap</b><span>Select all units of that type on screen</span></div>
+<div><b>Hold, then drag</b><span>Box-select · hold on a unit to add it</span></div>
+<div><b>Hold a button</b><span>Show what it does</span></div>
+<div><b>Minimap</b><span>Tap/drag to jump · hold to send units there</span></div>
+<div><b>＋ chip</b><span>Save the selection as a control group; tap a group chip to recall</span></div>
+<div><b>Dock</b><span>Hub · Select (box mode) · Queue (add to orders) · Clear</span></div>
+<div><b>Back / ☰</b><span>Pause (installed app: system Back)</span></div>
+</div>
+<h3>Controls <small>(keyboard &amp; mouse)</small></h3><div class="keys">
 <div><b>Left click / drag</b><span>Select · box select</span></div>
 <div><b>Right click</b><span>Move · attack · gather · repair · rally</span></div>
 <div><b>Shift + right click</b><span>Queue waypoints and orders</span></div>
@@ -50,7 +62,7 @@ const HELP_HTML=`
 
 function hexRgb(h){h=h.replace('#','');return parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16);}
 /* the UI accent follows the player's faction colour (or the colour-blind-safe "you" blue) */
-function setAccent(col){const s=document.documentElement.style;s.setProperty('--acc',col.base);s.setProperty('--acc2',col.glow);s.setProperty('--acc-rgb',hexRgb(col.base));s.setProperty('--acc2-rgb',hexRgb(col.glow));}
+function setAccent(col){col=supAccent(col);const s=document.documentElement.style;s.setProperty('--acc',col.base);s.setProperty('--acc2',col.glow);s.setProperty('--acc-rgb',hexRgb(col.base));s.setProperty('--acc2-rgb',hexRgb(col.glow));}
 /* colour-blind-safe mode: "you" = blue, "enemy" = orange (distinguishable under deuteranopia, protanopia and tritanopia;
    see tools/design_check.py for the measured colour distances). Applied by mutating the shared faction colour objects in place. */
 const CB_YOU={base:'#3d9bff',light:'#b9dcff',dark:'#123f7a',glow:'#6cb6ff'},CB_FOE={base:'#ff9a1f',light:'#ffd9a0',dark:'#7d4300',glow:'#ffb454'};
