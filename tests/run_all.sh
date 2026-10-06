@@ -5,4 +5,5 @@ cd "$(dirname "$0")/.."
 python3 build.py
 node tests/sim/smoke.js
 python3 tests/e2e/e2e_smoke.py
+python3 tests/e2e/e2e_touch.py
 echo "ALL GATES PASSED"

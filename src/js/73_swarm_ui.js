@@ -454,9 +454,9 @@ function swBind(){
   P.addEventListener('mousedown',e=>{
     const b=e.target.closest('[data-act]');if(!b)return;
     e.preventDefault();audioInit();if(G&&G.sw)swAct(b.dataset.act);});
-  P.addEventListener('mouseover',e=>{const n=e.target.closest('[data-tip]');if(n){swui.tipOwn=true;showTipHTML(n.dataset.tip,n.getBoundingClientRect());}});
-  P.addEventListener('mouseout',e=>{const n=e.target.closest('[data-tip]');if(n){swui.tipOwn=false;hideTip();}});
-  P.addEventListener('mouseleave',()=>{swui.tipOwn=false;hideTip();});
+  P.addEventListener('mouseover',e=>{if(ui.touchMode)return;const n=e.target.closest('[data-tip]');if(n){swui.tipOwn=true;showTipHTML(n.dataset.tip,n.getBoundingClientRect());}});
+  P.addEventListener('mouseout',e=>{if(ui.touchMode)return;const n=e.target.closest('[data-tip]');if(n){swui.tipOwn=false;hideTip();}});
+  P.addEventListener('mouseleave',()=>{swui.tipOwn=false;if(!ui.touchMode)hideTip();});
   const inp=$('swIn');
   inp.addEventListener('keydown',e=>{
     e.stopPropagation();

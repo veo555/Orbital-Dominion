@@ -18,7 +18,7 @@ function showTipHTML(html,rect,above){
 function hideTip(){$('tip').classList.add('hidden');}
 const fmtCost=c=>c?((c.c?'<span class="tc">◆ '+Math.round(c.c)+'</span> ':'')+(c.e?'<span class="te">◆ '+Math.round(c.e)+'</span> ':'')+(c.mana?'<span class="tm">✦ '+c.mana+'</span> ':'')):'';
 function cmdTipHTML(c,i){
-  let h='<b>'+c.name+'</b> <span class="hk2">['+SLOT_KEYS[i].toUpperCase()+']</span><div class="tr">'+fmtCost(c.cost)+(c.supply?'<span class="ts">'+c.supply+'</span> ':'')+(c.time?'<span class="tt">'+Math.round(c.time)+'s</span>':'')+'</div>';
+  let h='<b>'+c.name+'</b> '+(ui.touchMode?'':'<span class="hk2">['+SLOT_KEYS[i].toUpperCase()+']</span>')+'<div class="tr">'+fmtCost(c.cost)+(c.supply?'<span class="ts">'+c.supply+'</span> ':'')+(c.time?'<span class="tt">'+Math.round(c.time)+'s</span>':'')+'</div>';
   const d=c.def;
   if(d&&d.hp&&!d.isB){
     h+='<div class="tstat">HP '+d.hp+(d.dmg?' · ATK '+d.dmg+' · RNG '+d.range:'')+' · ARM '+d.armor+(d.speed?' · SPD '+d.speed:'')+'</div>';
@@ -61,10 +61,12 @@ const bar=(f,cls,txt)=>'<div class="pbar '+(cls||'')+'"><i style="width:'+clamp(
 function factionName(t){return t===2?'Wild creature':FACTIONS[G.teams[t].faction].name;}
 function buffChips(u){return u.buffs.filter(b=>b.t>0).map(b=>({slow:'Slowed',stim:'Overdrive',stun:'Stunned',haste:'Haste',bloodlust:'Bloodlust',rampage:'Rampage',banner:'Banner',cloak:'Cloaked'}[b.k]||b.k)).map(n=>'<span class="chipx">'+n+'</span>').join('');}
 function renderInfo(){
-  const el=$('info'),sel=ui.sel;ui.infoDirty=false;
+  const el=$('info'),sel=ui.sel;ui.infoDirty=false;el.classList.remove('none');
   if(!sel.length){
     const T=G.teams[0];
-    el.innerHTML='<div class="nm">Orbital Dominion <small>'+FACTIONS[T.faction].name+' vs '+factionName(1)+'</small></div><div class="ds" style="margin-top:6px">Select units or structures to give orders. <b>Right-click</b> moves, attacks and gathers — right-click an <b>Ether Siphon</b> with Haulers to harvest ether.</div>'+
+    el.classList.add('none');
+    el.innerHTML=ui.touchMode?'<div class="nm">Orbital Dominion <small>'+FACTIONS[T.faction].name+' vs '+factionName(1)+'</small></div><div class="ds" style="margin-top:6px"><b>Tap</b> a unit or building to select it, then tap the ground, an enemy or a crystal patch to give an order. <b>Drag</b> to pan · <b>pinch</b> to zoom · <b>hold, then drag</b> to box-select.</div>'
+      :'<div class="nm">Orbital Dominion <small>'+FACTIONS[T.faction].name+' vs '+factionName(1)+'</small></div><div class="ds" style="margin-top:6px">Select units or structures to give orders. <b>Right-click</b> moves, attacks and gathers — right-click an <b>Ether Siphon</b> with Haulers to harvest ether.</div>'+
       '<div class="ds">Hotkeys: <b>F1</b> idle Hauler · <b>F2</b> army · <b>F3</b> hero · <b>Space</b> last alert · <b>M</b> economy &amp; market · <b>K</b> Swarm AI · <b>Enter</b> give the Overseer an order · <b>H</b> help.</div>';
     return;}
   if(sel.length===1){
@@ -112,24 +114,24 @@ function renderInfo(){
   for(const e of show){const icon=e.kind==='unit'?'u:'+e.type+':'+G.teams[e.team<2?e.team:0].faction:'b:'+e.type+':'+G.teams[e.team].faction;
     h+='<div class="gi'+(e.type===ui.activeType?' act':'')+'" data-id="'+e.id+'"><img src="'+iconURL(icon)+'"><i style="width:'+(e.hp/e.maxhp*100)+'%;background:'+(e.hp/e.maxhp>0.5?'#58e68b':e.hp/e.maxhp>0.25?'#f0c040':'#ff5d5d')+'"></i>'+(e.kind==='building'&&e.queue.length?'<u>'+e.queue.length+'</u>':'')+'</div>';}
   if(sel.length>48)h+='<div class="gi more">+'+(sel.length-48)+'</div>';
-  h+='</div><div class="ds">Tab cycles the active unit type · Shift-click removes · Ctrl-click selects all of a type on screen.</div>';
+  h+='</div><div class="ds">'+(ui.touchMode?'Tap an icon to pick one unit · double-tap a unit to select every one of its type on screen.':'Tab cycles the active unit type · Shift-click removes · Ctrl-click selects all of a type on screen.')+'</div>';
   h+=swInfoMulti(sel);
   el.innerHTML=h;
 }
 
 /* ------------------------------- objectives ------------------------------ */
 const OBJECTIVES=[
-  {t:'Train Haulers at your Hub (Q) — reach 10',d:()=>G.units.filter(u=>!u.dead&&u.team===0&&u.def.worker).length>=10},
+  {t:'Train Haulers at your Hub (Q) — reach 10',tt:'Tap your Hub and train Haulers — reach 10',d:()=>G.units.filter(u=>!u.dead&&u.team===0&&u.def.worker).length>=10},
   {t:'Build a Generator (select a Hauler → Build) before you hit the supply cap',d:()=>countB(0,'generator')>0},
   {t:'Build a Garrison to train soldiers',d:()=>hasDone(0,'garrison')},
-  {t:'Select a unit and press V: make it an autonomous agent (K opens the Swarm panel)',d:()=>!!G.sw&&G.sw.agents.some(u=>u.ag&&u.ag.auto&&!u.ag.free)},
-  {t:'Tap ether: Build an Ether Siphon on a geyser, then right-click it with Haulers',d:()=>G.teams[0].minedE>0},
-  {t:'Raise your Hero at the Hub (W)',d:()=>G.teams[0].hero.alive||G.teams[0].hero.deaths>0},
+  {t:'Select a unit and press V: make it an autonomous agent (K opens the Swarm panel)',tt:'Select a unit and tap Enroll as Agents (the Swarm panel is the AI chip in the top bar)',d:()=>!!G.sw&&G.sw.agents.some(u=>u.ag&&u.ag.auto&&!u.ag.free)},
+  {t:'Tap ether: Build an Ether Siphon on a geyser, then right-click it with Haulers',tt:'Ether: build an Ether Siphon on a geyser, then tap it with Haulers selected',d:()=>G.teams[0].minedE>0},
+  {t:'Raise your Hero at the Hub (W)',tt:'Raise your Hero at the Hub',d:()=>G.teams[0].hero.alive||G.teams[0].hero.deaths>0},
   {t:'Expand: build a second Command Hub at the natural expansion',d:()=>countB(0,'hub')>=2},
-  {t:'Build Habitats and a Forum — morale and taxes boost the economy (M)',d:()=>countB(0,'habitat',true)>0&&countB(0,'forum',true)>0},
-  {t:'Advance to Era II at the Hub (E)',d:()=>G.teams[0].era>=2},
-  {t:'Press Enter and tell the Overseer something, e.g. “keep 14 miners”',d:()=>!!G.sw&&!!G.sw.cmdLog&&G.sw.cmdLog.length>0},
-  {t:'Open Market (K): hire a freelancer by the minute, hour, day, month or per task',d:()=>!!G.sw&&G.sw.eco.stats.hired>0},
+  {t:'Build Habitats and a Forum — morale and taxes boost the economy (M)',tt:'Build Habitats and a Forum — tap the morale chip to see how taxes boost the economy',d:()=>countB(0,'habitat',true)>0&&countB(0,'forum',true)>0},
+  {t:'Advance to Era II at the Hub (E)',tt:'Advance to Era II at the Hub',d:()=>G.teams[0].era>=2},
+  {t:'Press Enter and tell the Overseer something, e.g. “keep 14 miners”',tt:'Open the Swarm panel and tell the Overseer something, e.g. “keep 14 miners”',d:()=>!!G.sw&&!!G.sw.cmdLog&&G.sw.cmdLog.length>0},
+  {t:'Open Market (K): hire a freelancer by the minute, hour, day, month or per task',tt:'Swarm panel → Market: hire a freelancer by the minute, hour, day, month or per task',d:()=>!!G.sw&&G.sw.eco.stats.hired>0},
   {t:'Take a job from the board with an agent and get paid',d:()=>!!G.sw&&G.sw.eco.stats.jobsDone>0},
   {t:'Defeat a creep camp for bounty and hero XP',d:()=>(G.teams[0].creeps||0)>0},
   {t:'Stand a unit next to a Watchtower to see across the map',d:()=>G.neutrals.some(n=>n.type==='tower'&&n.ctrl===0)},
@@ -138,7 +140,7 @@ const OBJECTIVES=[
 function renderObjectives(){
   const host=$('objectives');if(!SET.hints){host.classList.add('hidden');return;}host.classList.toggle('hidden',!ui.objOpen);if(!ui.objOpen)return;
   const todo=[];for(const o of OBJECTIVES)if(!o.d())todo.push(o);
-  const html='<b>Objectives</b>'+todo.slice(0,3).map((o,i)=>'<div class="ob'+(i?' dim':'')+'">'+o.t+'</div>').join('');
+  const html='<b>Objectives</b>'+todo.slice(0,3).map((o,i)=>'<div class="ob'+(i?' dim':'')+'">'+(ui.touchMode&&o.tt?o.tt:o.t)+'</div>').join('');
   if(host.dataset.h!==html){host.innerHTML=html;host.dataset.h=html;}
 }
 function renderGroups(){

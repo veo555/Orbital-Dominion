@@ -3,7 +3,8 @@
    ORBITAL DOMINION v3 — core constants, helpers and data tables
    ========================================================================= */
 const TILE=32,MW=88,MH=88,WW=MW*TILE,WH=MH*TILE,NN=MW*MH,TICK=1/30,CS=64,CW=Math.ceil(WW/CS),CH=Math.ceil(WH/CS);
-const TAU=Math.PI*2,MAXSUP=120,TOPBAR=44,BOTTOM=198;
+const TAU=Math.PI*2,MAXSUP=120;
+let TOPBAR=44,BOTTOM=198; // heights of the HUD bars in CSS px; measureHud() (60_render.js) keeps them equal to the real DOM
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v),lerp=(a,b,t)=>a+(b-a)*t,hyp=Math.hypot;
 const $=id=>document.getElementById(id);
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -21,7 +22,7 @@ const fmtTime=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0'
 
 /* ------------------------------ settings ----------------------------- */
 const SETKEY='orbital_dominion_v3_settings';
-const SET={music:0.45,sfx:0.8,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true};
+const SET={music:0.45,sfx:0.8,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',cb:false,rm:false,haptics:true,wake:true,fps:false};
 try{const s=JSON.parse(localStorage.getItem(SETKEY)||'null');if(s)Object.assign(SET,s);}catch(e){}
 function saveSettings(){try{localStorage.setItem(SETKEY,JSON.stringify(SET));}catch(e){}}
 

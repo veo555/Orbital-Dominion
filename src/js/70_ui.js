@@ -4,7 +4,7 @@
 const SLOT_KEYS=['q','w','e','r','a','s','d','f','z','x','c','v'];
 const ui={running:false,demo:false,sel:[],selSet:new Set(),activeType:null,menu:null,place:null,target:null,drag:null,mx:0,my:0,keys:{},groups:{},groupTap:{n:0,t:0},
   lastClick:{t:0,type:null,id:0},infoDirty:true,cmdDirty:true,mmDrag:false,midDrag:null,hover:null,pings:[],idleIdx:0,objOpen:true,panel:null,endAt:0,endRes:null,
-  inc:[],lastInc:0,cmds:new Array(12).fill(null),lastAlert:-99,hintDone:{},seedOverride:null,lastAttackT:0};
+  inc:[],lastInc:0,cmds:new Array(12).fill(null),lastAlert:-99,hintDone:{},seedOverride:null,lastAttackT:0,touchMode:false,selMode:false,qMode:false};
 
 function uiDirty(){ui.infoDirty=ui.cmdDirty=true;}
 function onVision(){ui.fogForce=true;}
@@ -35,8 +35,8 @@ function setSel(arr){
   ui.sel=arr;ui.selSet=new Set(arr);ui.activeType=arr.length?arr[0].type:null;ui.menu=null;ui.infoDirty=ui.cmdDirty=true;
   if(ui.target&&ui.target.kind!=='rally'&&!arr.some(e=>e.team===0))ui.target=null;
 }
-function entityAt(wx,wy){
-  let best=null,bd=1e9;const pad=5/cam.z;
+function entityAt(wx,wy,padPx){
+  let best=null,bd=1e9;const pad=(padPx===undefined?5:padPx)/cam.z;
   for(const u of G.units){if(u.dead||u.hidden||!entVisible(u))continue;
     const yy=u.flying?u.y-16:u.y,d=hyp(u.x-wx,yy-wy);if(d<=u.r+pad&&d<bd){bd=d;best=u;}}
   if(best)return best;
@@ -49,8 +49,8 @@ function entityAt(wx,wy){
 }
 function ownUnits(){return ui.sel.filter(e=>e.team===0&&e.kind==='unit');}
 function ownBuildings(){return ui.sel.filter(e=>e.team===0&&e.kind==='building');}
-function clickSelect(wx,wy,shift,now,ctrl){
-  const ent=entityAt(wx,wy);
+function clickSelect(wx,wy,shift,now,ctrl,pre){
+  const ent=pre!==undefined?pre:entityAt(wx,wy);
   if(!ent){if(!shift)setSel([]);return;}
   const dbl=ui.lastClick.id===ent.id&&now-ui.lastClick.t<380;ui.lastClick={t:now,type:ent.type,id:ent.id};
   if(ent.team===0&&(ent.kind==='unit'||ent.kind==='building')){
@@ -156,7 +156,9 @@ function contextCommand(wx,wy,shift){
 function beginTarget(kind){ui.target={kind};ui.place=null;}
 function beginPlace(id){
   const r=reqBuild(0,id);if(!r.ok){msg(0,r.why);return;}
-  ui.place={id,tx:0,ty:0,ok:false,why:''};ui.target=null;updatePlaceGhost();
+  ui.place={id,tx:0,ty:0,ok:false,why:''};ui.target=null;
+  if(ui.touchMode){ui.mx=VW/2;ui.my=TOPBAR+(VH-TOPBAR-BOTTOM)/2;}
+  updatePlaceGhost();
 }
 function updatePlaceGhost(){
   const p=ui.place;if(!p)return;const d=BDEF[p.id],w=s2w(ui.mx,ui.my),wx=w.x,wy=w.y;

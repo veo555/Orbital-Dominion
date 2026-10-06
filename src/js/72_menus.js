@@ -48,10 +48,24 @@ const HELP_HTML=`
 <p><small><b>Calendar abstraction:</b> one colony <i>minute</i> is 10 s of game time, an <i>hour</i> 60 s, a <i>day</i> 360 s (one full day/night cycle) and a <i>month</i> 2160 s — so every cadence is playable inside one match. The wage and fee numbers are tuned for game balance, not taken from real labour markets.</small></p>
 <h3>Factions</h3><p><b>Meridian</b>: structures +20% HP, repairs cost half, Bulwark shield-walker. <b>Obsidian</b>: units train 8% faster, cheaper Raptors, life-stealing Reaver. <b>Aurora</b>: +30% trade profit, Haulers carry +1 per trip, Exchange 40% cheaper, permanently cloaked Specter.</p>`;
 
+function hexRgb(h){h=h.replace('#','');return parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16);}
+/* the UI accent follows the player's faction colour (or the colour-blind-safe "you" blue) */
+function setAccent(col){const s=document.documentElement.style;s.setProperty('--acc',col.base);s.setProperty('--acc2',col.glow);s.setProperty('--acc-rgb',hexRgb(col.base));s.setProperty('--acc2-rgb',hexRgb(col.glow));}
+/* colour-blind-safe mode: "you" = blue, "enemy" = orange (distinguishable under deuteranopia, protanopia and tritanopia;
+   see tools/design_check.py for the measured colour distances). Applied by mutating the shared faction colour objects in place. */
+const CB_YOU={base:'#3d9bff',light:'#b9dcff',dark:'#123f7a',glow:'#6cb6ff'},CB_FOE={base:'#ff9a1f',light:'#ffd9a0',dark:'#7d4300',glow:'#ffb454'};
+const FAC_COL0={};for(const id of FACTION_IDS)FAC_COL0[id]=Object.assign({},FACTIONS[id].col);
+function applyTeamPalettes(){
+  for(const id of FACTION_IDS)Object.assign(FACTIONS[id].col,FAC_COL0[id]);
+  if(SET.cb&&G&&!ui.demo){Object.assign(FACTIONS[G.teams[0].faction].col,CB_YOU);Object.assign(FACTIONS[G.teams[1].faction].col,CB_FOE);}
+  for(const k in spriteCache)delete spriteCache[k];
+  for(const k in iconCache)delete iconCache[k];
+  if(typeof uiDirty==='function')uiDirty();
+}
 function buildMenus(){
   const fr=$('facRow');let h='';
   for(const id of FACTION_IDS){const F=FACTIONS[id];
-    h+='<div class="fac" data-f="'+id+'" style="--c:'+F.col.base+';--g:'+F.col.glow+'"><div class="fic"><img src="'+iconURL('u:'+F.hero+':'+id)+'"><img src="'+iconURL('u:'+F.unique+':'+id)+'"><img src="'+iconURL('b:hub:'+id)+'"></div><b>'+F.name+'</b><i>'+F.tag+'</i><ul>'+F.bonus.map(x=>'<li>'+x+'</li>').join('')+'</ul><p>'+F.blurb+'</p></div>';}
+    h+='<div class="fac" data-f="'+id+'" style="--c:'+F.col.base+';--g:'+F.col.glow+';--cr:'+hexRgb(F.col.base)+'"><div class="fic"><img src="'+iconURL('u:'+F.hero+':'+id)+'"><img src="'+iconURL('u:'+F.unique+':'+id)+'"><img src="'+iconURL('b:hub:'+id)+'"></div><b>'+F.name+'</b><i>'+F.tag+'</i><ul>'+F.bonus.map(x=>'<li>'+x+'</li>').join('')+'</ul><p>'+F.blurb+'</p></div>';}
   fr.innerHTML=h;
   $('enemyRow').innerHTML=['random'].concat(FACTION_IDS).map(id=>'<button class="btn" data-e="'+id+'">'+(id==='random'?'Random':FACTIONS[id].name.split(' ')[0])+'</button>').join('');
   $('diffRow').innerHTML=['easy','normal','hard'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
@@ -62,9 +76,10 @@ function syncMenu(){
   for(const el of $('facRow').children)el.classList.toggle('sel',el.dataset.f===SET.faction);
   for(const el of $('enemyRow').children)el.classList.toggle('sel',el.dataset.e===SET.enemy);
   for(const el of $('diffRow').children)el.classList.toggle('sel',el.dataset.d===SET.diff);
-  document.documentElement.style.setProperty('--acc',FACTIONS[SET.faction].col.base);document.documentElement.style.setProperty('--acc2',FACTIONS[SET.faction].col.glow);
+  setAccent(FACTIONS[SET.faction].col);
   $('setMusic').value=SET.music*100;$('setSfx').value=SET.sfx*100;
-  for(const k of['edge','voice','hints','shake','swarm','swarmHints'])$('set_'+k).checked=!!SET[k];
+  for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).checked=!!SET[k];
+  $('set_quality').value=SET.quality;
 }
 let overlayStack=[];
 function showOverlay(id){for(const o of document.querySelectorAll('.overlay'))o.classList.toggle('hidden',o.id!==id);}

@@ -27,9 +27,31 @@ function entVisible(e){
   if(e.kind==='building')return e.seen0;
   return seen(0,e);
 }
+/* ---- responsive layout: <html> classes + measured HUD geometry (desktop, tablet, phone) ---- */
+const rootEl=document.documentElement;
+function applyLayoutClasses(){
+  const W=window.innerWidth,H=window.innerHeight,small=Math.min(W,H)<600||H<500;
+  rootEl.classList.toggle('compact',small);rootEl.classList.toggle('portrait',small&&H>W);
+  return small;
+}
+function setTouchMode(on){
+  if(ui.touchMode===on)return;
+  ui.touchMode=on;rootEl.classList.toggle('touch',on);
+  if(on)hideTip();
+  measureHud();
+}
+function measureHud(){
+  const hud=$('hud');if(!hud||hud.classList.contains('hidden'))return;
+  const t=Math.ceil($('top').getBoundingClientRect().height),b=Math.ceil($('bottom').getBoundingClientRect().height);
+  if(t<20||b<20||(t===TOPBAR&&b===BOTTOM))return;
+  TOPBAR=t;BOTTOM=b;rootEl.style.setProperty('--tH',t+'px');rootEl.style.setProperty('--bH',b+'px');
+  if(G)clampCam();
+}
 function resizeView(){
+  applyLayoutClasses();
   DPR=Math.min(2,window.devicePixelRatio||1);VW=window.innerWidth;VH=window.innerHeight;
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
+  measureHud();
   if(G)clampCam();
 }
 
@@ -271,6 +293,7 @@ function render(t,dt){
   drawTargeting(t);
   if(G.daylight<0.98)drawNight(t);
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(ui.touchMode)touchOverlay(ctx);
   // drag box
   if(ui.drag&&(Math.abs(ui.drag.x1-ui.drag.x0)>4||Math.abs(ui.drag.y1-ui.drag.y0)>4)){
     const x=Math.min(ui.drag.x0,ui.drag.x1),y=Math.min(ui.drag.y0,ui.drag.y1),w=Math.abs(ui.drag.x1-ui.drag.x0),h=Math.abs(ui.drag.y1-ui.drag.y0);

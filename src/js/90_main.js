@@ -10,19 +10,19 @@ function resetUI(){
 function startGame(){
   stopSpeech();
   newGame({diff:SET.diff,faction:SET.faction,enemy:SET.enemy,seed:ui.seedOverride!=null?ui.seedOverride:undefined});
-  ui.demo=false;ui.running=true;resetUI();buildTerrain();initFog();updateVision();updateFog(1,true);
-  cam.z=cam.tz=1;const hub=G.buildings.find(b=>b.team===0&&b.type==='hub');centerOn(hub.x,hub.y);
+  ui.demo=false;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateVision();updateFog(1,true);
+  cam.z=cam.tz=rootEl.classList.contains('compact')?1.2:1;const hub=G.buildings.find(b=>b.team===0&&b.type==='hub');centerOn(hub.x,hub.y);
   setSel([hub]);
-  hideOverlays();$('hud').classList.remove('hidden');overlayStack=[];
-  const pal=FACTIONS[SET.faction].col;document.documentElement.style.setProperty('--acc',pal.base);document.documentElement.style.setProperty('--acc2',pal.glow);
+  hideOverlays();$('hud').classList.remove('hidden');overlayStack=[];measureHud();centerOn(hub.x,hub.y);
+  setAccent(FACTIONS[SET.faction].col);
   setTxt('bSpeedT','1×');G.speed=1;
-  toast('Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');say('Mission started');
+  toast(ui.touchMode?'Tap your Hub to train Haulers, then expand — destroy all enemy structures to win.':'Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');say('Mission started');
 }
 function stopSpeech(){try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch(e){}}
 function startDemo(){
   const fs=FACTION_IDS.slice().sort(()=>Math.random()-.5);
   newGame({diff:'normal',faction:fs[0],enemy:fs[1],aiBoth:true});
-  ui.demo=true;ui.running=true;resetUI();buildTerrain();initFog();updateFog(1,true);G.speed=3;cam.z=cam.tz=0.9;ui.demoT=0;ui.demoPt=null;ui.demoEnd=0;
+  ui.demo=true;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateFog(1,true);G.speed=3;cam.z=cam.tz=0.9;ui.demoT=0;ui.demoPt=null;ui.demoEnd=0;
   $('hud').classList.add('hidden');
   const s=G.sites[0];centerOn(s.cx*TILE,s.cy*TILE);
 }
@@ -50,7 +50,7 @@ function cameraUpdate(dt){
   if(!G||!ui.running||G.paused||ui.demo)return;
   let dx=0,dy=0;const k=ui.keys,sp=950*dt/Math.sqrt(cam.z),m=8;
   if(k.arrowleft)dx-=sp;if(k.arrowright)dx+=sp;if(k.arrowup)dy-=sp;if(k.arrowdown)dy+=sp;
-  if(SET.edge&&ui.inWin&&!ui.mmDrag&&!ui.drag&&!ui.midDrag){
+  if(SET.edge&&ui.inWin&&!ui.touchMode&&!ui.mmDrag&&!ui.drag&&!ui.midDrag){
     if(ui.mx<m)dx-=sp;else if(ui.mx>VW-m)dx+=sp;if(ui.my<m)dy-=sp;else if(ui.my>VH-m)dy+=sp;}
   if(dx||dy){cam.x+=dx/cam.z;cam.y+=dy/cam.z;clampCam();}
 }
@@ -71,6 +71,7 @@ function cursorFor(kind){
   return curCache[kind]='url('+c.toDataURL()+') 16 16, crosshair';
 }
 function cursorUpdate(){
+  if(ui.touchMode){ui.hover=null;return;}
   let c='default';
   if(ui.place)c='crosshair';
   else if(ui.target)c=cursorFor('target');
@@ -103,6 +104,7 @@ function bindInput(){
   document.addEventListener('mouseleave',()=>{ui.inWin=false;});document.addEventListener('mouseenter',()=>{ui.inWin=true;});
   const mmWorld=e=>{const r=mm.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*WW,y:(e.clientY-r.top)/r.height*WH};};
   window.addEventListener('mousemove',e=>{
+    if(ui.touchMode)return;
     const px=ui.mx,py=ui.my;ui.mx=e.clientX;ui.my=e.clientY;ui.inWin=true;
     if(ui.drag){ui.drag.x1=e.clientX;ui.drag.y1=e.clientY;}
     if(ui.midDrag){cam.x-=(e.clientX-px)/cam.z;cam.y-=(e.clientY-py)/cam.z;clampCam();}
@@ -121,7 +123,7 @@ function bindInput(){
     }});
   window.addEventListener('mouseup',e=>{
     if(e.button===1)ui.midDrag=null;ui.mmDrag=false;
-    if(e.button!==0||!ui.drag||!G)return;
+    if(ui.touchMode||e.button!==0||!ui.drag||!G)return;
     const d=ui.drag;ui.drag=null;
     if(Math.abs(d.x1-d.x0)<5&&Math.abs(d.y1-d.y0)<5){const w=s2w(d.x1,d.y1);clickSelect(w.x,w.y,e.shiftKey,performance.now(),e.ctrlKey||e.metaKey);}else boxSelect(d,e.shiftKey);});
   cv.addEventListener('wheel',e=>{e.preventDefault();if(!G||!ui.running||ui.demo)return;ui.zx=e.clientX;ui.zy=e.clientY;cam.tz=clamp(cam.tz*(e.deltaY<0?1.12:1/1.12),0.5,1.7);},{passive:false});
@@ -134,8 +136,8 @@ function bindInput(){
     else if(e.button===2){const own=ui.sel.filter(s=>s.team===0);
       if(own.length&&own[0].kind==='building'){for(const b of own)if(b.done)setRally(b,p.x,p.y,null);}else issueGroup(ownUnits(),p.x,p.y,'move',e.shiftKey);}});
   const cmdEl=$('cmd');
-  cmdEl.addEventListener('mousedown',e=>{const b=e.target.closest('.cb');if(!b||b.dataset.i===undefined)return;e.preventDefault();audioInit();runCmd(+b.dataset.i);hideTip();});
-  cmdEl.addEventListener('mouseover',e=>{const b=e.target.closest('.cb');if(b&&b.dataset.i!==undefined){const i=+b.dataset.i,c=ui.cmds[i];if(c)showTipHTML(cmdTipHTML(c,i),b.getBoundingClientRect());}});
+  cmdEl.addEventListener('mousedown',e=>{const b=e.target.closest('.cb');if(!b||b.dataset.i===undefined)return;e.preventDefault();audioInit();if(tpSuppressed())return;runCmd(+b.dataset.i);if(!ui.touchMode)hideTip();});
+  cmdEl.addEventListener('mouseover',e=>{if(ui.touchMode)return;const b=e.target.closest('.cb');if(b&&b.dataset.i!==undefined){const i=+b.dataset.i,c=ui.cmds[i];if(c)showTipHTML(cmdTipHTML(c,i),b.getBoundingClientRect());}});
   cmdEl.addEventListener('mouseleave',hideTip);
   $('info').addEventListener('mousedown',e=>{
     const q=e.target.closest('[data-q]');
@@ -143,7 +145,7 @@ function bindInput(){
     const g=e.target.closest('[data-id]');
     if(g){const id=+g.dataset.id,ent=ui.sel.find(s=>s.id===id);if(!ent)return;if(e.shiftKey)setSel(ui.sel.filter(s=>s!==ent));else if(e.ctrlKey)setSel(ui.sel.filter(s=>s.type===ent.type));else setSel([ent]);}});
   $('groups').addEventListener('mousedown',e=>{const g=e.target.closest('[data-grp]');if(g)groupRecall(+g.dataset.grp);});
-  for(const el of document.querySelectorAll('[data-tip]')){el.addEventListener('mouseover',()=>showTipHTML(el.dataset.tip,el.getBoundingClientRect(),false));el.addEventListener('mouseleave',hideTip);}
+  for(const el of document.querySelectorAll('[data-tip]')){el.addEventListener('mouseover',()=>{if(!ui.touchMode)showTipHTML(el.dataset.tip,el.getBoundingClientRect(),false);});el.addEventListener('mouseleave',()=>{if(!ui.touchMode)hideTip();});}
   $('ecoPanel').addEventListener('mousedown',e=>{
     const b=e.target.closest('[data-act]');if(!b)return;e.preventDefault();audioInit();const a=b.dataset.act.split(':');
     if(a[0]==='close')togglePanel('eco');
@@ -170,9 +172,10 @@ function bindInput(){
   $('bToMenu').onclick=toMenu;$('bAgain').onclick=()=>{startGame();};$('bEndMenu').onclick=toMenu;
   $('setMusic').addEventListener('input',e=>{SET.music=e.target.value/100;applyVolumes();saveSettings();});
   $('setSfx').addEventListener('input',e=>{SET.sfx=e.target.value/100;applyVolumes();saveSettings();});
-  for(const k of['edge','voice','hints','shake','swarm','swarmHints'])$('set_'+k).addEventListener('change',e=>{SET[k]=e.target.checked;saveSettings();if(k==='hints')renderObjectives();});
+  for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).addEventListener('change',e=>{SET[k]=e.target.checked;saveSettings();if(k==='hints')renderObjectives();if(k==='rm')rootEl.classList.toggle('rm',SET.rm);});
+  $('set_quality').addEventListener('change',e=>{SET.quality=e.target.value;saveSettings();});
 
-  swBind();
+  swBind();bindTouch();
   window.addEventListener('keydown',e=>{
     if(e.target&&e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;
     const k=e.key.toLowerCase();
@@ -222,7 +225,7 @@ function frame(ts){
 function frameBody(dt,t){
   if(!G.paused&&(!G.over||G.time-G.overT<3)){acc+=dt*G.speed;let n=0;while(acc>=TICK&&n<14){step();acc-=TICK;n++;}if(n>=14)acc=0;}
   if(Math.abs(cam.tz-cam.z)>0.002)setZoom(cam.z+(cam.tz-cam.z)*Math.min(1,dt*12),ui.zx,ui.zy);
-  if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);if(ui.place)updatePlaceGhost();}
+  if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);touchUpdate(dt);if(ui.place)updatePlaceGhost();}
   updateFog(dt,ui.fogForce);ui.fogForce=false;
   render(t,dt);drawMinimap();
   if(!ui.demo){hudUpdate(dt);cursorUpdate();
@@ -232,8 +235,9 @@ function frameBody(dt,t){
 /* -------------------------------- boot ---------------------------------- */
 function boot(){
   cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');mm.width=MM;mm.height=MM;
+  setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
   resizeView();hydrateGlyphs();buildMenus();bindInput();ui.inWin=true;
-  document.documentElement.style.setProperty('--top',TOPBAR+'px');document.documentElement.style.setProperty('--bot',BOTTOM+'px');
+  if(window.ResizeObserver){const ro=new ResizeObserver(measureHud);ro.observe($('top'));ro.observe($('bottom'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
   if(!window.__TEST||window.__TEST==='live')requestAnimationFrame(frame);
@@ -242,5 +246,5 @@ if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
-  swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
+  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},TP,tpTap,tpLongTap,setTouchMode,measureHud,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
 boot();
