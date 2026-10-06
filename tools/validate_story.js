@@ -296,11 +296,34 @@ for(const c of Object.keys(STORY.barks||{}))if(!chars[c])E('barks.'+c,'unknown c
 const stats={charIds,cineIds,cines,missions,good,evil,radio};
 return{errs,warns,stats};
 }
-module.exports={validate};
+module.exports={validate,checkMaps:(S,V,e,w)=>checkMaps(S,V,e,w)};
+/* ------------------------------------------------------------- map-aware checks (needs the simulation; CLI only) */
+/* A scripted spawn/ping/building must sit on a walkable, unblocked tile of THAT mission's own map (seed). */
+function checkMaps(STORY,V,extraErrs,extraWarns){
+  const sim=require(path.join(__dirname,'..','tests','sim','simlib3.js'));
+  for(const m of STORY.missions||[]){
+    const s=m.setup||{};if(!Number.isInteger(s.seed)||!V.FACTION_IDS.includes(s.faction)||!V.FACTION_IDS.includes(s.enemy))continue;
+    let L;try{L=sim();L.newGame({seed:s.seed,faction:s.faction,enemy:s.enemy,diff:'normal'});}catch(e){extraErrs.push('missions.'+m.id+': map generation threw '+e.message);continue;}
+    const G=L.G,MW=L.MW,walk=(x,y)=>x>=0&&y>=0&&x<L.MW&&y<L.MH&&G.TT[y*MW+x]===0&&!G.blocked[y*MW+x];
+    const near=(x,y)=>{for(let r=0;r<=2;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(walk(x+dx,y+dy))return true;return false;};
+    const visit=(p,a,fn)=>{if(!Array.isArray(a))return;if(typeof a[0]==='string'&&(V.ACTION_OPS[a[0]]||V.COND_OPS[a[0]])){fn(p,a);for(const x of a.slice(1))if(Array.isArray(x))visit(p,x,fn);}};
+    for(const t of m.triggers||[])for(const [ai,a] of (t.do||[]).entries()){
+      const p='missions.'+m.id+'.triggers.'+t.id+'.do['+ai+']';
+      if(a[0]==='spawn'&&Array.isArray(a[4])){if(!near(a[4][0],a[4][1]))extraErrs.push(p+': spawn tile ('+a[4]+') is not walkable/free on the seed-'+s.seed+' map (nearest 5x5 has no free tile)');}
+      if(a[0]==='ping'&&!near(a[1],a[2]))extraWarns.push(p+': ping at ('+a[1]+','+a[2]+') is on rock/void');
+    }
+    for(const b of(s.start||{}).buildings||[]){if(!walk(b.tx,b.ty))extraErrs.push('missions.'+m.id+'.setup.start.buildings: '+b.type+' at ('+b.tx+','+b.ty+') is not on free ground');}
+    const scan=(p,c)=>{if(!Array.isArray(c))return;if((c[0]==='heroNear'&&!near(c[1],c[2]))||(c[0]==='unitsNear'&&!near(c[3],c[4])))extraWarns.push(p+': '+c[0]+' centre is on rock/void');for(const x of c.slice(1))if(Array.isArray(x))scan(p,x);};
+    for(const o of m.objectives||[]){scan('missions.'+m.id+'.objectives.'+o.id,o.done);scan('missions.'+m.id+'.objectives.'+o.id,o.when);}
+    for(const t of m.triggers||[])scan('missions.'+m.id+'.triggers.'+t.id,t.when);scan('missions.'+m.id+'.win',m.win);
+  }
+}
+
 /* ------------------------------------------------------------- CLI */
 if(require.main===module){
 const V=loadStory();if(STORY===null)STORY=V.STORY;
 const R=validate(STORY,V),errs=R.errs,warns=R.warns,{charIds,cineIds,cines,missions,good,evil,radio}=R.stats;
+if(!argv.includes('--no-maps')&&sf<0)checkMaps(STORY,V,errs,warns);
 if(JSONOUT){console.log(JSON.stringify({errors:errs,warnings:warns,characters:charIds.length,cinematics:cineIds.length,missions:missions.length,radio:Object.keys(radio).length},null,1));}
 else{
   if(STATS){
@@ -310,8 +333,9 @@ else{
     let words=0,lines=0,secs=0;for(const id of cineIds){secs+=cines[id].__runtime||0;for(const s of cines[id].scenes||[])for(const l of s.lines||[]){lines++;words+=(l.text||'').split(/\s+/).length;}}
     for(const r of Object.values(radio)){lines++;words+=(r.text||'').split(/\s+/).length;}
     console.log('  total film runtime '+Math.round(secs)+' s, '+lines+' spoken lines, '+words+' words');}
-  for(const w of warns)console.log('WARN  '+w);for(const e of errs)console.log('ERROR '+e);
-  console.log('\n'+(errs.length?errs.length+' ERROR(S)':'0 errors')+', '+warns.length+' warning(s)');
+  const gi=argv.indexOf('--grep'),gr=gi>=0?argv[gi+1]:null,keep=x=>!gr||x.includes(gr);   // --grep <substr>: only report findings whose path/message contains it (agents validate their own file)
+  for(const w of warns.filter(keep))console.log('WARN  '+w);for(const e of errs.filter(keep))console.log('ERROR '+e);
+  console.log('\n'+(errs.length?errs.length+' ERROR(S)':'0 errors')+', '+warns.length+' warning(s)'+(gr?'  (listing filtered by "'+gr+'"; counts are for the whole story)':''));
 }
 process.exit(errs.length||(STRICT&&warns.length)?1:0);
 }

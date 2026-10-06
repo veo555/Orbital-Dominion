@@ -1,7 +1,7 @@
 /* Mutation self-test for tools/validate_story.js (CLAUDE.md rule 15: a check that cannot fail is worthless).
    1. the generated fixture must validate with ZERO errors;  2. each deliberate corruption below must be caught with the expected message. */
 const path=require('path');
-const {validate}=require(path.join(__dirname,'..','..','tools','validate_story.js'));
+const {validate,checkMaps}=require(path.join(__dirname,'..','..','tools','validate_story.js'));
 const loadStory=require(path.join(__dirname,'..','sim','storylib.js'));
 const mk=require(path.join(__dirname,'..','fixtures','story_min.js'));
 const V=loadStory();
@@ -72,5 +72,17 @@ for(const[name,fn,want]of M){
   const hit=r.errs.some(e=>e.includes(want));
   ok(hit,'mutation "'+name+'" is caught ('+(hit?want:'wanted "'+want+'", got: '+(r.errs.slice(0,2).join(' | ')||'no errors'))+')');
 }
+
+/* map-aware check: a spawn on rock must be reported, a spawn on the player's own start plateau must not */
+{
+  const sim=require(path.join(__dirname,'..','sim','simlib3.js'))();sim.newGame({seed:1101,faction:'meridian',enemy:'obsidian',diff:'normal'});
+  const G=sim.G;let rock=null,floor=null;const allRock=(x,y)=>{for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)if(G.TT[(y+dy)*sim.MW+x+dx]!==1)return false;return true;};
+  for(let y=10;y<80&&!(rock&&floor);y++)for(let x=10;x<80;x++){const t=G.TT[y*sim.MW+x],b=G.blocked[y*sim.MW+x];if(!rock&&allRock(x,y))rock=[x,y];if(t===0&&!b&&!floor&&Math.hypot(x-44,y-44)<12)floor=[x,y];}
+  const run=(tile)=>{const S=mk();S.missions[0].setup.seed=1101;S.missions[0].setup.faction='meridian';S.missions[0].setup.enemy='obsidian';S.missions[0].triggers[1].do[1]=['spawn','enemy','raptor',3,tile];const e=[],w=[];checkMaps({missions:[S.missions[0]]},V,e,w);return e;};
+  ok(rock&&floor,'found a rock tile and a free tile on the seed-1101 map ('+rock+' / '+floor+')');
+  ok(run(rock).some(m=>m.includes('not walkable')),'map check: a spawn deep inside rock is reported');
+  ok(run(floor).length===0,'map check: a spawn on open ground is accepted');
+}
+
 console.log(fails?('\n'+fails+' SELF-TEST(S) FAILED'):'\nVALIDATOR SELF-TEST PASSED ('+M.length+' mutations)');
 process.exit(fails?1:0);
