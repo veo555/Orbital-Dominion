@@ -36,6 +36,7 @@ function newGame(opts){
   for(let i=0;i<3;i++)updateVision();
   G.sampleT=0;
   swarmInit();
+  if(opts.campaign)campaignInit(opts.campaign,opts);   // 45_campaign.js: applies the mission's setup, creates G.camp
   return G;
 }
 
@@ -240,11 +241,13 @@ function uCost(team,id){
 function uTime(team,id){let t=UDEF[id].time;if(G.teams[team].faction==='obsidian')t*=0.92;return t;}
 function reqBuild(team,id){
   const d=BDEF[id],T=G.teams[team];
+  if(G.camp){const L=campLocked(team,'building',id);if(L)return{ok:false,why:L};}
   if(T.era<d.era)return{ok:false,why:'Requires Era '+ERAS[d.era].rom};
   if(d.req&&!hasDone(team,d.req))return{ok:false,why:'Requires '+BDEF[d.req].name};
   const c=bCost(team,id);if(T.c<c.c)return{ok:false,why:'Not enough crystals'};if(T.e<c.e)return{ok:false,why:'Not enough ether'};return{ok:true};}
 function reqUnit(team,id){
   const d=UDEF[id],T=G.teams[team];
+  if(G.camp){const L=campLocked(team,'unit',id);if(L)return{ok:false,why:L};}
   if(T.era<d.era)return{ok:false,why:'Requires Era '+ERAS[d.era].rom};
   if(id==='titan'&&!hasDone(team,'foundry'))return{ok:false,why:'Requires Foundry'};
   const c=uCost(team,id);if(T.c<c.c)return{ok:false,why:'Not enough crystals'};if(T.e<c.e)return{ok:false,why:'Not enough ether'};
@@ -275,6 +278,7 @@ function queueResearch(b,id){
 function queueEra(b){
   const T=G.teams[b.team];if(T.era>=3){msg(b.team,'Highest era reached');return false;}
   const E=ERAS[T.era+1];
+  if(G.camp){const L=campLocked(b.team,'era',T.era+1);if(L){msg(b.team,L);return false;}}
   if(b.queue.some(q=>q.k==='era')||G.buildings.some(x=>!x.dead&&x.team===b.team&&x.queue.some(q=>q.k==='era'))){msg(b.team,'Already advancing');return false;}
   if(!afford(T,E.cost)){msg(b.team,T.c<E.cost.c?'Not enough crystals':'Not enough ether');return false;}
   if(T.era===1&&!hasDone(b.team,'garrison')){msg(b.team,'Requires Garrison');return false;}
@@ -553,7 +557,7 @@ function kill(e,by){
     for(const id of e.garr){const u=G.units.find(z=>z.id===id);if(u){u.garr=0;u.hidden=false;popOut(u);u.saved=null;goIdle(u);}}
     for(const u of G.units)if(u.hidden&&u.inRes&&u.inRes.siphon===e){releaseRes(u);goIdle(u);}
     if(e.queue.length){const T=G.teams[e.team];for(const q of e.queue)if(q.k==='hero')T.hero.reviving=false;}
-    if(!G.buildings.some(b=>!b.dead&&b.team===e.team&&b!==e)){endGame(e.team===0?'defeat':'victory');}
+    if(!G.buildings.some(b=>!b.dead&&b.team===e.team&&b!==e)&&!(G.camp&&campNoDefaultEnd(e.team))){endGame(e.team===0?'defeat':'victory');}
   }
 }
 function projHit(p){

@@ -454,3 +454,10 @@ select{font:inherit;font-size:14px;color:var(--txt);background:#07101c;border:1p
 #updBanner{position:fixed;left:50%;bottom:calc(var(--bH) + 14px);transform:translateX(-50%);z-index:90;box-shadow:var(--sh3);border-color:var(--ok);background:linear-gradient(#1f6a46,#134029);max-width:calc(100vw - 24px)}
 html.compact .row.links{margin-top:6px}
 html.rm *,html.rm *::before,html.rm *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+
+/* AUDIO:BEGIN (WF-audio only) */
+/* AUDIO:END */
+/* CINE:BEGIN (WF-cinematics only) */
+/* CINE:END */
+/* CAMP:BEGIN (WF-campaign only) */
+/* CAMP:END */

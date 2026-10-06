@@ -240,7 +240,7 @@ function frameBody(dt,t){
 function boot(){
   cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
-  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();ui.inWin=true;
+  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();cineInit();campInit();soundLabInit();ui.inWin=true;
   if(window.ResizeObserver){const ro=new ResizeObserver(()=>{sizeMinimap();measureHud();});ro.observe($('top'));ro.observe($('bottom'));ro.observe($('mmWrap'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
@@ -250,5 +250,5 @@ if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
-  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
+  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,cinePlay,cineStop,cineActive,cineFrame,cineExport,cineGallery,cineDuration,speak,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,cineSfx,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
 boot();

@@ -372,6 +372,7 @@ function sampleStats(){
 }
 function endGame(res){
   if(G.over)return;G.over=res;G.overT=G.time;sampleStats();
+  if(G.camp)campaignEnd(res);
   if(!G.ais[0])onGameOver(res);
 }
 
@@ -397,6 +398,7 @@ function step(){
   for(let t=0;t<2;t++){const ai=G.ais[t];if(ai&&G.time>=ai.next){ai.next=G.time+ai.P.iv;aiThink(ai);}}
   economyStep(TICK);
   swarmStep(TICK);
+  if(G.camp)campaignStep(TICK);   // 45_campaign.js: objectives, triggers, scripted events (5 Hz inside)
   if(G.tick%15===0)applyAuras();
   if(G.shake>0)G.shake=Math.max(0,G.shake-TICK*18);
   if(G.units.some(u=>u.dead))G.units=G.units.filter(u=>!u.dead);
