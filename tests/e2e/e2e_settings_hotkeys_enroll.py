@@ -1,0 +1,71 @@
+from playwright.sync_api import sync_playwright
+import os, pathlib
+ROOT=pathlib.Path(__file__).resolve().parents[2]
+URL=os.environ.get('OD_URL') or (ROOT/'dist'/'orbital_dominion_v3.html').as_uri()
+OUT=str(ROOT/'tests'/'out')+os.sep; os.makedirs(OUT,exist_ok=True)
+errs=[];reqs=[]
+def log(*a): print(*a,flush=True)
+with sync_playwright() as p:
+    b=p.chromium.launch(args=['--no-sandbox','--autoplay-policy=no-user-gesture-required'])
+    pg=b.new_page(viewport={'width':1366,'height':800})
+    pg.on('pageerror',lambda e: errs.append(('pageerror',str(e))))
+    pg.on('console',lambda m: errs.append((m.type,m.text)) if m.type in('error','warning') else None)
+    pg.on('request',lambda r: reqs.append(r.url[:70]) if not r.url.startswith(('file:','data:','blob:')) else None)
+    pg.add_init_script("window.__TEST='live'")
+    pg.goto(URL); pg.wait_for_timeout(1200)
+    # settings from the main menu first
+    pg.click('#bSet'); pg.wait_for_timeout(300)
+    log('settings swarm checkbox',pg.evaluate("()=>[document.getElementById('set_swarm').checked,document.getElementById('set_swarmHints').checked]"))
+    pg.uncheck('#set_swarm'); pg.wait_for_timeout(100)
+    log('after uncheck',pg.evaluate("()=>__RTS.SET.swarm"))
+    pg.click('#bSetX'); pg.wait_for_timeout(200)
+    pg.click('#bStart'); pg.wait_for_timeout(1500)
+    log('swarm off at start ->',pg.evaluate("()=>({on:__RTS.G.sw.on,chip:document.getElementById('swSt').textContent,btn:document.getElementById('swOnT').textContent,agents:__RTS.G.sw.agents.length})"))
+    # J toggles on
+    pg.keyboard.press('j'); pg.wait_for_timeout(700)
+    log('after J',pg.evaluate("()=>({on:__RTS.G.sw.on,btn:document.getElementById('swOnT').textContent})"))
+    # select all haulers (workers) using box-select through the API, then V (enroll)
+    pg.evaluate("()=>{const R=__RTS;R.setSel(R.G.units.filter(u=>!u.dead&&u.team===0&&u.def.worker));}")
+    pg.wait_for_timeout(300)
+    cmd=lambda: pg.evaluate("()=>[...document.querySelectorAll('#cmd > *')].map(e=>e.innerText.replace(/\\n+/g,' ').trim()).filter(Boolean).join(' | ')")
+    log('cmd card',cmd()[:300])
+    log('info',pg.evaluate("()=>document.getElementById('info').innerText.replace(/\\n+/g,' | ').slice(0,300)"))
+    pg.keyboard.press('v'); pg.wait_for_timeout(500)
+    log('after V',pg.evaluate("()=>({agents:__RTS.G.sw.agents.length,auto:__RTS.G.sw.agents.filter(u=>u.ag.auto).length})"),'cmd',cmd()[:300])
+    pg.screenshot(path=OUT+'g16_enrolled.png')
+    log('info after',pg.evaluate("()=>document.getElementById('info').innerText.replace(/\\n+/g,' | ').slice(0,500)"))
+    # Assign Role: key 'a' is slot 4... find the slot with name Assign Role
+    idx=pg.evaluate("()=>{const els=[...document.querySelectorAll('#cmd > *')];return els.findIndex(e=>/Assign Role/.test(e.innerText)||/Assign Role/.test(e.getAttribute('data-tip')||''))}")
+    log('assign role slot index',idx)
+    if idx>=0:
+        pg.evaluate(f"()=>[...document.querySelectorAll('#cmd > *')][{idx}].dispatchEvent(new MouseEvent('click',{{bubbles:true}}))"); pg.wait_for_timeout(400)
+        log('roles menu',cmd()[:400]); pg.screenshot(path=OUT+'g16_roles.png')
+    # role via panel roster
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    log('after esc: paused?',pg.evaluate("()=>__RTS.G.paused"),'panel',pg.evaluate("()=>__RTS.ui.panel"))
+    pg.keyboard.press('k'); pg.wait_for_timeout(300)
+    log('K opens',pg.evaluate("()=>__RTS.ui.panel"))
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    log('Esc closes panel (not pause):',pg.evaluate("()=>[__RTS.ui.panel,__RTS.G.paused]"))
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    log('Esc again pauses:',pg.evaluate("()=>[__RTS.ui.panel,__RTS.G.paused]"), 'pause visible',pg.evaluate("()=>!document.getElementById('pauseMenu').classList.contains('hidden')"))
+    pg.click('#bPSet'); pg.wait_for_timeout(300)
+    log('settings overlay visible',pg.evaluate("()=>!document.getElementById('setMenu').classList.contains('hidden')"))
+    pg.check('#set_swarmHints') if not pg.is_checked('#set_swarmHints') else None
+    pg.uncheck('#set_swarmHints'); log('swarmHints',pg.evaluate("()=>__RTS.SET.swarmHints"))
+    pg.check('#set_swarmHints'); pg.click('#bSetX'); pg.wait_for_timeout(200)
+    pg.click('#bResume'); pg.wait_for_timeout(300)
+    log('resumed',pg.evaluate("()=>__RTS.G.paused"))
+    # typing in the command box must not trigger hotkeys (e.g. 'k','j','p','m')
+    pg.keyboard.press('k'); pg.wait_for_timeout(300)
+    pg.click('#swIn'); pg.keyboard.type('kjpmt '); pg.wait_for_timeout(200)
+    log('typing hotkey letters: panel',pg.evaluate("()=>[__RTS.ui.panel,__RTS.G.paused,__RTS.G.sw.on,__RTS.G.teams[0].tax]"), 'value',pg.evaluate("()=>document.getElementById('swIn').value"))
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(200)
+    pg.fill('#swIn',''); 
+    # Enter key from game focuses the box
+    pg.mouse.click(300,300); pg.keyboard.press('Enter'); pg.wait_for_timeout(200)
+    log('Enter focuses box:',pg.evaluate("()=>document.activeElement&&document.activeElement.id"))
+    pg.keyboard.type('status'); pg.keyboard.press('Enter'); pg.wait_for_timeout(400)
+    log('status ->',pg.evaluate("()=>document.getElementById('swOut').innerText.slice(0,600)"))
+    log('errors',errs); log('external',reqs)
+    b.close()

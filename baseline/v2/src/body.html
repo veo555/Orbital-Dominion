@@ -1,0 +1,89 @@
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="top">
+    <div class="chip res" id="chC" data-tip="<b>Crystals</b><div class='d'>Mined by Haulers from crystal patches. The rate beside the number is your gross income per minute (mining + taxes + trade).</div>"><i class="gi" data-g="gem"></i><b id="rC">0</b><small id="rCi"></small></div>
+    <div class="chip res" id="chE" data-tip="<b>Ether</b><div class='d'>Extracted from geysers. Build an Ether Siphon on a geyser, then right-click it with Haulers. Fuels advanced units, research and eras.</div>"><i class="gi" data-g="eth"></i><b id="rE">0</b><small id="rEi"></small></div>
+    <div class="chip res" id="chS" data-tip="<b>Supply</b><div class='d'>Units in play / supply cap. Hubs give 10, Generators 8 (maximum 120). The number turns red when you are supply blocked.</div>"><i class="gi" data-g="army"></i><b id="rS">0/0</b></div>
+    <div class="chip" id="chEra" data-tip="<b>Current era</b><div class='d'>Advance your era at the Hub to unlock new units, buildings and upgrades. Each era also adds +5 morale.</div>"><span class="era" id="eraRom">I</span><small id="eraName">Landing</small></div>
+    <div class="chip click" id="chMor" data-tip="<b>Morale &amp; taxes</b><div class='d'>Morale speeds up mining, building and training (85–115%). Click for the full breakdown, tax policy and colonists. Hotkey: T cycles taxes.</div>"><i class="gi" data-g="tax"></i><b id="morV">62</b><div class="mbar"><i id="morBar"></i></div><small id="taxName">Normal tax</small></div>
+    <div class="chip click" id="chMkt" data-tip="<b>Market price</b><div class='d'>Crystals per ether on the shared market. Build an Exchange (Era II) to trade. Click to open the market (M).</div>"><i class="gi" data-g="market"></i><b id="mktP">1.00</b><canvas id="mktSpark" width="52" height="20"></canvas></div>
+    <div class="sp"></div>
+    <div class="chip dim" id="vsTxt2"><small id="vsTxt"></small></div>
+    <div class="chip" id="chClock" data-tip="<b>Game time</b><div class='d'>A full day lasts 6 minutes. At night sight shrinks by up to 38% and creeps sleep.</div>"><span id="dnIcon">☀</span><b id="clock">00:00</b></div>
+    <button class="tb" id="bIdle" data-tip="<b>Idle Hauler</b> [F1]<div class='d'>Select the next idle Hauler.</div>"><i class="gi" data-g="idle"></i><span class="bd" id="idleN">0</span></button>
+    <button class="tb" id="bArmy" data-tip="<b>Select army</b> [F2]<div class='d'>Select every combat unit. Supply of your army is shown on the badge.</div>"><i class="gi" data-g="army"></i><span class="bd" id="armyN">0</span></button>
+    <button class="tb" id="bHero" data-tip="<b>Hero</b> [F3]<div class='d'>Select your hero (press twice to center). Glows when you have unspent skill points (Z).</div>"><i class="gi" data-g="hero"></i><span class="bd" id="heroN">—</span></button>
+    <button class="tb" id="bObj" data-tip="<b>Objectives</b> [O]<div class='d'>Toggle the objective tracker.</div>"><i class="gi" data-g="learn"></i></button>
+    <button class="tb" id="bSpeed" data-tip="<b>Game speed</b> [+ / −]"><span id="bSpeedT">1×</span></button>
+    <button class="tb" id="bMute" data-tip="<b>Sound</b><div class='d'>Mute / unmute all audio.</div>"><span id="bMuteT">🔊</span></button>
+    <button class="tb" id="bMenu" data-tip="<b>Menu</b> [Esc / P]"><span id="bMenuT">☰</span></button>
+  </div>
+  <div id="objectives" class="panel"></div>
+  <div id="groups"></div>
+  <div id="ecoPanel" class="panel hidden"></div>
+  <div id="bottom">
+    <div id="mmWrap"><canvas id="mm" width="224" height="224"></canvas></div>
+    <div id="info"></div>
+    <div id="cmd"></div>
+  </div>
+</div>
+<div id="tip" class="hidden"></div>
+<div id="toast"></div>
+
+<div id="menu" class="overlay">
+  <div class="mcard">
+    <h1>Orbital Dominion</h1>
+    <div class="sub">REAL-TIME STRATEGY · CRYSTAL · ETHER · EMPIRE</div>
+    <p class="pitch">Build a colony, mine crystals and ether, keep your people happy, trade across the map, raise a hero and break the enemy base. High ground hides secrets, nights hide armies, and every faction plays differently.</p>
+    <h3>Faction</h3>
+    <div class="facrow" id="facRow"></div>
+    <div class="two">
+      <div><h3>Opponent</h3><div class="row" id="enemyRow"></div></div>
+      <div><h3>Map seed <small>(optional)</small></h3><input id="seedIn" type="text" placeholder="random" autocomplete="off" spellcheck="false"></div>
+    </div>
+    <h3>Difficulty</h3>
+    <div class="diffrow" id="diffRow"></div>
+    <div class="row actions"><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button></div>
+  </div>
+</div>
+
+<div id="pauseMenu" class="overlay dim hidden">
+  <div class="card narrow">
+    <h2 class="ttl">Paused</h2>
+    <div class="col">
+      <button class="btn big" id="bResume">Resume</button>
+      <button class="btn" id="bPHelp">How to play</button>
+      <button class="btn" id="bPSet">Settings</button>
+      <button class="btn" id="bRestart">Restart (new map)</button>
+      <button class="btn danger" id="bSurr">Surrender</button>
+      <button class="btn" id="bToMenu">Main menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="helpMenu" class="overlay dim hidden">
+  <div class="card wide"><h2 class="ttl">How to play</h2><div id="helpBody" class="helpbody"></div><div class="row end"><button class="btn big" id="bHelpX">Back</button></div></div>
+</div>
+
+<div id="setMenu" class="overlay dim hidden">
+  <div class="card narrow">
+    <h2 class="ttl">Settings</h2>
+    <label class="set">Music <input type="range" id="setMusic" min="0" max="100"></label>
+    <label class="set">Sound effects <input type="range" id="setSfx" min="0" max="100"></label>
+    <label class="chk"><input type="checkbox" id="set_edge"> Scroll when the mouse touches the screen edge</label>
+    <label class="chk"><input type="checkbox" id="set_voice"> Announcer voice (speech synthesis)</label>
+    <label class="chk"><input type="checkbox" id="set_hints"> Show objectives</label>
+    <label class="chk"><input type="checkbox" id="set_shake"> Screen shake</label>
+    <div class="row end"><button class="btn big" id="bSetX">Done</button></div>
+  </div>
+</div>
+
+<div id="endMenu" class="overlay dim hidden">
+  <div class="card wide">
+    <h2 class="ttl" id="endTitle">Victory</h2><div class="sub2" id="endSub"></div>
+    <div id="endStats"></div>
+    <div class="charts"><canvas id="chartArmy" width="360" height="130"></canvas><canvas id="chartEco" width="360" height="130"></canvas></div>
+    <div class="row end"><button class="btn big" id="bAgain">Play again</button><button class="btn" id="bEndMenu">Main menu</button></div>
+  </div>
+</div>
