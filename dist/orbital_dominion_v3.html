@@ -373,7 +373,7 @@ html.compact .cb .co{font-size:9px;right:2px;bottom:0}html.compact .cb .bg{font-
 html.compact #objectives{top:calc(var(--tH) + 4px);width:auto;max-width:min(64vw,440px);padding:3px 11px;border-radius:14px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html.compact #objectives b{display:none}html.compact #objectives .ob{margin:0;overflow:hidden;text-overflow:ellipsis}html.compact #objectives .ob.dim{display:none}
 html.compact #groups{left:calc(max(8px,var(--sal)) + 54px)}
-html.compact #toast{top:calc(var(--tH) + 38px);max-width:min(460px,70vw)}
+html.compact #toast{top:calc(var(--tH) + 38px);max-width:min(460px,70vw);z-index:7}
 html.compact .tmsg{font-size:12px;padding:4px 12px}
 html.compact #swPanel,html.compact #ecoPanel{top:var(--tH);bottom:0;right:0;width:min(430px,66vw);max-height:none;border-radius:var(--r3) 0 0 var(--r3);border-right:none;padding-right:max(10px,var(--sar));padding-bottom:max(8px,var(--sab));z-index:8}
 html.compact #touchDock{bottom:calc(var(--bH) + 6px)}
@@ -442,6 +442,7 @@ html.compact.portrait .mcard h1{font-size:clamp(24px,8vw,34px);letter-spacing:3p
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+#fpsBox{position:fixed;right:max(8px,var(--sar));top:calc(var(--tH) + 4px);z-index:40;font:11px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#bfe6c8;background:rgba(0,0,0,.62);padding:2px 7px;border-radius:5px;pointer-events:none}
 html.rm *,html.rm *::before,html.rm *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 
 </style>
@@ -4051,7 +4052,7 @@ function aiThink(ai){
    Light comes from the north-west. Every sprite is drawn once onto an offscreen
    canvas at SC× resolution and then rotated / blitted every frame.
    ========================================================================= */
-const SC=3,OUT='rgba(5,9,16,.85)',M0='#1b2330',M1='#2e3a4f',M2='#51607a',M3='#8696b0',M4='#cfd9e8';
+let SC=3;const OUT='rgba(5,9,16,.85)',M0='#1b2330',M1='#2e3a4f',M2='#51607a',M3='#8696b0',M4='#cfd9e8';
 const spriteCache={},iconCache={},mixCache={};
 function mix(a,b,t){const k=a+b+t;if(mixCache[k])return mixCache[k];const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);
   return mixCache[k]='rgb('+Math.round(lerp(pa>>16,pb>>16,t))+','+Math.round(lerp((pa>>8)&255,(pb>>8)&255,t))+','+Math.round(lerp(pa&255,pb&255,t))+')';}
@@ -4064,6 +4065,14 @@ function line(g,x0,y0,x1,y1,col,w){g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1)
 function lgr(g,x0,y0,x1,y1,c0,c1,cm){const q=g.createLinearGradient(x0,y0,x1,y1);q.addColorStop(0,c0);if(cm)q.addColorStop(0.5,cm);q.addColorStop(1,c1);return q;}
 function rgr(g,x,y,r0,r1,c0,c1){const q=g.createRadialGradient(x,y,r0,x,y,r1);q.addColorStop(0,c0);q.addColorStop(1,c1);return q;}
 function facCol(f){return f==='neutral'||!FACTIONS[f]?NEUTRAL_COL:FACTIONS[f].col;}
+/* HUD canvases are authored in CSS pixels (their width/height attributes); the backing store follows devicePixelRatio so
+   charts, sparklines and the minimap stay crisp on retina and phone screens. Returns a context already scaled to CSS px. */
+function hd(cv){
+  if(!cv._lw){cv._lw=cv.width;cv._lh=cv.height;}
+  const k=Math.min(3,window.devicePixelRatio||1),W=Math.round(cv._lw*k),H=Math.round(cv._lh*k);
+  if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
+  const g=cv.getContext('2d');g.setTransform(k,0,0,k,0,0);return g;
+}
 function mkCanvas(w,h){const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));return c;}
 
 /* ------------------------------- units -------------------------------- */
@@ -4499,7 +4508,7 @@ function glyph(g,name){
 }
 function iconURL(spec){
   if(iconCache[spec])return iconCache[spec];
-  const c=mkCanvas(64,64),g=c.getContext('2d');
+  const c=mkCanvas(128,128),g=c.getContext('2d');g.scale(2,2);   // authored on a 64 px grid, stored at 2x so it is sharp on retina screens
   const bg=g.createLinearGradient(0,0,0,64);bg.addColorStop(0,'#223d63');bg.addColorStop(1,'#0b1628');g.fillStyle=bg;g.fillRect(0,0,64,64);
   const p=spec.split(':');g.save();g.translate(32,32);
   if(p[0]==='u'){const sp=unitSprite(p[1],p[2]||'meridian'),s=Math.min(1.9,50/sp.S);g.scale(s,s);g.rotate(-0.6);g.drawImage(sp.cv,-sp.S/2,-sp.S/2,sp.S,sp.S);}
@@ -4515,9 +4524,13 @@ function iconURL(spec){
    boulders, ramps, landing pads, creep-camp ground, trails and battle decals
    ========================================================================= */
 const MM=224; // minimap backing size
-function buildTerrain(){
-  const c=mkCanvas(WW,WH),g=c.getContext('2d');
-  const seed=G.seed,nA=makeNoise(mulberry32(seed+99)),nB=makeNoise(mulberry32(seed+313)),R=mulberry32(seed*31+5);
+/* The ground bake is split in two so it can be repeated cheaply at other resolutions:
+     terrainSetup()  the expensive, scale-independent part (noise + a quarter-resolution ground-colour map), run once per map
+     terrainPaint()  a generator that draws every layer onto ANY context in world coordinates and yields between layers;
+                     run to completion it produces the 1x base map, run onto a scaled + clipped context it produces a sharp tile.
+   It consumes the same seeded random stream every time, so a tile is pixel-consistent with the base map. */
+function terrainSetup(){
+  const seed=G.seed,nA=makeNoise(mulberry32(seed+99)),nB=makeNoise(mulberry32(seed+313));
   const H=G.H,TT=G.TT,RAMP=G.RAMP;
   const tt=(x,y)=>x<0||y<0||x>=MW||y>=MH?3:TT[y*MW+x];
   /* occlusion map: how close to rocks / void a tile is */
@@ -4542,15 +4555,23 @@ function buildTerrain(){
       sh*=1.06+0.06*Math.sin((ax>=ay?fx:fy)*TAU*1.6);}
     d[o]=clamp(r*sh,0,255);d[o+1]=clamp(gg*sh,0,255);d[o+2]=clamp(b*sh,0,255);d[o+3]=255;
   }
-  lg2.putImageData(img,0,0);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(lc,0,0,WW,WH);
+  lg2.putImageData(img,0,0);
+  return{seed,nA,nB,H,TT,RAMP,tt,occ,lc};
+}
+function* terrainPaint(g,T){
+  const{seed,nA,nB,H,TT,RAMP,tt,lc}=T,R=mulberry32(seed*31+5);
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(lc,0,0,WW,WH);
   g.lineJoin='round';g.lineCap='round';
   const T2P=(x,y)=>[x*TILE,y*TILE];
+  yield 1;
 
+  yield 2;
   /* 2) trails along the main lanes */
   const trail=(pts,w,col)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();pts.forEach((p,i)=>{const[x,y]=T2P(p[0]+.5,p[1]+.5);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();};
   for(const pl of CORRIDORS){const m=pl.map(p=>[MW-1-p[0],MH-1-p[1]]);
     for(const pts of[pl,m]){trail(pts,92,'rgba(255,236,200,.05)');trail(pts,56,'rgba(255,236,200,.06)');trail(pts,22,'rgba(0,0,0,.05)');}}
 
+  yield 3;
   /* 3) ground details: speckles, cracks, craters, dune ripples, plateau panel seams */
   const onFloor=(x,y)=>{const t=tt(x/TILE|0,y/TILE|0);return t===0;};
   for(let i=0;i<9000;i++){const x=R()*WW,y=R()*WH;if(!onFloor(x,y))continue;
@@ -4572,6 +4593,7 @@ function buildTerrain(){
     g.strokeStyle=hi?'rgba(190,225,255,.10)':'rgba(255,255,255,.04)';g.beginPath();g.moveTo(x*TILE+1.5,y*TILE+TILE*2+1.5);g.lineTo(x*TILE+1.5,y*TILE+1.5);g.lineTo(x*TILE+TILE*2+1,y*TILE+1.5);g.stroke();
     if(hi&&R()<.2){g.fillStyle='rgba(120,200,255,.12)';g.fillRect(x*TILE+8,y*TILE+8,TILE*2-16,3);}}
 
+  yield 4;
   /* 4) landing pads, resource fields, camp grounds, plazas */
   for(const s of G.sites){const x=s.cx*TILE,y=s.cy*TILE,own=s.owner>=0?G.teams[s.owner].pal:NEUTRAL_COL,mainS=s.main;
     const rad=(mainS?6.4:5.6)*TILE;
@@ -4593,6 +4615,7 @@ function buildTerrain(){
     if(n.type==='tower'){g.fillStyle='rgba(30,28,50,.35)';g.beginPath();g.arc(x,y,54,0,TAU);g.fill();g.strokeStyle='rgba(190,170,255,.25)';g.lineWidth=2;for(const k of[44,56]){g.beginPath();g.arc(x,y,k,0,TAU);g.stroke();}}
     else{rr(g,x-52,y-52,104,104,12,'rgba(70,50,24,.35)');g.strokeStyle='rgba(255,220,150,.14)';g.lineWidth=1.5;for(let i=-3;i<=3;i++){g.beginPath();g.moveTo(x-52,y+i*14);g.lineTo(x+52,y+i*14);g.stroke();}}}
 
+  yield 5;
   /* 5) cliffs: cast shadows on the lower ground, then the rock faces */
   const D4=[[1,0],[-1,0],[0,1],[0,-1]];
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(TT[y*MW+x]!==2)continue;const hi=H[y*MW+x];
@@ -4611,6 +4634,7 @@ function buildTerrain(){
     g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=1.4;g.beginPath();
     if(Math.abs(vx)>=Math.abs(vy)){const ex=vx>0?x*TILE+1:x*TILE+TILE-1;g.moveTo(ex,y*TILE);g.lineTo(ex,y*TILE+TILE);}else{const ey=vy>0?y*TILE+1:y*TILE+TILE-1;g.moveTo(x*TILE,ey);g.lineTo(x*TILE+TILE,ey);}g.stroke();}
 
+  yield 6;
   /* 6) boulders: shadow, base, extruded top with rounded outer corners */
   const isR=(x,y)=>tt(x,y)===1;
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(isR(x,y)){g.fillStyle='rgba(6,8,16,.34)';g.fillRect(x*TILE+3,y*TILE+8,TILE+4,TILE+2);}
@@ -4629,6 +4653,7 @@ function buildTerrain(){
     if(R()<.4){g.fillStyle='rgba(255,255,255,.06)';g.beginPath();g.moveTo(X+4,Y+TILE-4);g.lineTo(X+10+R()*10,Y+4);g.lineTo(X+TILE-4,Y+8+R()*10);g.closePath();g.fill();}
     if(R()<.05){g.fillStyle='rgba(130,255,220,.5)';g.beginPath();g.moveTo(X+16,Y+6);g.lineTo(X+21,Y+18);g.lineTo(X+16,Y+24);g.lineTo(X+11,Y+18);g.closePath();g.fill();}}
 
+  yield 7;
   /* 7) void rim with sparkles and a soft glow where the playable area ends */
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(TT[y*MW+x]!==3)continue;
     for(let k=0;k<3;k++){g.fillStyle='rgba(190,210,255,'+(0.15+R()*0.5)+')';g.fillRect(x*TILE+R()*TILE,y*TILE+R()*TILE,1+R()*1.4,1+R()*1.4);}}
@@ -4637,31 +4662,129 @@ function buildTerrain(){
       if(dx>0)q=g.createLinearGradient(bx+TILE,0,bx+TILE-14,0);else if(dx<0)q=g.createLinearGradient(bx,0,bx+14,0);else if(dy>0)q=g.createLinearGradient(0,by+TILE,0,by+TILE-14);else q=g.createLinearGradient(0,by,0,by+14);
       q.addColorStop(0,'rgba(120,150,255,.28)');q.addColorStop(1,'rgba(120,150,255,0)');g.fillStyle=q;g.fillRect(bx,by,TILE,TILE);}}
 
+  yield 8;
   /* 8) ramp direction chevrons */
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(!RAMP[y*MW+x]||(x+y)%3)continue;
     const ax=H[y*MW+Math.min(MW-1,x+1)]-H[y*MW+Math.max(0,x-1)],ay=H[Math.min(MH-1,y+1)*MW+x]-H[Math.max(0,y-1)*MW+x];
     if(Math.abs(ax)<.02&&Math.abs(ay)<.02)continue;const a=Math.atan2(-ay,-ax);const cx=x*TILE+16,cy=y*TILE+16;
     g.save();g.translate(cx,cy);g.rotate(a);g.strokeStyle='rgba(255,255,255,.17)';g.lineWidth=2;g.beginPath();g.moveTo(-4,-6);g.lineTo(3,0);g.lineTo(-4,6);g.stroke();g.restore();}
 
-  G.terrainCv=c;
-  const mb=mkCanvas(MM,MM),mg=mb.getContext('2d');mg.imageSmoothingEnabled=true;mg.drawImage(c,0,0,MM,MM);G.mmBg=mb;
+  yield 9;
 }
-/* battle damage painted straight onto the baked terrain */
+function buildTerrain(){
+  const T=terrainSetup(),c=mkCanvas(WW,WH),g=c.getContext('2d');
+  for(const _ of terrainPaint(g,T)){}
+  G.tInfo=T;G.terrainCv=c;G.decalAll=[];
+  const mb=mkCanvas(MM*2,MM*2),mg=mb.getContext('2d');mg.imageSmoothingEnabled=true;mg.imageSmoothingQuality='high';mg.drawImage(c,0,0,MM*2,MM*2);G.mmBg=mb;
+  if(typeof terrainReset==='function')terrainReset();
+}
+/* battle damage painted straight onto the baked terrain (and replayed onto sharp tiles, see 53_terrain_hd.js) */
 function applyDecals(){
   if(!G.terrainCv||!G.decalDirty.length)return;
   const g=G.terrainCv.getContext('2d');
   for(const dd of G.decalDirty){
     if(tileTypeAt(dd.x,dd.y)===2)continue;
-    const r=Math.max(10,dd.r);
-    if(dd.k==='scorch'){g.fillStyle=rgr(g,dd.x,dd.y,1,r*1.25,'rgba(8,6,6,.42)','rgba(8,6,6,0)');g.beginPath();g.arc(dd.x,dd.y,r*1.25,0,TAU);g.fill();
-      for(let i=0;i<4;i++){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.arc(dd.x+(Math.random()-.5)*r*1.6,dd.y+(Math.random()-.5)*r*1.6,1+Math.random()*2.4,0,TAU);g.fill();}}
-    else{g.fillStyle=rgr(g,dd.x,dd.y,2,r*1.4,'rgba(18,14,12,.55)','rgba(18,14,12,0)');g.beginPath();g.arc(dd.x,dd.y,r*1.4,0,TAU);g.fill();
-      for(let i=0;i<10;i++){const a=Math.random()*TAU,rr2=Math.random()*r*1.1,x=dd.x+Math.cos(a)*rr2,y=dd.y+Math.sin(a)*rr2,s=2+Math.random()*5;
-        g.fillStyle=Math.random()<.5?'rgba(70,64,60,.9)':'rgba(40,36,34,.9)';g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y+s*.4);g.lineTo(x-s*.6,y+s);g.closePath();g.fill();}}
+    const d={x:dd.x,y:dd.y,r:dd.r,k:dd.k,seed:(G.decalAll.length*2654435761+7)>>>0};
+    G.decalAll.push(d);if(G.decalAll.length>500)G.decalAll.shift();   // older ones stay painted in the base map
+    paintDecal(g,d);decalToTiles(d);
   }
   G.decalDirty.length=0;
 }
 function tileTypeAt(x,y){return G.TT[tileOf(x,y)];}
+
+/* =========================================================================
+   ART (3b/3) — sharp terrain tiles
+   The base ground is baked once at 1 world px = 1 canvas px. On a retina screen or when zoomed in that bitmap is stretched
+   2-3x and the panel seams, rings and speckles go soft next to the (vector-sharp) sprites. Here the same generator
+   (terrainPaint) is re-run onto small canvases at 2x / 3x, clipped to one tile, only for the tiles the camera can see
+   and only while DPR x zoom > 1.2. One generator stage runs per step inside a small per-frame time budget, so there are
+   no long frames; until a tile is ready the 1x base shows through, then the tile fades in by simply being drawn on top.
+   Memory is bounded (LRU). Rendering only: the simulation never reads this.
+   ========================================================================= */
+const TCH=512,TPAD=6;   // tile edge and overlap, in world px (the overlap hides seams between tiles)
+const tch={map:new Map(),cap:14,frame:0,baked:0,pending:0,stageMs:0,lastScale:0};
+
+function terrainReset(){for(const t of tch.map.values())t.cv.width=0;tch.map.clear();tch.pending=0;tch.baked=0;}
+function terrainQualityChanged(){terrainReset();}
+function terrainChunkInfo(){return' · tiles '+tch.baked+'/'+tch.map.size+(tch.pending?' (+'+tch.pending+')':'');}
+function tileScaleWanted(){
+  if(Q.hires<1)return 0;
+  const need=DPR*cam.z;if(need<1.2)return 0;
+  return(Q.hires>=2&&need>2.3)?3:2;
+}
+function tileFor(cx,cy,s,create){
+  const k=cx+','+cy+','+s;let t=tch.map.get(k);
+  if(t||!create)return t;
+  const x0=cx*TCH-TPAD,y0=cy*TCH-TPAD,w=Math.min(WW,(cx+1)*TCH+TPAD)-x0,h=Math.min(WH,(cy+1)*TCH+TPAD)-y0;
+  const cv=mkCanvas(w*s,h*s),g=cv.getContext('2d');
+  g.setTransform(s,0,0,s,-x0*s,-y0*s);g.beginPath();g.rect(x0,y0,w,h);g.clip();
+  t={k,cx,cy,s,x0,y0,w,h,cv,g,gen:terrainPaint(g,G.tInfo),done:false,last:0};
+  tch.map.set(k,t);return t;
+}
+/* advance tile generators (nearest the screen centre first) for at most `ms` milliseconds */
+function terrainStream(ms){
+  if(!G||!G.tInfo||!Q.hires)return;
+  const s=tileScaleWanted();if(!s){tch.pending=0;return;}
+  const z=cam.z,vx0=cam.x,vy0=cam.y,vx1=cam.x+VW/z,vy1=cam.y+VH/z,mx=(vx0+vx1)/2,my=(vy0+vy1)/2;
+  const c0=Math.max(0,Math.floor(vx0/TCH)),c1=Math.min(Math.ceil(WW/TCH)-1,Math.floor(vx1/TCH)),r0=Math.max(0,Math.floor(vy0/TCH)),r1=Math.min(Math.ceil(WH/TCH)-1,Math.floor(vy1/TCH));
+  const want=[];
+  for(let cy=r0;cy<=r1;cy++)for(let cx=c0;cx<=c1;cx++){
+    // only worth a tile if some of it has been explored (otherwise it is black fog)
+    if(!ui.demo&&!tileExplored(cx,cy))continue;
+    const t=tileFor(cx,cy,s,false);if(t&&t.done){t.last=tch.frame;continue;}
+    want.push({cx,cy,d:Math.hypot((cx+.5)*TCH-mx,(cy+.5)*TCH-my)});
+  }
+  tch.pending=want.length;
+  if(!want.length)return;
+  want.sort((a,b)=>a.d-b.d);
+  const t0=performance.now();
+  for(const w of want){
+    const t=tileFor(w.cx,w.cy,s,true);t.last=tch.frame;
+    while(!t.done&&performance.now()-t0<ms){
+      const r=t.gen.next();
+      if(r.done){t.done=true;tch.baked++;replayDecals(t);}
+    }
+    if(performance.now()-t0>=ms)break;
+  }
+  // memory bound: drop the least recently useful tiles
+  if(tch.map.size>tch.cap){
+    const arr=[...tch.map.values()].sort((a,b)=>a.last-b.last);
+    for(const t of arr){if(tch.map.size<=tch.cap)break;if(t.last===tch.frame)continue;t.cv.width=0;tch.map.delete(t.k);if(t.done)tch.baked--;}
+  }
+}
+function tileExplored(cx,cy){
+  const v=G.vis[0],tx0=Math.floor(cx*TCH/TILE),ty0=Math.floor(cy*TCH/TILE),tx1=Math.min(MW-1,Math.floor(((cx+1)*TCH-1)/TILE)),ty1=Math.min(MH-1,Math.floor(((cy+1)*TCH-1)/TILE));
+  for(let y=ty0;y<=ty1;y+=2)for(let x=tx0;x<=tx1;x+=2)if(v[y*MW+x]>0)return true;
+  return false;
+}
+/* draw every finished tile over the 1x base (world transform already applied by the caller) */
+function drawTerrainTiles(ctx,vx0,vy0,vx1,vy1){
+  const s=tileScaleWanted();if(!s)return;
+  tch.frame++;
+  const c0=Math.max(0,Math.floor(vx0/TCH)),c1=Math.min(Math.ceil(WW/TCH)-1,Math.floor(vx1/TCH)),r0=Math.max(0,Math.floor(vy0/TCH)),r1=Math.min(Math.ceil(WH/TCH)-1,Math.floor(vy1/TCH));
+  for(let cy=r0;cy<=r1;cy++)for(let cx=c0;cx<=c1;cx++){
+    const t=tileFor(cx,cy,s,false)||tileFor(cx,cy,s===3?2:3,false);
+    if(t&&t.done){t.last=tch.frame;ctx.drawImage(t.cv,t.x0,t.y0,t.w,t.h);}
+  }
+}
+
+/* ---- battle damage: painted on the base map and replayed onto every sharp tile ---- */
+function paintDecal(g,dd){
+  const R=mulberry32(dd.seed),r=Math.max(10,dd.r);
+  if(dd.k==='scorch'){g.fillStyle=rgr(g,dd.x,dd.y,1,r*1.25,'rgba(8,6,6,.42)','rgba(8,6,6,0)');g.beginPath();g.arc(dd.x,dd.y,r*1.25,0,TAU);g.fill();
+    for(let i=0;i<4;i++){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.arc(dd.x+(R()-.5)*r*1.6,dd.y+(R()-.5)*r*1.6,1+R()*2.4,0,TAU);g.fill();}}
+  else{g.fillStyle=rgr(g,dd.x,dd.y,2,r*1.4,'rgba(18,14,12,.55)','rgba(18,14,12,0)');g.beginPath();g.arc(dd.x,dd.y,r*1.4,0,TAU);g.fill();
+    for(let i=0;i<10;i++){const a=R()*TAU,rr2=R()*r*1.1,x=dd.x+Math.cos(a)*rr2,y=dd.y+Math.sin(a)*rr2,s=2+R()*5;
+      g.fillStyle=R()<.5?'rgba(70,64,60,.9)':'rgba(40,36,34,.9)';g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y+s*.4);g.lineTo(x-s*.6,y+s);g.closePath();g.fill();}}
+}
+function replayDecals(t){
+  if(!G.decalAll)return;
+  for(const dd of G.decalAll){const m=dd.r*1.6+12;if(dd.x<t.x0-m||dd.x>t.x0+t.w+m||dd.y<t.y0-m||dd.y>t.y0+t.h+m)continue;paintDecal(t.g,dd);}
+}
+function decalToTiles(dd){
+  const m=dd.r*1.6+12;
+  for(const t of tch.map.values()){if(!t.done)continue;if(dd.x<t.x0-m||dd.x>t.x0+t.w+m||dd.y<t.y0-m||dd.y>t.y0+t.h+m)continue;paintDecal(t.g,dd);}
+}
 
 /* =========================================================================
    RENDERING — camera with zoom, layered world pass, smooth fog, night lighting,
@@ -4714,10 +4837,14 @@ function measureHud(){
 }
 function resizeView(){
   applyLayoutClasses();
-  DPR=Math.min(2,window.devicePixelRatio||1);VW=window.innerWidth;VH=window.innerHeight;
+  DPR=Math.min(Q.dpr,window.devicePixelRatio||1);VW=window.innerWidth;VH=window.innerHeight;
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
-  measureHud();
+  sizeMinimap();measureHud();
   if(G)clampCam();
+}
+function sizeMinimap(){   // backing store = on-screen size x DPR (drawMinimap draws in 224-unit space and scales)
+  const w=$('mmWrap').clientWidth||MM,px=Math.max(64,Math.round(w*DPR));
+  if(mm.width!==px){mm.width=px;mm.height=px;}
 }
 
 /* ------------------------------- fog ---------------------------------- */
@@ -4927,12 +5054,13 @@ function render(t,dt){
   if(!G||!G.terrainCv)return;
   applyDecals();
   const z=cam.z;let sx=0,sy=0;
-  if(G.shake>0&&SET.shake&&!ui.demo){sx=(Math.random()-.5)*G.shake;sy=(Math.random()-.5)*G.shake;}
+  if(G.shake>0&&SET.shake&&!SET.rm&&!ui.demo){sx=(Math.random()-.5)*G.shake;sy=(Math.random()-.5)*G.shake;}
   const tx=-(cam.x+sx)*z*DPR,ty=-(cam.y+sy)*z*DPR;
   ctx.setTransform(DPR*z,0,0,DPR*z,Math.round(tx),Math.round(ty));
-  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';   // terrain + fog are large, changing textures: cheap bilinear
   const vx0=Math.max(0,cam.x),vy0=Math.max(0,cam.y),vx1=Math.min(WW,cam.x+VW/z+2),vy1=Math.min(WH,cam.y+VH/z+2);
-  if(vx1>vx0&&vy1>vy0){const x0=Math.floor(vx0),y0=Math.floor(vy0),w=Math.ceil(vx1)-x0,h=Math.ceil(vy1)-y0;ctx.drawImage(G.terrainCv,x0,y0,w,h,x0,y0,w,h);}
+  if(vx1>vx0&&vy1>vy0){const x0=Math.floor(vx0),y0=Math.floor(vy0),w=Math.ceil(vx1)-x0,h=Math.ceil(vy1)-y0;ctx.drawImage(G.terrainCv,x0,y0,w,h,x0,y0,w,h);drawTerrainTiles(ctx,vx0,vy0,vx1,vy1);}
+  ctx.imageSmoothingQuality=Q.smooth;   // sprites are small and static, baked at SC x: mip-mapped downsampling removes shimmer
   // resources and neutral structures
   for(const r of G.res){if(r.dead||!onScreen(r.x,r.y,50))continue;if(!ui.demo&&G.vis[0][clamp(r.ty,0,MH-1)*MW+clamp(r.tx,0,MW-1)]===0)continue;
     if(r.type==='crystal')drawCrystal(ctx,r,t);else drawGeyser(ctx,r,t);
@@ -4952,12 +5080,15 @@ function render(t,dt){
     else{ctx.globalAlpha=Math.min(1,a*1.6);ctx.fillStyle=p.col;circ(ctx,p.x,p.y,p.size*(0.4+a*0.6));}ctx.globalAlpha=1;}
   drawFxOver(t);
   au.sort((a,b)=>a.y-b.y);for(const u of au)drawUnit(u,t);
+  if(Q.fx>=2)drawGlows(t);
+  ctx.imageSmoothingQuality='low';
   if(!ui.demo&&fogCv){ctx.imageSmoothingEnabled=true;ctx.drawImage(fogCv,0,0,MW*FQ,MH*FQ,0,0,WW,WH);}
   drawBars();
   if(!ui.demo)drawGhost(t);
   drawTargeting(t);
   if(G.daylight<0.98)drawNight(t);
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(!ui.demo){if(Q.fx>=1)drawGrade();if(Q.fx>=2&&!SET.rm)drawMotes(dt);}
   if(ui.touchMode)touchOverlay(ctx);
   // drag box
   if(ui.drag&&(Math.abs(ui.drag.x1-ui.drag.x0)>4||Math.abs(ui.drag.y1-ui.drag.y0)>4)){
@@ -4972,8 +5103,8 @@ function render(t,dt){
 /* ------------------------------- minimap ------------------------------ */
 function drawMinimap(){
   if(!G||!G.mmBg||!mmCtx)return;
-  const S=MM,k=S/WW,g=mmCtx;
-  g.clearRect(0,0,S,S);g.drawImage(G.mmBg,0,0);
+  const S=MM,k=S/WW,g=mmCtx,sc=mm.width/MM;
+  g.setTransform(sc,0,0,sc,0,0);g.clearRect(0,0,S,S);g.drawImage(G.mmBg,0,0,S,S);
   g.fillStyle='rgba(6,10,20,.28)';g.fillRect(0,0,S,S);
   const vs=ui.demo?null:G.vis[0];
   for(const r of G.res){if(r.dead||(vs&&vs[r.ty*MW+r.tx]===0))continue;g.fillStyle=r.type==='crystal'?'#f6c04a':'#b985ff';g.fillRect(r.x*k-1,r.y*k-1,r.type==='crystal'?2.4:3.4,r.type==='crystal'?2.4:3.4);}
@@ -4989,6 +5120,155 @@ function drawMinimap(){
   if(!ui.demo&&fogCv){g.imageSmoothingEnabled=true;g.drawImage(fogCv,0,0,S,S);}
   for(const p of ui.pings){const a=(G.time-p.t),pr=a/p.dur;if(pr>1)continue;g.strokeStyle=p.col.replace('A',String(1-pr));g.lineWidth=2;g.beginPath();g.arc(p.x*k,p.y*k,3+pr*18,0,TAU);g.stroke();}
   g.strokeStyle='#fff';g.lineWidth=1.2;g.strokeRect(cam.x*k+.5,cam.y*k+.5,VW/cam.z*k,(VH-BOTTOM)/cam.z*k);
+}
+
+/* =========================================================================
+   QUALITY — graphics presets and an adaptive scaler.
+   Rendering only: the simulation never reads anything in here, so determinism and balance are unaffected.
+     dpr     upper bound on canvas pixels per CSS pixel (capped again by the real devicePixelRatio)
+     sc      sprite supersampling (sprites are baked at sc x and scaled down when drawn)
+     smooth  imageSmoothingQuality for world drawing ('high' = mip-mapped / bicubic downsampling, no shimmer)
+     hires   terrain detail: 0 = single 1x bake, 1 = sharp 2x tiles near the camera, 2 = 3x tiles
+     fx      0 none · 1 vignette + grade · 2 + additive glows and dust · 3 + extra particles
+     part    multiplier on cosmetic particle counts
+     fps     0 = display rate, 30 = render at most 30 frames per second (battery saver)
+   'auto' starts from a device heuristic and then moves between tiers using measured frame times.
+   ========================================================================= */
+const QUALITY={
+  battery :{dpr:1,  sc:2,smooth:'low',   hires:0,fx:0,part:.4,fps:30},
+  balanced:{dpr:1.5,sc:3,smooth:'medium',hires:0,fx:1,part:.7,fps:0},
+  high    :{dpr:2,  sc:3,smooth:'high',  hires:1,fx:2,part:1, fps:0},
+  ultra   :{dpr:3,  sc:4,smooth:'high',  hires:2,fx:3,part:1.3,fps:0}
+};
+const TIERS=['battery','balanced','high','ultra'];
+const Q=Object.assign({tier:'high',auto:true,autoMax:2,acc:0,n:0,bad:0,good:0,lastSwitch:0,fpsAvg:60,msAvg:16,gate:0},QUALITY.high);
+
+function autoTier(){
+  const nav=navigator,mem=nav.deviceMemory||4,cores=nav.hardwareConcurrency||4,dpr=window.devicePixelRatio||1,phone=/Mobi|Android|iPhone|iPad/i.test(nav.userAgent||'');
+  if(mem<=2||cores<=2)return'battery';
+  if(mem<4||cores<4||(phone&&dpr>=3&&mem<6))return'balanced';
+  return'high';
+}
+function applyQuality(tier,silent){
+  const cfg=QUALITY[tier]||QUALITY.high,oldSC=SC;
+  Q.tier=tier;Object.assign(Q,cfg);
+  if(SC!==cfg.sc){SC=cfg.sc;for(const k in spriteCache)delete spriteCache[k];}
+  if(typeof resizeView==='function'&&cv)resizeView();
+  if(typeof terrainQualityChanged==='function')terrainQualityChanged();
+  if(!silent&&typeof toast==='function'&&SET.fps)toast('Graphics: '+tier+(Q.auto?' (auto)':''),'good');
+}
+function initQuality(){
+  Q.auto=SET.quality==='auto'||!QUALITY[SET.quality];
+  Q.autoMax=TIERS.indexOf('high');
+  applyQuality(Q.auto?autoTier():SET.quality,true);
+}
+function setQualityMode(mode){   // called from the settings menu
+  SET.quality=mode;saveSettings();Q.auto=mode==='auto'||!QUALITY[mode];Q.bad=Q.good=0;
+  applyQuality(Q.auto?autoTier():mode,true);
+}
+/* called once per animation frame with the real frame interval (ms). Windows of 2 s; hysteresis so it never flaps:
+   3 slow windows in a row step down, 10 fast windows in a row step up (never above 'high' in auto mode). */
+function qualityFrame(ms){
+  // a stalled main thread, a throttled background tab or a loading hitch is not evidence about the GPU: ignore it
+  if(!(ms>0)||ms>200||document.hidden){return;}
+  Q.acc+=ms;Q.n++;
+  if(Q.acc<2000)return;
+  const mean=Q.acc/Q.n;Q.msAvg=mean;Q.fpsAvg=1000/mean;Q.acc=0;Q.n=0;
+  if(!Q.auto||document.hidden||(G&&(G.paused||ui.demo)))return;
+  const target=Q.fps===30?33.4:16.7;
+  if(mean>target*1.55){Q.bad++;Q.good=0;}else if(mean<target*1.12){Q.good++;Q.bad=0;}else{Q.bad=0;Q.good=0;}
+  const i=TIERS.indexOf(Q.tier),now=performance.now();
+  if(Q.bad>=3&&i>0){Q.bad=0;Q.lastSwitch=now;applyQuality(TIERS[i-1]);}
+  else if(Q.good>=10&&i<Q.autoMax&&now-Q.lastSwitch>30000){Q.good=0;Q.lastSwitch=now;applyQuality(TIERS[i+1]);}
+}
+/* optional frame statistics (Settings -> Show frame-rate statistics) */
+let fpsEl=null,fpsT=0;
+function fpsOverlay(dt){
+  if(!SET.fps){if(fpsEl&&!fpsEl.classList.contains('hidden'))fpsEl.classList.add('hidden');return;}
+  if(!fpsEl){fpsEl=document.createElement('div');fpsEl.id='fpsBox';document.body.appendChild(fpsEl);}
+  fpsEl.classList.remove('hidden');fpsT-=dt;if(fpsT>0)return;fpsT=0.5;
+  fpsEl.textContent=Q.fpsAvg.toFixed(0)+' fps · '+Q.msAvg.toFixed(1)+' ms · '+Q.tier+(Q.auto?' (auto)':'')+' · DPR '+DPR+' · SC '+SC+(typeof terrainChunkInfo==='function'?terrainChunkInfo():'');
+}
+
+/* =========================================================================
+   VISUAL FX — vignette + colour grade, additive glows, depth-parallax dust.
+   Rendering only. Gated by the quality tier (Q.fx) and by the Reduce-motion setting; none of it touches the simulation.
+     fx >= 1  vignette and a very light cool-top / warm-bottom grade
+     fx >= 2  additive glow sprites on crystals, geysers, projectiles, heroes and hubs; drifting dust motes
+   ========================================================================= */
+const FX={vig:null,vw:0,vh:0,glow:{},motes:[],px:0,py:0,init:false};
+
+function fxVignette(){
+  const w=Math.max(16,Math.ceil(VW/6)),h=Math.max(16,Math.ceil(VH/6));
+  if(FX.vig&&FX.vw===w&&FX.vh===h)return FX.vig;
+  const c=mkCanvas(w,h),g=c.getContext('2d'),r1=Math.hypot(w,h)/2;
+  const q=g.createRadialGradient(w/2,h/2,r1*0.46,w/2,h/2,r1);
+  q.addColorStop(0,'rgba(2,6,16,0)');q.addColorStop(.7,'rgba(2,6,16,.20)');q.addColorStop(1,'rgba(2,5,14,.52)');
+  g.fillStyle=q;g.fillRect(0,0,w,h);
+  const l=g.createLinearGradient(0,0,0,h);l.addColorStop(0,'rgba(70,110,200,.055)');l.addColorStop(.5,'rgba(0,0,0,0)');l.addColorStop(1,'rgba(255,170,90,.04)');
+  g.fillStyle=l;g.fillRect(0,0,w,h);
+  FX.vw=w;FX.vh=h;return FX.vig=c;
+}
+function drawGrade(){
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';
+  ctx.drawImage(fxVignette(),0,0,VW,VH);
+}
+
+/* soft round glow, cached per colour */
+function glowSprite(rgb){
+  let c=FX.glow[rgb];if(c)return c;
+  c=mkCanvas(64,64);const g=c.getContext('2d'),q=g.createRadialGradient(32,32,0,32,32,32);
+  q.addColorStop(0,'rgba('+rgb+',.95)');q.addColorStop(.28,'rgba('+rgb+',.42)');q.addColorStop(.62,'rgba('+rgb+',.1)');q.addColorStop(1,'rgba('+rgb+',0)');
+  g.fillStyle=q;g.fillRect(0,0,64,64);return FX.glow[rgb]=c;
+}
+const rgbOf=h=>{h=h.replace('#','');return parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16);};
+function glowAt(x,y,rad,rgb,a){ctx.globalAlpha=a;ctx.drawImage(glowSprite(rgb),x-rad,y-rad,rad*2,rad*2);}
+/* world-space pass: called with the world transform active, after units and before the fog */
+function drawGlows(t){
+  const prev=ctx.globalCompositeOperation;ctx.globalCompositeOperation='lighter';
+  const vis=(x,y)=>ui.demo||G.vis[0][clamp(y/TILE|0,0,MH-1)*MW+clamp(x/TILE|0,0,MW-1)]>0;
+  for(const r of G.res){
+    if(r.dead||!onScreen(r.x,r.y,60)||!vis(r.x,r.y))continue;
+    if(r.type==='crystal')glowAt(r.x,r.y-4,38+3*Math.sin(t*1.7+r.id),'255,196,84',0.2+0.07*Math.sin(t*2.1+r.id*1.7));
+    else glowAt(r.x,r.y,52+4*Math.sin(t*1.3+r.id),'176,120,255',0.22+0.08*Math.sin(t*1.9+r.id));
+  }
+  for(const b of G.buildings){
+    if(b.dead||!b.done||b.type!=='hub'||!onScreen(b.x,b.y,120)||!entVisible(b))continue;
+    glowAt(b.x,b.y,86,rgbOf(G.teams[b.team].pal.glow),0.10+0.03*Math.sin(t*1.2+b.id));
+  }
+  for(const u of G.units){
+    if(u.dead||u.hidden||!u.def.hero||!onScreen(u.x,u.y,80)||!entVisible(u))continue;
+    glowAt(u.x,u.y-(u.flying?16:0),46,rgbOf(G.teams[u.team<2?u.team:0].pal.glow),0.13+0.04*Math.sin(t*3+u.id));
+  }
+  for(const p of G.proj){
+    if(!onScreen(p.x,p.y,40))continue;
+    const pal=p.team<2?G.teams[p.team].pal:NEUTRAL_COL;
+    if(p.kind==='bolt')glowAt(p.x,p.y,20,rgbOf(pal.glow),0.55);
+    else if(p.kind==='bullet')glowAt(p.x,p.y,12,'255,226,150',0.5);
+    else if(p.kind==='rocket')glowAt(p.x,p.y,22,'255,170,90',0.6);
+    else if(p.kind==='acid')glowAt(p.x,p.y,16,'190,255,100',0.5);
+    else if(p.kind==='shell'){const pr=clamp(1-hyp(p.tx-p.x,p.ty-p.y)/p.total,0,1);glowAt(p.x,p.y-Math.sin(pr*Math.PI)*58,24,'255,180,90',0.55);}
+  }
+  ctx.globalAlpha=1;ctx.globalCompositeOperation=prev;
+}
+
+/* a few dozen specks of dust that drift and slide against the map as the camera moves, which gives the flat top-down view some depth */
+function drawMotes(dt){
+  const n=Math.round(46*Q.part);
+  if(!FX.init||FX.motes.length!==n){
+    FX.motes.length=0;const R=mulberry32(12345);
+    for(let i=0;i<n;i++)FX.motes.push({x:R()*VW,y:R()*VH,z:0.25+R()*0.75,ph:R()*TAU});
+    FX.px=cam.x;FX.py=cam.y;FX.init=true;
+  }
+  const dx=(cam.x-FX.px)*cam.z,dy=(cam.y-FX.py)*cam.z;FX.px=cam.x;FX.py=cam.y;
+  const g=ctx;g.fillStyle='rgb(200,222,255)';
+  for(const m of FX.motes){
+    m.x+=-dx*(0.35+0.55*m.z)+(7+10*m.z)*dt;m.y+=-dy*(0.35+0.55*m.z)+(2.5*Math.sin(m.ph+G.time*.4)+3*m.z)*dt;
+    if(m.x<-4)m.x+=VW+8;else if(m.x>VW+4)m.x-=VW+8;if(m.y<-4)m.y+=VH+8;else if(m.y>VH+4)m.y-=VH+8;
+    g.globalAlpha=(0.05+0.11*m.z)*(0.6+0.4*Math.sin(m.ph+G.time*.8));
+    g.beginPath();g.arc(m.x,m.y,0.7+1.7*m.z,0,TAU);g.fill();
+  }
+  g.globalAlpha=1;
 }
 
 /* =========================================================================
@@ -5290,7 +5570,7 @@ function glyphURL(name,size){
   const k=name+'|'+size;if(glyphCache[k])return glyphCache[k];
   const c=mkCanvas(size,size),g=c.getContext('2d');g.translate(size/2,size/2);g.scale(size/40,size/40);glyph(g,name);return glyphCache[k]=c.toDataURL();
 }
-function hydrateGlyphs(root){for(const el of(root||document).querySelectorAll('[data-g]')){if(el.dataset.done)continue;el.style.backgroundImage='url('+glyphURL(el.dataset.g,48)+')';el.dataset.done='1';}}
+function hydrateGlyphs(root){for(const el of(root||document).querySelectorAll('[data-g]')){if(el.dataset.done)continue;el.style.backgroundImage='url('+glyphURL(el.dataset.g,72)+')';el.dataset.done='1';}}
 
 /* ----------------------------- tooltips --------------------------------- */
 function showTipHTML(html,rect,above){
@@ -5440,7 +5720,7 @@ function moraleBreakdown(team){
   return rows;
 }
 function sparkline(cv,arr,lo,hi,col){
-  const g=cv.getContext('2d'),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);if(arr.length<2)return;
+  const g=hd(cv),w=cv._lw,h=cv._lh;g.clearRect(0,0,w,h);if(arr.length<2)return;
   g.strokeStyle='rgba(255,255,255,.1)';g.lineWidth=1;g.beginPath();const y1=h-(1-lo)/(hi-lo)*h;g.moveTo(0,y1);g.lineTo(w,y1);g.stroke();
   g.strokeStyle=col||'#ffd45a';g.lineWidth=1.6;g.beginPath();arr.forEach((v,i)=>{const x=i/(arr.length-1)*w,y=h-clamp((v-lo)/(hi-lo),0,1)*(h-3)-1.5;i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();
   const last=arr[arr.length-1];g.fillStyle=col||'#ffd45a';g.beginPath();g.arc(w-1.5,h-clamp((last-lo)/(hi-lo),0,1)*(h-3)-1.5,2.2,0,TAU);g.fill();
@@ -5607,7 +5887,7 @@ function showEnd(){
   showOverlay('endMenu');
 }
 function drawChart(cvs,title,key){
-  const g=cvs.getContext('2d'),W=cvs.width,H=cvs.height,s=G.stats;g.clearRect(0,0,W,H);
+  const g=hd(cvs),W=cvs._lw,H=cvs._lh,s=G.stats;g.clearRect(0,0,W,H);
   g.fillStyle='rgba(255,255,255,.04)';g.fillRect(0,0,W,H);g.fillStyle='#9fb6cf';g.font='11px system-ui';g.fillText(title,8,14);
   if(s.length<2)return;let mx=1;for(const p of s)mx=Math.max(mx,p[key+'0'],p[key+'1']);const t1=s[s.length-1].t;
   g.strokeStyle='rgba(255,255,255,.1)';g.lineWidth=1;for(let i=1;i<4;i++){g.beginPath();g.moveTo(0,H*i/4);g.lineTo(W,H*i/4);g.stroke();}
@@ -5842,7 +6122,7 @@ function swRoster(){
 
 /* ---------------------------------- Market ------------------------------ */
 function swSpark(cv,arr,lo,hi,mean,col){
-  const g=cv.getContext('2d'),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);if(arr.length<2)return;
+  const g=hd(cv),w=cv._lw,h=cv._lh;g.clearRect(0,0,w,h);if(arr.length<2)return;
   const Y=v=>h-4-clamp((v-lo)/(hi-lo),0,1)*(h-8);
   g.strokeStyle='rgba(255,255,255,.08)';g.lineWidth=1;for(const v of[0.75,1,1.25,1.5]){g.beginPath();g.moveTo(0,Y(v));g.lineTo(w,Y(v));g.stroke();}
   g.setLineDash([4,4]);g.strokeStyle='rgba(155,214,255,.55)';g.beginPath();g.moveTo(0,Y(mean));g.lineTo(w,Y(mean));g.stroke();g.setLineDash([]);
@@ -6000,7 +6280,7 @@ function swLedger(){
   return h;
 }
 function swDrawLed(cv){
-  const S=G.sw,g=cv.getContext('2d'),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);
+  const S=G.sw,g=hd(cv),w=cv._lw,h=cv._lh;g.clearRect(0,0,w,h);
   const B=S.ledT.concat([Object.assign({t:G.time,cur:1},S.ledNow)]).slice(-24);
   const vi=b=>(b.gig||0)+(b.gear||0)+(b.clinic||0),vc=b=>(b.wage||0)+Math.max(0,b.escrow||0)+(b.comm||0)+(b.bounty||0)+(b.bonus||0);
   let mx=10;for(const b of B)mx=Math.max(mx,vi(b),vc(b));
@@ -6676,7 +6956,7 @@ function bindInput(){
   $('setMusic').addEventListener('input',e=>{SET.music=e.target.value/100;applyVolumes();saveSettings();});
   $('setSfx').addEventListener('input',e=>{SET.sfx=e.target.value/100;applyVolumes();saveSettings();});
   for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).addEventListener('change',e=>{SET[k]=e.target.checked;saveSettings();if(k==='hints')renderObjectives();if(k==='rm')rootEl.classList.toggle('rm',SET.rm);});
-  $('set_quality').addEventListener('change',e=>{SET.quality=e.target.value;saveSettings();});
+  $('set_quality').addEventListener('change',e=>setQualityMode(e.target.value));
 
   swBind();bindTouch();
   window.addEventListener('keydown',e=>{
@@ -6721,6 +7001,8 @@ function bindInput(){
 let lastT=0,acc=0;
 function frame(ts){
   requestAnimationFrame(frame);
+  if(Q.fps&&ts-lastT<1000/Q.fps-1.5)return;           // battery saver: render at most 30 fps (the sim keeps its own fixed step)
+  qualityFrame(ts-lastT);
   const dt=Math.min(0.1,(ts-lastT)/1000||0.016);lastT=ts;
   if(!G||!ui.running)return;
   frameBody(dt,ts/1000);
@@ -6730,17 +7012,18 @@ function frameBody(dt,t){
   if(Math.abs(cam.tz-cam.z)>0.002)setZoom(cam.z+(cam.tz-cam.z)*Math.min(1,dt*12),ui.zx,ui.zy);
   if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);touchUpdate(dt);if(ui.place)updatePlaceGhost();}
   updateFog(dt,ui.fogForce);ui.fogForce=false;
-  render(t,dt);drawMinimap();
+  terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
+  render(t,dt);drawMinimap();fpsOverlay(dt);
   if(!ui.demo){hudUpdate(dt);cursorUpdate();
     if(ui.endRes&&performance.now()>ui.endAt)showEnd();}
 }
 
 /* -------------------------------- boot ---------------------------------- */
 function boot(){
-  cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');mm.width=MM;mm.height=MM;
+  cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
-  resizeView();hydrateGlyphs();buildMenus();bindInput();ui.inWin=true;
-  if(window.ResizeObserver){const ro=new ResizeObserver(measureHud);ro.observe($('top'));ro.observe($('bottom'));}
+  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();ui.inWin=true;
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>{sizeMinimap();measureHud();});ro.observe($('top'));ro.observe($('bottom'));ro.observe($('mmWrap'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
   if(!window.__TEST||window.__TEST==='live')requestAnimationFrame(frame);
@@ -6749,7 +7032,7 @@ if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
-  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},TP,tpTap,tpLongTap,setTouchMode,measureHud,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
+  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
 boot();
 
 

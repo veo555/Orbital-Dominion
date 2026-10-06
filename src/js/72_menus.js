@@ -102,7 +102,7 @@ function showEnd(){
   showOverlay('endMenu');
 }
 function drawChart(cvs,title,key){
-  const g=cvs.getContext('2d'),W=cvs.width,H=cvs.height,s=G.stats;g.clearRect(0,0,W,H);
+  const g=hd(cvs),W=cvs._lw,H=cvs._lh,s=G.stats;g.clearRect(0,0,W,H);
   g.fillStyle='rgba(255,255,255,.04)';g.fillRect(0,0,W,H);g.fillStyle='#9fb6cf';g.font='11px system-ui';g.fillText(title,8,14);
   if(s.length<2)return;let mx=1;for(const p of s)mx=Math.max(mx,p[key+'0'],p[key+'1']);const t1=s[s.length-1].t;
   g.strokeStyle='rgba(255,255,255,.1)';g.lineWidth=1;for(let i=1;i<4;i++){g.beginPath();g.moveTo(0,H*i/4);g.lineTo(W,H*i/4);g.stroke();}

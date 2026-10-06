@@ -49,10 +49,14 @@ function measureHud(){
 }
 function resizeView(){
   applyLayoutClasses();
-  DPR=Math.min(2,window.devicePixelRatio||1);VW=window.innerWidth;VH=window.innerHeight;
+  DPR=Math.min(Q.dpr,window.devicePixelRatio||1);VW=window.innerWidth;VH=window.innerHeight;
   cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);
-  measureHud();
+  sizeMinimap();measureHud();
   if(G)clampCam();
+}
+function sizeMinimap(){   // backing store = on-screen size x DPR (drawMinimap draws in 224-unit space and scales)
+  const w=$('mmWrap').clientWidth||MM,px=Math.max(64,Math.round(w*DPR));
+  if(mm.width!==px){mm.width=px;mm.height=px;}
 }
 
 /* ------------------------------- fog ---------------------------------- */
@@ -262,12 +266,13 @@ function render(t,dt){
   if(!G||!G.terrainCv)return;
   applyDecals();
   const z=cam.z;let sx=0,sy=0;
-  if(G.shake>0&&SET.shake&&!ui.demo){sx=(Math.random()-.5)*G.shake;sy=(Math.random()-.5)*G.shake;}
+  if(G.shake>0&&SET.shake&&!SET.rm&&!ui.demo){sx=(Math.random()-.5)*G.shake;sy=(Math.random()-.5)*G.shake;}
   const tx=-(cam.x+sx)*z*DPR,ty=-(cam.y+sy)*z*DPR;
   ctx.setTransform(DPR*z,0,0,DPR*z,Math.round(tx),Math.round(ty));
-  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';   // terrain + fog are large, changing textures: cheap bilinear
   const vx0=Math.max(0,cam.x),vy0=Math.max(0,cam.y),vx1=Math.min(WW,cam.x+VW/z+2),vy1=Math.min(WH,cam.y+VH/z+2);
-  if(vx1>vx0&&vy1>vy0){const x0=Math.floor(vx0),y0=Math.floor(vy0),w=Math.ceil(vx1)-x0,h=Math.ceil(vy1)-y0;ctx.drawImage(G.terrainCv,x0,y0,w,h,x0,y0,w,h);}
+  if(vx1>vx0&&vy1>vy0){const x0=Math.floor(vx0),y0=Math.floor(vy0),w=Math.ceil(vx1)-x0,h=Math.ceil(vy1)-y0;ctx.drawImage(G.terrainCv,x0,y0,w,h,x0,y0,w,h);drawTerrainTiles(ctx,vx0,vy0,vx1,vy1);}
+  ctx.imageSmoothingQuality=Q.smooth;   // sprites are small and static, baked at SC x: mip-mapped downsampling removes shimmer
   // resources and neutral structures
   for(const r of G.res){if(r.dead||!onScreen(r.x,r.y,50))continue;if(!ui.demo&&G.vis[0][clamp(r.ty,0,MH-1)*MW+clamp(r.tx,0,MW-1)]===0)continue;
     if(r.type==='crystal')drawCrystal(ctx,r,t);else drawGeyser(ctx,r,t);
@@ -287,12 +292,15 @@ function render(t,dt){
     else{ctx.globalAlpha=Math.min(1,a*1.6);ctx.fillStyle=p.col;circ(ctx,p.x,p.y,p.size*(0.4+a*0.6));}ctx.globalAlpha=1;}
   drawFxOver(t);
   au.sort((a,b)=>a.y-b.y);for(const u of au)drawUnit(u,t);
+  if(Q.fx>=2)drawGlows(t);
+  ctx.imageSmoothingQuality='low';
   if(!ui.demo&&fogCv){ctx.imageSmoothingEnabled=true;ctx.drawImage(fogCv,0,0,MW*FQ,MH*FQ,0,0,WW,WH);}
   drawBars();
   if(!ui.demo)drawGhost(t);
   drawTargeting(t);
   if(G.daylight<0.98)drawNight(t);
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(!ui.demo){if(Q.fx>=1)drawGrade();if(Q.fx>=2&&!SET.rm)drawMotes(dt);}
   if(ui.touchMode)touchOverlay(ctx);
   // drag box
   if(ui.drag&&(Math.abs(ui.drag.x1-ui.drag.x0)>4||Math.abs(ui.drag.y1-ui.drag.y0)>4)){
@@ -307,8 +315,8 @@ function render(t,dt){
 /* ------------------------------- minimap ------------------------------ */
 function drawMinimap(){
   if(!G||!G.mmBg||!mmCtx)return;
-  const S=MM,k=S/WW,g=mmCtx;
-  g.clearRect(0,0,S,S);g.drawImage(G.mmBg,0,0);
+  const S=MM,k=S/WW,g=mmCtx,sc=mm.width/MM;
+  g.setTransform(sc,0,0,sc,0,0);g.clearRect(0,0,S,S);g.drawImage(G.mmBg,0,0,S,S);
   g.fillStyle='rgba(6,10,20,.28)';g.fillRect(0,0,S,S);
   const vs=ui.demo?null:G.vis[0];
   for(const r of G.res){if(r.dead||(vs&&vs[r.ty*MW+r.tx]===0))continue;g.fillStyle=r.type==='crystal'?'#f6c04a':'#b985ff';g.fillRect(r.x*k-1,r.y*k-1,r.type==='crystal'?2.4:3.4,r.type==='crystal'?2.4:3.4);}

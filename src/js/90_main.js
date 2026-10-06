@@ -173,7 +173,7 @@ function bindInput(){
   $('setMusic').addEventListener('input',e=>{SET.music=e.target.value/100;applyVolumes();saveSettings();});
   $('setSfx').addEventListener('input',e=>{SET.sfx=e.target.value/100;applyVolumes();saveSettings();});
   for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).addEventListener('change',e=>{SET[k]=e.target.checked;saveSettings();if(k==='hints')renderObjectives();if(k==='rm')rootEl.classList.toggle('rm',SET.rm);});
-  $('set_quality').addEventListener('change',e=>{SET.quality=e.target.value;saveSettings();});
+  $('set_quality').addEventListener('change',e=>setQualityMode(e.target.value));
 
   swBind();bindTouch();
   window.addEventListener('keydown',e=>{
@@ -218,6 +218,8 @@ function bindInput(){
 let lastT=0,acc=0;
 function frame(ts){
   requestAnimationFrame(frame);
+  if(Q.fps&&ts-lastT<1000/Q.fps-1.5)return;           // battery saver: render at most 30 fps (the sim keeps its own fixed step)
+  qualityFrame(ts-lastT);
   const dt=Math.min(0.1,(ts-lastT)/1000||0.016);lastT=ts;
   if(!G||!ui.running)return;
   frameBody(dt,ts/1000);
@@ -227,17 +229,18 @@ function frameBody(dt,t){
   if(Math.abs(cam.tz-cam.z)>0.002)setZoom(cam.z+(cam.tz-cam.z)*Math.min(1,dt*12),ui.zx,ui.zy);
   if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);touchUpdate(dt);if(ui.place)updatePlaceGhost();}
   updateFog(dt,ui.fogForce);ui.fogForce=false;
-  render(t,dt);drawMinimap();
+  terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
+  render(t,dt);drawMinimap();fpsOverlay(dt);
   if(!ui.demo){hudUpdate(dt);cursorUpdate();
     if(ui.endRes&&performance.now()>ui.endAt)showEnd();}
 }
 
 /* -------------------------------- boot ---------------------------------- */
 function boot(){
-  cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');mm.width=MM;mm.height=MM;
+  cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
-  resizeView();hydrateGlyphs();buildMenus();bindInput();ui.inWin=true;
-  if(window.ResizeObserver){const ro=new ResizeObserver(measureHud);ro.observe($('top'));ro.observe($('bottom'));}
+  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();ui.inWin=true;
+  if(window.ResizeObserver){const ro=new ResizeObserver(()=>{sizeMinimap();measureHud();});ro.observe($('top'));ro.observe($('bottom'));ro.observe($('mmWrap'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
   if(!window.__TEST||window.__TEST==='live')requestAnimationFrame(frame);
@@ -246,5 +249,5 @@ if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
-  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},TP,tpTap,tpLongTap,setTouchMode,measureHud,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
+  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
 boot();

@@ -7,7 +7,7 @@ function glyphURL(name,size){
   const k=name+'|'+size;if(glyphCache[k])return glyphCache[k];
   const c=mkCanvas(size,size),g=c.getContext('2d');g.translate(size/2,size/2);g.scale(size/40,size/40);glyph(g,name);return glyphCache[k]=c.toDataURL();
 }
-function hydrateGlyphs(root){for(const el of(root||document).querySelectorAll('[data-g]')){if(el.dataset.done)continue;el.style.backgroundImage='url('+glyphURL(el.dataset.g,48)+')';el.dataset.done='1';}}
+function hydrateGlyphs(root){for(const el of(root||document).querySelectorAll('[data-g]')){if(el.dataset.done)continue;el.style.backgroundImage='url('+glyphURL(el.dataset.g,72)+')';el.dataset.done='1';}}
 
 /* ----------------------------- tooltips --------------------------------- */
 function showTipHTML(html,rect,above){
@@ -157,7 +157,7 @@ function moraleBreakdown(team){
   return rows;
 }
 function sparkline(cv,arr,lo,hi,col){
-  const g=cv.getContext('2d'),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);if(arr.length<2)return;
+  const g=hd(cv),w=cv._lw,h=cv._lh;g.clearRect(0,0,w,h);if(arr.length<2)return;
   g.strokeStyle='rgba(255,255,255,.1)';g.lineWidth=1;g.beginPath();const y1=h-(1-lo)/(hi-lo)*h;g.moveTo(0,y1);g.lineTo(w,y1);g.stroke();
   g.strokeStyle=col||'#ffd45a';g.lineWidth=1.6;g.beginPath();arr.forEach((v,i)=>{const x=i/(arr.length-1)*w,y=h-clamp((v-lo)/(hi-lo),0,1)*(h-3)-1.5;i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();
   const last=arr[arr.length-1];g.fillStyle=col||'#ffd45a';g.beginPath();g.arc(w-1.5,h-clamp((last-lo)/(hi-lo),0,1)*(h-3)-1.5,2.2,0,TAU);g.fill();

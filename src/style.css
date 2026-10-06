@@ -366,7 +366,7 @@ html.compact .cb .co{font-size:9px;right:2px;bottom:0}html.compact .cb .bg{font-
 html.compact #objectives{top:calc(var(--tH) + 4px);width:auto;max-width:min(64vw,440px);padding:3px 11px;border-radius:14px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html.compact #objectives b{display:none}html.compact #objectives .ob{margin:0;overflow:hidden;text-overflow:ellipsis}html.compact #objectives .ob.dim{display:none}
 html.compact #groups{left:calc(max(8px,var(--sal)) + 54px)}
-html.compact #toast{top:calc(var(--tH) + 38px);max-width:min(460px,70vw)}
+html.compact #toast{top:calc(var(--tH) + 38px);max-width:min(460px,70vw);z-index:7}
 html.compact .tmsg{font-size:12px;padding:4px 12px}
 html.compact #swPanel,html.compact #ecoPanel{top:var(--tH);bottom:0;right:0;width:min(430px,66vw);max-height:none;border-radius:var(--r3) 0 0 var(--r3);border-right:none;padding-right:max(10px,var(--sar));padding-bottom:max(8px,var(--sab));z-index:8}
 html.compact #touchDock{bottom:calc(var(--bH) + 6px)}
@@ -435,4 +435,5 @@ html.compact.portrait .mcard h1{font-size:clamp(24px,8vw,34px);letter-spacing:3p
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+#fpsBox{position:fixed;right:max(8px,var(--sar));top:calc(var(--tH) + 4px);z-index:40;font:11px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#bfe6c8;background:rgba(0,0,0,.62);padding:2px 7px;border-radius:5px;pointer-events:none}
 html.rm *,html.rm *::before,html.rm *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}

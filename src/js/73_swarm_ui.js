@@ -225,7 +225,7 @@ function swRoster(){
 
 /* ---------------------------------- Market ------------------------------ */
 function swSpark(cv,arr,lo,hi,mean,col){
-  const g=cv.getContext('2d'),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);if(arr.length<2)return;
+  const g=hd(cv),w=cv._lw,h=cv._lh;g.clearRect(0,0,w,h);if(arr.length<2)return;
   const Y=v=>h-4-clamp((v-lo)/(hi-lo),0,1)*(h-8);
   g.strokeStyle='rgba(255,255,255,.08)';g.lineWidth=1;for(const v of[0.75,1,1.25,1.5]){g.beginPath();g.moveTo(0,Y(v));g.lineTo(w,Y(v));g.stroke();}
   g.setLineDash([4,4]);g.strokeStyle='rgba(155,214,255,.55)';g.beginPath();g.moveTo(0,Y(mean));g.lineTo(w,Y(mean));g.stroke();g.setLineDash([]);
@@ -383,7 +383,7 @@ function swLedger(){
   return h;
 }
 function swDrawLed(cv){
-  const S=G.sw,g=cv.getContext('2d'),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);
+  const S=G.sw,g=hd(cv),w=cv._lw,h=cv._lh;g.clearRect(0,0,w,h);
   const B=S.ledT.concat([Object.assign({t:G.time,cur:1},S.ledNow)]).slice(-24);
   const vi=b=>(b.gig||0)+(b.gear||0)+(b.clinic||0),vc=b=>(b.wage||0)+Math.max(0,b.escrow||0)+(b.comm||0)+(b.bounty||0)+(b.bonus||0);
   let mx=10;for(const b of B)mx=Math.max(mx,vi(b),vc(b));

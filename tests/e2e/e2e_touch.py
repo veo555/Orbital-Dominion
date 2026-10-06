@@ -71,13 +71,21 @@ def run(p, name, w, h, dpr):
     ok(small == 0, f'{name}: every command button is >= 40 CSS px')
 
     # ---- tap select / command ---------------------------------------------------------------------
-    hid = ph.ev("()=>{const R=__RTS,u=R.G.units.find(u=>u.team===0&&u.type==='hauler'&&!u.dead);R.centerOn(u.x,u.y);R.render(1);const s=R.w2s(u.x,u.y);return{id:u.id,x:s.x,y:s.y}}")
+    # The target unit is stopped first: a mining Hauler drifts while the finger travels, and a tap offset from a moving unit
+    # can land on a crystal patch or the Hub (where "gather"/"deliver" is the correct response, not "move").
+    hid = ph.ev("()=>{const R=__RTS,u=R.G.units.find(u=>u.team===0&&u.type==='hauler'&&!u.dead);u.order={t:'idle'};u.oq=[];R.centerOn(u.x,u.y);R.render(1);const s=R.w2s(u.x,u.y);return{id:u.id,x:s.x,y:s.y}}")
     ph.tap(hid['x'], hid['y']); pg.wait_for_timeout(200)
     ok(ph.ev(f"()=>__RTS.ui.sel.length===1&&__RTS.ui.sel[0].id=={hid['id']}"), f'{name}: tap selects the Hauler under the finger')
     ok(ph.ev("()=>{const r=document.getElementById('tip');return r.classList.contains('hidden')}"), f'{name}: no stuck tooltip after a tap')
-    tx, ty = ph.ev("()=>{const R=__RTS,u=R.ui.sel[0];const s=R.w2s(u.x+110,u.y+70);return[s.x,s.y]}")
-    ph.tap(tx, ty); pg.wait_for_timeout(200)
-    ok(ph.ev(f"()=>{{const u=__RTS.G.units.find(u=>u.id=={hid['id']});return u.order.t==='move'}}"), f'{name}: tapping ground with a unit selected issues a move order')
+    # a screen point with verified empty ground (no unit / building / resource / neutral within the touch pad), inside the map area
+    spot = ph.ev(f"""()=>{{const R=__RTS,u=R.ui.sel[0],s0=R.w2s(u.x,u.y);
+      for(let r=80;r<=200;r+=20)for(let a=0;a<12;a++){{const x=s0.x+Math.cos(a/12*6.283)*r,y=s0.y+Math.sin(a/12*6.283)*r;
+        if(x<40||x>innerWidth-120||y<{g['top']}+30||y>innerHeight-{g['bot']}-30)continue;
+        const w=R.s2w(x,y);if(R.entityAt(w.x,w.y,40)===null&&R.canStand(w.x,w.y))return{{x,y}}}}return null}}""")
+    ok(spot is not None, f'{name}: found empty ground near the unit')
+    if spot:
+        ph.tap(spot['x'], spot['y']); pg.wait_for_timeout(200)
+        ok(ph.ev(f"()=>{{const u=__RTS.G.units.find(u=>u.id=={hid['id']});return u.order.t==='move'}}"), f'{name}: tapping empty ground with a unit selected issues a move order')
 
     # ---- pan ----------------------------------------------------------------------------------------
     c0 = ph.ev("()=>({x:__RTS.cam.x,y:__RTS.cam.y})")

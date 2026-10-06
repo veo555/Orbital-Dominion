@@ -3,9 +3,13 @@
    boulders, ramps, landing pads, creep-camp ground, trails and battle decals
    ========================================================================= */
 const MM=224; // minimap backing size
-function buildTerrain(){
-  const c=mkCanvas(WW,WH),g=c.getContext('2d');
-  const seed=G.seed,nA=makeNoise(mulberry32(seed+99)),nB=makeNoise(mulberry32(seed+313)),R=mulberry32(seed*31+5);
+/* The ground bake is split in two so it can be repeated cheaply at other resolutions:
+     terrainSetup()  the expensive, scale-independent part (noise + a quarter-resolution ground-colour map), run once per map
+     terrainPaint()  a generator that draws every layer onto ANY context in world coordinates and yields between layers;
+                     run to completion it produces the 1x base map, run onto a scaled + clipped context it produces a sharp tile.
+   It consumes the same seeded random stream every time, so a tile is pixel-consistent with the base map. */
+function terrainSetup(){
+  const seed=G.seed,nA=makeNoise(mulberry32(seed+99)),nB=makeNoise(mulberry32(seed+313));
   const H=G.H,TT=G.TT,RAMP=G.RAMP;
   const tt=(x,y)=>x<0||y<0||x>=MW||y>=MH?3:TT[y*MW+x];
   /* occlusion map: how close to rocks / void a tile is */
@@ -30,15 +34,23 @@ function buildTerrain(){
       sh*=1.06+0.06*Math.sin((ax>=ay?fx:fy)*TAU*1.6);}
     d[o]=clamp(r*sh,0,255);d[o+1]=clamp(gg*sh,0,255);d[o+2]=clamp(b*sh,0,255);d[o+3]=255;
   }
-  lg2.putImageData(img,0,0);g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(lc,0,0,WW,WH);
+  lg2.putImageData(img,0,0);
+  return{seed,nA,nB,H,TT,RAMP,tt,occ,lc};
+}
+function* terrainPaint(g,T){
+  const{seed,nA,nB,H,TT,RAMP,tt,lc}=T,R=mulberry32(seed*31+5);
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(lc,0,0,WW,WH);
   g.lineJoin='round';g.lineCap='round';
   const T2P=(x,y)=>[x*TILE,y*TILE];
+  yield 1;
 
+  yield 2;
   /* 2) trails along the main lanes */
   const trail=(pts,w,col)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();pts.forEach((p,i)=>{const[x,y]=T2P(p[0]+.5,p[1]+.5);i?g.lineTo(x,y):g.moveTo(x,y);});g.stroke();};
   for(const pl of CORRIDORS){const m=pl.map(p=>[MW-1-p[0],MH-1-p[1]]);
     for(const pts of[pl,m]){trail(pts,92,'rgba(255,236,200,.05)');trail(pts,56,'rgba(255,236,200,.06)');trail(pts,22,'rgba(0,0,0,.05)');}}
 
+  yield 3;
   /* 3) ground details: speckles, cracks, craters, dune ripples, plateau panel seams */
   const onFloor=(x,y)=>{const t=tt(x/TILE|0,y/TILE|0);return t===0;};
   for(let i=0;i<9000;i++){const x=R()*WW,y=R()*WH;if(!onFloor(x,y))continue;
@@ -60,6 +72,7 @@ function buildTerrain(){
     g.strokeStyle=hi?'rgba(190,225,255,.10)':'rgba(255,255,255,.04)';g.beginPath();g.moveTo(x*TILE+1.5,y*TILE+TILE*2+1.5);g.lineTo(x*TILE+1.5,y*TILE+1.5);g.lineTo(x*TILE+TILE*2+1,y*TILE+1.5);g.stroke();
     if(hi&&R()<.2){g.fillStyle='rgba(120,200,255,.12)';g.fillRect(x*TILE+8,y*TILE+8,TILE*2-16,3);}}
 
+  yield 4;
   /* 4) landing pads, resource fields, camp grounds, plazas */
   for(const s of G.sites){const x=s.cx*TILE,y=s.cy*TILE,own=s.owner>=0?G.teams[s.owner].pal:NEUTRAL_COL,mainS=s.main;
     const rad=(mainS?6.4:5.6)*TILE;
@@ -81,6 +94,7 @@ function buildTerrain(){
     if(n.type==='tower'){g.fillStyle='rgba(30,28,50,.35)';g.beginPath();g.arc(x,y,54,0,TAU);g.fill();g.strokeStyle='rgba(190,170,255,.25)';g.lineWidth=2;for(const k of[44,56]){g.beginPath();g.arc(x,y,k,0,TAU);g.stroke();}}
     else{rr(g,x-52,y-52,104,104,12,'rgba(70,50,24,.35)');g.strokeStyle='rgba(255,220,150,.14)';g.lineWidth=1.5;for(let i=-3;i<=3;i++){g.beginPath();g.moveTo(x-52,y+i*14);g.lineTo(x+52,y+i*14);g.stroke();}}}
 
+  yield 5;
   /* 5) cliffs: cast shadows on the lower ground, then the rock faces */
   const D4=[[1,0],[-1,0],[0,1],[0,-1]];
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(TT[y*MW+x]!==2)continue;const hi=H[y*MW+x];
@@ -99,6 +113,7 @@ function buildTerrain(){
     g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=1.4;g.beginPath();
     if(Math.abs(vx)>=Math.abs(vy)){const ex=vx>0?x*TILE+1:x*TILE+TILE-1;g.moveTo(ex,y*TILE);g.lineTo(ex,y*TILE+TILE);}else{const ey=vy>0?y*TILE+1:y*TILE+TILE-1;g.moveTo(x*TILE,ey);g.lineTo(x*TILE+TILE,ey);}g.stroke();}
 
+  yield 6;
   /* 6) boulders: shadow, base, extruded top with rounded outer corners */
   const isR=(x,y)=>tt(x,y)===1;
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(isR(x,y)){g.fillStyle='rgba(6,8,16,.34)';g.fillRect(x*TILE+3,y*TILE+8,TILE+4,TILE+2);}
@@ -117,6 +132,7 @@ function buildTerrain(){
     if(R()<.4){g.fillStyle='rgba(255,255,255,.06)';g.beginPath();g.moveTo(X+4,Y+TILE-4);g.lineTo(X+10+R()*10,Y+4);g.lineTo(X+TILE-4,Y+8+R()*10);g.closePath();g.fill();}
     if(R()<.05){g.fillStyle='rgba(130,255,220,.5)';g.beginPath();g.moveTo(X+16,Y+6);g.lineTo(X+21,Y+18);g.lineTo(X+16,Y+24);g.lineTo(X+11,Y+18);g.closePath();g.fill();}}
 
+  yield 7;
   /* 7) void rim with sparkles and a soft glow where the playable area ends */
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(TT[y*MW+x]!==3)continue;
     for(let k=0;k<3;k++){g.fillStyle='rgba(190,210,255,'+(0.15+R()*0.5)+')';g.fillRect(x*TILE+R()*TILE,y*TILE+R()*TILE,1+R()*1.4,1+R()*1.4);}}
@@ -125,27 +141,31 @@ function buildTerrain(){
       if(dx>0)q=g.createLinearGradient(bx+TILE,0,bx+TILE-14,0);else if(dx<0)q=g.createLinearGradient(bx,0,bx+14,0);else if(dy>0)q=g.createLinearGradient(0,by+TILE,0,by+TILE-14);else q=g.createLinearGradient(0,by,0,by+14);
       q.addColorStop(0,'rgba(120,150,255,.28)');q.addColorStop(1,'rgba(120,150,255,0)');g.fillStyle=q;g.fillRect(bx,by,TILE,TILE);}}
 
+  yield 8;
   /* 8) ramp direction chevrons */
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){if(!RAMP[y*MW+x]||(x+y)%3)continue;
     const ax=H[y*MW+Math.min(MW-1,x+1)]-H[y*MW+Math.max(0,x-1)],ay=H[Math.min(MH-1,y+1)*MW+x]-H[Math.max(0,y-1)*MW+x];
     if(Math.abs(ax)<.02&&Math.abs(ay)<.02)continue;const a=Math.atan2(-ay,-ax);const cx=x*TILE+16,cy=y*TILE+16;
     g.save();g.translate(cx,cy);g.rotate(a);g.strokeStyle='rgba(255,255,255,.17)';g.lineWidth=2;g.beginPath();g.moveTo(-4,-6);g.lineTo(3,0);g.lineTo(-4,6);g.stroke();g.restore();}
 
-  G.terrainCv=c;
-  const mb=mkCanvas(MM,MM),mg=mb.getContext('2d');mg.imageSmoothingEnabled=true;mg.drawImage(c,0,0,MM,MM);G.mmBg=mb;
+  yield 9;
 }
-/* battle damage painted straight onto the baked terrain */
+function buildTerrain(){
+  const T=terrainSetup(),c=mkCanvas(WW,WH),g=c.getContext('2d');
+  for(const _ of terrainPaint(g,T)){}
+  G.tInfo=T;G.terrainCv=c;G.decalAll=[];
+  const mb=mkCanvas(MM*2,MM*2),mg=mb.getContext('2d');mg.imageSmoothingEnabled=true;mg.imageSmoothingQuality='high';mg.drawImage(c,0,0,MM*2,MM*2);G.mmBg=mb;
+  if(typeof terrainReset==='function')terrainReset();
+}
+/* battle damage painted straight onto the baked terrain (and replayed onto sharp tiles, see 53_terrain_hd.js) */
 function applyDecals(){
   if(!G.terrainCv||!G.decalDirty.length)return;
   const g=G.terrainCv.getContext('2d');
   for(const dd of G.decalDirty){
     if(tileTypeAt(dd.x,dd.y)===2)continue;
-    const r=Math.max(10,dd.r);
-    if(dd.k==='scorch'){g.fillStyle=rgr(g,dd.x,dd.y,1,r*1.25,'rgba(8,6,6,.42)','rgba(8,6,6,0)');g.beginPath();g.arc(dd.x,dd.y,r*1.25,0,TAU);g.fill();
-      for(let i=0;i<4;i++){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.arc(dd.x+(Math.random()-.5)*r*1.6,dd.y+(Math.random()-.5)*r*1.6,1+Math.random()*2.4,0,TAU);g.fill();}}
-    else{g.fillStyle=rgr(g,dd.x,dd.y,2,r*1.4,'rgba(18,14,12,.55)','rgba(18,14,12,0)');g.beginPath();g.arc(dd.x,dd.y,r*1.4,0,TAU);g.fill();
-      for(let i=0;i<10;i++){const a=Math.random()*TAU,rr2=Math.random()*r*1.1,x=dd.x+Math.cos(a)*rr2,y=dd.y+Math.sin(a)*rr2,s=2+Math.random()*5;
-        g.fillStyle=Math.random()<.5?'rgba(70,64,60,.9)':'rgba(40,36,34,.9)';g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y+s*.4);g.lineTo(x-s*.6,y+s);g.closePath();g.fill();}}
+    const d={x:dd.x,y:dd.y,r:dd.r,k:dd.k,seed:(G.decalAll.length*2654435761+7)>>>0};
+    G.decalAll.push(d);if(G.decalAll.length>500)G.decalAll.shift();   // older ones stay painted in the base map
+    paintDecal(g,d);decalToTiles(d);
   }
   G.decalDirty.length=0;
 }

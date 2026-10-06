@@ -34,11 +34,13 @@ with sync_playwright() as p:
     ok(st['t'] >= 150 and st['agents'] >= 8 and st['b'] >= 3, f'Autopilot played 150 s: {st}')
 
     for tab in ['ro', 'mk', 'lg', 'ov']:
-        btn = pg.query_selector(f'[data-act="tab:{tab}"]')
-        ok(bool(btn), f'tab {tab} present')
-        if btn:
-            btn.click(); pg.wait_for_timeout(200)
-            ok(pg.evaluate("()=>document.getElementById('swBody').innerText.length")>20, f'tab {tab} renders content')
+        sel = f'[data-act="tab:{tab}"]'
+        ok(bool(pg.query_selector(sel)), f'tab {tab} present')
+        # click through the selector, not a held element handle: the panel re-renders (innerHTML) a few times per second and a
+        # handle taken a moment earlier can be detached by then ("Element is not attached to the DOM"); the selector is re-resolved
+        # and retried by Playwright. (The unmodified v3 build failed this step in 2 of 6 runs with the handle version.)
+        pg.click(sel); pg.wait_for_timeout(200)
+        ok(pg.evaluate("()=>document.getElementById('swBody').innerText.length")>20, f'tab {tab} renders content')
     pg.fill('#swIn', 'keep 14 miners'); pg.keyboard.press('Enter'); pg.wait_for_timeout(300)
     ok('miner' in pg.evaluate("()=>document.getElementById('swOut').innerText").lower(), 'natural-language command answered in the panel')
     pg.click('#swIn'); pg.keyboard.type('kjpmt '); pg.wait_for_timeout(200)

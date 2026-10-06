@@ -269,7 +269,7 @@ function glyph(g,name){
 }
 function iconURL(spec){
   if(iconCache[spec])return iconCache[spec];
-  const c=mkCanvas(64,64),g=c.getContext('2d');
+  const c=mkCanvas(128,128),g=c.getContext('2d');g.scale(2,2);   // authored on a 64 px grid, stored at 2x so it is sharp on retina screens
   const bg=g.createLinearGradient(0,0,0,64);bg.addColorStop(0,'#223d63');bg.addColorStop(1,'#0b1628');g.fillStyle=bg;g.fillRect(0,0,64,64);
   const p=spec.split(':');g.save();g.translate(32,32);
   if(p[0]==='u'){const sp=unitSprite(p[1],p[2]||'meridian'),s=Math.min(1.9,50/sp.S);g.scale(s,s);g.rotate(-0.6);g.drawImage(sp.cv,-sp.S/2,-sp.S/2,sp.S,sp.S);}
