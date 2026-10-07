@@ -189,11 +189,11 @@ function campRenderBrief(m){
   h+='<div class="br-vs">'+(hero?cuFaceHTML(hero):'')+cuFacChip(set.faction)+'<span class="cu-vs">VS</span>'+cuFacChip(set.enemy)+'</div>';
   if(pl&&pl.desc)h+='<p class="cu-note">'+cuEsc(pl.desc.length>230?pl.desc.slice(0,227).replace(/\s+\S*$/,'')+'…':pl.desc)+'</p>';
   if(Array.isArray(m.hints)&&m.hints.length)h+='<h3>Hints</h3><ul class="ol">'+m.hints.map(x=>'<li>'+cuEsc(x)+'</li>').join('')+'</ul>';
+  h+='<h3>Difficulty</h3><div class="cu-diffrow" id="cbDiff" role="group" aria-label="Difficulty">'+CU_DIFFS.map(d=>'<button class="btn'+(save.diff===d?' sel':'')+'" data-act="diff:'+d+'" aria-pressed="'+(save.diff===d)+'">'+cuDiffName(d)+'</button>').join('')+'</div>';
   h+='</section><section><h3>Objectives</h3><ul class="ol">'+prim.map(o=>'<li>'+cuEsc(o.text)+'</li>').join('')+(bon.length?bon.map(o=>'<li class="bonus">'+cuEsc(o.text)+' <small>bonus</small></li>').join(''):'')+'</ul>';
   if(later>0)h+='<p class="cu-note">More objectives may appear during the mission.</p>';
   h+='<h3>Stars</h3><ul class="ol"><li class="bonus">Win the mission</li>'+(nBonus?'<li class="bonus">Complete every bonus objective</li>':'')+(par?'<li class="bonus">Win in under '+fmtTime(par)+'</li>':'')+'</ul>';
   if(lock.length)h+='<h3>Locked at the start</h3><p class="cu-note">'+cuEsc(lock.join(' · '))+'. Some may unlock during the mission.</p>';
-  h+='<h3>Difficulty</h3><div class="cu-diffrow" id="cbDiff" role="group" aria-label="Difficulty">'+CU_DIFFS.map(d=>'<button class="btn'+(save.diff===d?' sel':'')+'" data-act="diff:'+d+'" aria-pressed="'+(save.diff===d)+'">'+cuDiffName(d)+'</button>').join('')+'</div>';
   h+='</section></div></div>';
   h+='<div class="cu-foot"><button class="btn" data-act="back">Back</button>'+(m.briefing&&cuCine(m.briefing)?'<button class="btn" data-act="replay">Replay briefing</button>':'')+'<span class="grow"></span><button class="btn big" id="cbStart" data-act="start">Start mission</button></div>';
   $('cbCard').innerHTML=h;
@@ -230,6 +230,7 @@ function campRenderObjectives(){
 function campPauseSync(){
   const host=$('campPause'),C=G&&G.camp;
   if(!host)return;
+  const pm=$('pauseMenu');if(pm)pm.classList.toggle('campOn',!!(C&&ui.campMission));
   if(!C||!ui.campMission){host.classList.add('hidden');host.innerHTML='';$('bRestart').textContent='Restart (new map)';$('bToMenu').textContent='Main menu';return;}
   const m=C.m,idx=cuMissions().indexOf(m),L=campObjectives();
   host.innerHTML='<h4>'+cuEsc((idx>=0?'Mission '+(idx+1)+': ':'')+(m.title||m.id))+'</h4><div class="cps">'+cuEsc(m.subtitle||'')+' · '+fmtTime(C.t)+(m.stars&&+m.stars.par>0?' · par '+fmtTime(+m.stars.par):'')+'</div>'+
@@ -347,10 +348,10 @@ function campRenderDeb(){
   /* a win (also the default 'every enemy structure destroyed' rule, which can fire between two 5 Hz evaluations) means the primary objectives are accomplished */
   const objs=(Array.isArray(R.objectives)?R.objectives:[]).map(o=>win&&o.kind==='primary'&&o.state==='active'?Object.assign({},o,{state:'done'}):o);
   const row=(l,a,b)=>'<tr><td>'+l+'</td><td>'+a+'</td></tr>';
-  h+='<div class="cd-grid"><section><h3>Objectives</h3><ul class="ol">'+(objs.length?objs.map(o=>'<li class="'+(o.kind!=='primary'?'bonus ':'')+(o.state==='done'?'done':o.state==='failed'?'fail':o.state==='hidden'?'miss':'')+'">'+cuEsc(o.text)+(o.kind!=='primary'?' <small>'+(o.kind==='hidden'?'secret':'bonus')+'</small>':'')+'</li>').join(''):'<li class="miss">—</li>')+'</ul></section>'+
-    '<section><h3>Battle report</h3><table class="cd-stat">'+row('Enemy units destroyed',T0.kills)+row('Units lost',T0.lost)+row('Structures built',T0.built)+row('Crystals mined',Math.round(T0.minedC))+row('Ether mined',Math.round(T0.minedE))+row('Hero level',T0.hero?T0.hero.level:'—')+row('Final era',ERAS[T0.era].rom+' vs '+ERAS[T1.era].rom)+'</table></section></div>';
   if(win&&D.unlock)h+='<div class="cd-unlock">New mission unlocked: '+cuEsc(D.unlock.title||D.unlock.id)+'</div>';
   if(win&&campaignNextId(m.id)===null)h+='<div class="cd-unlock">Final mission complete — the ending follows.</div>';
+  h+='<div class="cd-grid"><section><h3>Objectives</h3><ul class="ol">'+(objs.length?objs.map(o=>'<li class="'+(o.kind!=='primary'?'bonus ':'')+(o.state==='done'?'done':o.state==='failed'?'fail':o.state==='hidden'?'miss':'')+'">'+cuEsc(o.text)+(o.kind!=='primary'?' <small>'+(o.kind==='hidden'?'secret':'bonus')+'</small>':'')+'</li>').join(''):'<li class="miss">—</li>')+'</ul></section>'+
+    '<section><h3>Battle report</h3><table class="cd-stat">'+row('Enemy units destroyed',T0.kills)+row('Units lost',T0.lost)+row('Structures built',T0.built)+row('Crystals mined',Math.round(T0.minedC))+row('Ether mined',Math.round(T0.minedE))+row('Hero level',T0.hero?T0.hero.level:'—')+row('Final era',ERAS[T0.era].rom+' vs '+ERAS[T1.era].rom)+'</table></section></div>';
   h+='</div><div class="cu-foot">'+(win?'<button class="btn" id="cdRetry" data-act="retry">Replay mission</button><span class="grow"></span><button class="btn big" id="cdGo" data-act="continue">Continue</button>':
     '<button class="btn" id="cdBack" data-act="back">Chapter select</button><span class="grow"></span><button class="btn big" id="cdRetry" data-act="retry">Retry mission</button>')+'</div>';
   $('cdCard').innerHTML=h;
@@ -371,7 +372,10 @@ function campDebAct(a){
 /* ------------------------------- Extras: cinematic gallery ------------------------------- */
 const CU_KINDS={intro:'Introduction',briefing:'Mission briefings',debrief:'Mission debriefs',interlude:'Interludes',ending:'Ending',credits:'Credits',defeat:'Defeat scenes'};
 function cuCanExport(){return typeof cineExport==='function'&&typeof MediaRecorder!=='undefined'&&!!(window.HTMLCanvasElement&&HTMLCanvasElement.prototype.captureStream);}
-function campOpenExtras(){CU.xp=null;campRenderExtras();campShow('extrasMenu');cuFocus('exBack');}
+function campOpenExtras(){
+  const c=cuS().cine;if(!(c&&typeof c==='object'&&Object.keys(c).length))return;   // nothing to show (and the button is hidden) with an empty story
+  CU.xp=null;campRenderExtras();campShow('extrasMenu');cuFocus('exBack');
+}
 function campRenderExtras(){
   const save=campSaveGet(),open=campComplete(save),list=typeof cineGallery==='function'?cineGallery():[],ms=cuMissions(),canX=cuCanExport(),order={};
   ms.forEach((m,i)=>{if(m.briefing)order[m.briefing]=i*10;if(m.debrief)order[m.debrief]=i*10+1;if(m.after)order[m.after]=i*10+2;if(m.defeat)order[m.defeat]=i*10+3;});
@@ -437,5 +441,5 @@ function campInit(){
   const pm=$('pauseMenu');
   if(pm&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(!pm.classList.contains('hidden'))campPauseSync();}).observe(pm,{attributes:true,attributeFilter:['class']});
   campSyncMenu();
-  if(window.__TEST&&window.__RTS)Object.assign(window.__RTS,{CU,campSyncMenu,campOpen,campOpenExtras,campPlay,campShowBrief,campLaunch,campRestart,campShowEnd,campSaveGet,campSavePut,campRadio,campRadioClear,campRenderMenu,campRenderObjectives,campPauseSync,campUiTick,campFilm,campChain,campComplete,campContinueTarget,campMatchStart,campMatchStop,campEsc,cuPortrait,kill,damageEnt,campDo,campEvalCond,campObjectives,campaignSummary,campaignResume,campaignDrainEvents,campaignSaveRead,campaignSaveWrite,campaignSaveUpdate,campaignCanPlay,campaignNextId,emptyCampaignSave});   // test-only hooks (window.__TEST)
+  if(window.__TEST&&window.__RTS)Object.assign(window.__RTS,{CU,campSyncMenu,campOpen,campOpenExtras,campPlay,campShowBrief,campLaunch,campRestart,campShowEnd,campSaveGet,campSavePut,campRadio,campRadioClear,campRenderMenu,campRenderObjectives,campRenderExtras,campExport,campExportStop,campPauseSync,campUiTick,campFilm,campChain,campComplete,campContinueTarget,campMatchStart,campMatchStop,campEsc,cuPortrait,kill,damageEnt,campDo,campEvalCond,campObjectives,campaignSummary,campaignResume,campaignDrainEvents,campaignSaveRead,campaignSaveWrite,campaignSaveUpdate,campaignCanPlay,campaignNextId,emptyCampaignSave});   // test-only hooks (window.__TEST)
 }

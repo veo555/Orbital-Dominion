@@ -137,6 +137,7 @@ function checkMission(S, mission, opts) {
     const ground = c[0] === 'unitsNear' && UDEF[c[2]] && UDEF[c[2]].flying;
     const g = groundTiles((tx + .5) * TILE, (ty + .5) * TILE, 0, r * TILE);
     mk.ground = g.n;
+    if (g.best && h0 && !ground) { const len = A.pathLength(h0.x, h0.y, g.best.x, g.best.y); if (len > 0) mk.path = Math.round(len); }   // distance from the player's Hub to the nearest standable tile of the circle (info for the designer)
     if (TT[idx(tx, ty)] === 3) add('ERROR', 'near', where + ' (' + label + '): the centre is in the void');
     if (!g.n && !ground) add('ERROR', 'near', where + ' (' + label + '): no walkable ground connected to the player\'s base inside the circle (centre is ' + tileName(tx, ty) + '): the condition can never become true for ground units');
     else if (!ground && !walk(tx, ty)) add('WARN', 'near', where + ' (' + label + '): the centre tile is ' + tileName(tx, ty) + ' (not standable); only the edge of the circle is reachable');
@@ -309,7 +310,7 @@ function formatResult(r, o) {
   const L = [], inf = r.info;
   L.push('=== ' + r.id + (r.title ? ' "' + r.title + '"' : '') + (inf.seed !== undefined ? '   seed ' + inf.seed + '   player Hub ' + JSON.stringify(inf.hubs.player) + '  enemy Hub ' + JSON.stringify(inf.hubs.enemy) + (inf.enemyAI ? '   enemy AI: first wave ' + inf.enemyAI.firstWave + ' s' : '   enemy AI off') : ''));
   if (r.ascii && !o.noAscii) L.push(r.ascii);
-  if (r.places.length) { L.push('scripted places:'); for (const m of r.places) L.push('  ' + (m.ch || '?') + '  ' + m.label + (m.r ? '   r ' + (Math.round(m.r * 10) / 10) + ' tiles' : '') + (m.ground !== undefined ? '   ground tiles ' + m.ground : '') + (m.path !== undefined ? '   path ' + m.path + ' tiles, ETA ' + m.eta + ' s' : '') + (m.note ? '   ' + m.note : '')); }
+  if (r.places.length) { L.push('scripted places:'); for (const m of r.places) L.push('  ' + (m.ch || '?') + '  ' + m.label + (m.r ? '   r ' + (Math.round(m.r * 10) / 10) + ' tiles' : '') + (m.ground !== undefined ? '   ground tiles ' + m.ground : '') + (m.path !== undefined ? '   path ' + m.path + ' tiles' + (m.eta !== undefined ? ', ETA ' + m.eta + ' s' : ' from your Hub') : '') + (m.note ? '   ' + m.note : '')); }
   if (inf.timeline && inf.timeline.length && !o.noAscii) L.push('clock-driven timeline: ' + inf.timeline.map(e => Math.round(e.t) + 's ' + e.id).join(' | '));
   for (const f of r.findings) L.push('  ' + (f.level + '    ').slice(0, 5) + ' ' + (f.rule + '            ').slice(0, 12) + ' ' + f.msg);
   const e = r.findings.filter(f => f.level === 'ERROR').length, w = r.findings.filter(f => f.level === 'WARN').length;

@@ -22,12 +22,15 @@
 const HM=[1,.55,.2,.32,.06,.14,.03];                      // meridian partial set: fundamental + strong 2nd/4th (even-harmonic, "brass-and-servo")
 const GLASS=[1,0,0,.3,0,0,.15];
 const BELL=[1,2.76,5.4,8.93],BAR=[1,2.32,4.25,6.63],CLANG=[1,1.47,2.09,2.56,3.4],HOLLOW=[1,2.76,5.4],PLATE=[1,1.6,2.7,4.1];
+/* q = part-level equalisation: the PEAK of every part (T K S C Rg H, B by filter type) at the same nominal gain is brought to the meridian reference (measured with one note of each
+   part through the three renderers; saturated obsidian parts and glassy aurora parts differ by up to 8 dB), so an archetype written once has the same crest in all three factions */
 const FP=[
-  {id:'meridian',ix:0,pm:1,dm:1,rv:.1,room:'plate',base:62,sc:[0,2,4,5,7,9,11]},       // D4, D major
-  {id:'obsidian',ix:1,pm:.78,dm:1.3,rv:0,room:'plate',base:52,sc:[0,1,3,5,7,8,10]},     // E3, E phrygian
-  {id:'aurora',ix:2,pm:1.4,dm:1.2,rv:.2,room:'air',base:66,sc:[0,2,4,6,7,9,11]}];      // F#4, F# lydian
+  {id:'meridian',ix:0,pm:1,dm:1,rv:.1,room:'plate',base:62,sc:[0,2,4,5,7,9,11],q:{}},       // D4, D major
+  {id:'obsidian',ix:1,pm:.78,dm:1.3,rv:0,room:'plate',base:52,sc:[0,1,3,5,7,8,10],q:{T:1.1,K:1.2,S:.9,C:.6,Rg:.5,H:1.35,bp:.4,lp:.63,hp:.9}},   // E3, E phrygian
+  {id:'aurora',ix:2,pm:1.4,dm:1.2,rv:.2,room:'air',base:66,sc:[0,2,4,6,7,9,11],q:{T:1.1,S:1.6,Rg:1.1,H:1.35,bp:1.25,lp:1.2,hp:1.1}}];      // F#4, F# lydian
 const FPI={};for(const f of FP)FPI[f.id]=f;
 const dflt=(v,d)=>v===undefined?d:v;
+const qf=(F,k)=>F.q[k]||1;
 const R4=x=>Math.round(x*10000)/10000;
 const cfg=(F,o)=>{const r={};for(const k in o){const v=o[k];r[k]=Array.isArray(v)&&k!=='rt'?v[F.ix]:v;}return r;};   // per-faction value: [meridian,obsidian,aurora]
 const fl=(a,o)=>{o=o||[];for(let i=0;i<a.length;i++){const x=a[i];if(Array.isArray(x))fl(x,o);else if(x)o.push(x);}return o;};
@@ -39,7 +42,7 @@ const mk=(dur,...parts)=>({dur,layers:fl(parts)});
 /* T tone: f (Hz, meridian reference; abs:1 = already in the faction's key), f2 glide target, t glide time, d decay, a attack, g gain, del delay; s (sustain 0..1) + len + r + dd for held notes;
    cut filter scale; sine: pure sine for meridian; solo: one oscillator; sq: square for obsidian; ratio/idx: aurora FM; trem Hz; vib cents; rm Hz ring-mod (obsidian); pan */
 function T(F,q){
-  const o=cfg(F,q),ab=o.abs?1:F.pm,f=o.f*ab,f2=(o.f2||o.f)*ab,a=o.a||.003,del=o.del||0,g=dflt(o.g,1),sus=o.s>0,cut=o.cut||1;
+  const o=cfg(F,q),ab=o.abs?1:F.pm,f=o.f*ab,f2=(o.f2||o.f)*ab,a=o.a||.003,del=o.del||0,g=dflt(o.g,1)*qf(F,'T'),sus=o.s>0,cut=o.cut||1;
   const d=(o.d||.1)*(sus?1:F.dm),len=sus?o.len:a+d+.01,tg=o.t||d,gl=f2!==f?{from:f,to:f2,t:tg}:undefined;
   const env=sus?{a,d:o.dd||.05,s:o.s,r:o.r||.05}:{a,d},nyq=12000,tr=o.trem?{f:o.trem,depth:.6}:undefined,vb=o.vib?{f:5.6,cents:o.vib}:undefined;
   if(F.ix===0){
@@ -56,7 +59,7 @@ function T(F,q){
 /* K struck / plucked: f, t60 ring time, g, del, n partials, m material 'bar'|'hollow'|'clang'|'plate'|'bell' (meridian: bar unless given; obsidian: clang; aurora: bell), ks:1 = string pluck for meridian/obsidian */
 const MAT={bar:BAR,hollow:HOLLOW,clang:CLANG,plate:PLATE,bell:BELL};
 function K(F,q){
-  const o=cfg(F,q),f=o.f*(o.abs?1:F.pm),del=o.del||0,g=dflt(o.g,1),t60=(o.t60||.3)*F.dm,len=t60*1.15+.02,nn=o.n||3;
+  const o=cfg(F,q),f=o.f*(o.abs?1:F.pm),del=o.del||0,g=dflt(o.g,1)*qf(F,'K'),t60=(o.t60||.3)*F.dm,len=t60*1.15+.02,nn=o.n||3;
   if(F.ix===2||!o.ks){
     const rt=F.ix===2?BELL:(o.m&&F.ix===0?MAT[o.m]:(F.ix===1?(o.m==='hollow'?HOLLOW:CLANG):BAR));
     return [{k:'pluck',mode:'modal',f,ratios:rt.slice(0,Math.max(2,nn)),tilt:F.ix===2?.55:.6,t60,damp:F.ix===1?1.2:.8,delay:del,dur:len,env:{d:len},gain:g*(F.ix===1?.8:1),drive:F.ix===0?.15:.3,send:snd(F)}];
@@ -67,12 +70,14 @@ function K(F,q){
 /* R ringing noise: ONE node, noise through a high-Q band-pass at f = a struck, pitched "tok / clank" (debris, anvils). f, q, d, g, del, a. A band of width f/q keeps only ~sqrt(q/f) of the noise
    energy, so the gain is compensated (g = 1 rings at about the level of a plucked string) */
 function Rg(F,q){
-  const o=cfg(F,q),f=o.f*(o.abs?1:F.pm),del=o.del||0,g=dflt(o.g,1),a=o.a||.002,d=(o.d||.15)*F.dm,qq=(o.q||18)*(F.ix===2?1.6:F.ix===1?.55:1);
+  const o=cfg(F,q),f=o.f*(o.abs?1:F.pm),del=o.del||0,g=dflt(o.g,1)*qf(F,'Rg'),a=o.a||.002,d=(o.d||.15)*F.dm,qq=(o.q||18)*(F.ix===2?1.6:F.ix===1?.55:1);
+  /* below ~450 Hz a narrow band holds only a few dozen independent noise samples: its level swings by +-6 dB from one noise draw to the next, so a low "tok" is a three-partial hollow strike instead */
+  if(o.f<=450)return K(F,{f:o.f,abs:o.abs,t60:(o.d||.15)*1.5,n:3,g:dflt(o.g,1)*.9,del,m:'hollow'});
   return [{k:'noise',color:'white',delay:del,dur:a+d+.01,env:{a,d},gain:g*.9*Math.sqrt(22050*qq/f),filter:{type:'bp',f0:f,q:qq},drive:F.ix===1?.3:.1,send:snd(F)}];
 }
 /* H held horn / pad: f, len, a, r, s, g, cut */
 function H(F,q){
-  const o=cfg(F,q),f=o.f*(o.abs?1:F.pm),del=o.del||0,g=dflt(o.g,1),a=o.a||.03,len=o.len||.4,env={a,d:.06,s:dflt(o.s,.75),r:o.r||.06},cut=o.cut||1;
+  const o=cfg(F,q),f=o.f*(o.abs?1:F.pm),del=o.del||0,g=dflt(o.g,1)*qf(F,'H'),a=o.a||.03,len=o.len||.4,env={a,d:.06,s:dflt(o.s,.75),r:o.r||.06},cut=o.cut||1;
   if(F.ix===1)return [{k:'osc',type:'sawtooth',f,unison:{n:3,spread:24},delay:del,dur:len,env,gain:g*.8,filter:{type:'lp',f0:f*2*cut,f1:f*4.5*cut,t:a+.08,q:.9},drive:.35}];
   if(F.ix===2)return [{k:'osc',type:'triangle',f,unison:{n:3,spread:22,pan:.7},delay:del,dur:len,env,gain:g*.9,send:snd(F)}];
   return [{k:'osc',harm:HM,f,delay:del,dur:len,env,gain:g,filter:{type:'lp',f0:f*2*cut,f1:Math.min(f*5*cut,12000),t:a+.08,q:.9},send:snd(F)}];
@@ -80,7 +85,7 @@ function H(F,q){
 /* B filtered noise: type bp/lp/hp, f0->f1 over t, q, d, a, g, c colour, drive, trem (rapid patter); s/len/r/dd = held rumble. obsidian: pink + drive, lowpass stays low;
    aurora: bright resonant wash (a lowpass becomes a band around 4x the cutoff, bands ring, highs shine) */
 function B(F,q){
-  const o=cfg(F,q),del=o.del||0,g=dflt(o.g,1),a=o.a||.003,sus=o.s>0,d=(o.d||.1)*(sus?1:F.dm),ty=o.type||'bp',q0=o.q||1,f0=o.f0,f1=o.f1,len=sus?o.len:a+d+.01,tt=o.t||len;
+  const o=cfg(F,q),del=o.del||0,ty=o.type||'bp',g=dflt(o.g,1)*qf(F,ty),a=o.a||.003,sus=o.s>0,d=(o.d||.1)*(sus?1:F.dm),q0=o.q||1,f0=o.f0,f1=o.f1,len=sus?o.len:a+d+.01,tt=o.t||len;
   const env=sus?{a,d:o.dd||.1,s:o.s,r:o.r||.2}:{a,d},tr=o.trem?{f:o.trem,depth:o.td||.85}:undefined;
   if(F.ix===1){const lp=ty==='lp';
     return [{k:'noise',color:o.c==='white'?'white':'pink',delay:del,dur:len,env,gain:g*1.1,filter:{type:ty,f0:f0*(lp?.85:F.pm),f1:f1?f1*(lp?.85:F.pm):undefined,t:tt,q:lp?Math.max(q0,.8):q0*.7},drive:dflt(o.drive,.3),trem:tr}];}
@@ -90,14 +95,14 @@ function B(F,q){
 }
 /* S sub thump: f -> f2 pitch drop, d, g, del, a; s/len/r/dd = held sub (booms: a flat body keeps the transient from dominating the peak) */
 function S(F,q){
-  const o=cfg(F,q),f=o.f*F.pm,f2=(o.f2||o.f)*F.pm,del=o.del||0,g=dflt(o.g,1),a=o.a||.004,sus=o.s>0,k=F.ix===1?F.dm:F.ix===2?.75:1,d=(o.d||.15)*k,len=sus?o.len:a+d+.01;
+  const o=cfg(F,q),f=o.f*F.pm,f2=(o.f2||o.f)*F.pm,del=o.del||0,g=dflt(o.g,1)*qf(F,'S'),a=o.a||.004,sus=o.s>0,k=F.ix===1?F.dm:F.ix===2?.75:1,d=(o.d||.15)*k,len=sus?o.len:a+d+.01;
   const L={k:'osc',type:'sine',f,pitch:{from:f,to:f2,t:sus?len:d},delay:del,dur:len,env:sus?{a,d:o.dd||.1,s:o.s,r:o.r||.15}:{a,d},gain:g};
   if(F.ix===1){L.gain=g*1.1;L.drive=.5;}else if(F.ix===2){L.gain=g*.65;L.send=snd(F,.7);delete L.type;L.harm=GLASS;}
   return [L];
 }
 /* C click / transient: g, del, f */
 function C(F,q){
-  const o=cfg(F,q),del=o.del||0,g=dflt(o.g,1);
+  const o=cfg(F,q),del=o.del||0,g=dflt(o.g,1)*qf(F,'C');
   if(F.ix===1)return [{k:'noise',color:'pink',delay:del,dur:.03,env:{d:.022},gain:g*1.2,filter:{type:'lp',f0:3200,f1:1200,t:.02},drive:.5}];
   if(F.ix===2){const f=o.f||3400;return [{k:'osc',type:'sine',f,pitch:{from:f,to:f*.75,t:.04},delay:del,dur:.05,env:{d:.04},gain:g*.6,send:snd(F)}];}
   return [{k:'noise',color:'white',delay:del,dur:.02,env:{d:.009},gain:g,filter:{type:'hp',f0:o.f||4500}}];
@@ -119,9 +124,9 @@ function JG(F,r){
 /* ------------------------------------------------------------------ BUILDINGS: place (scaffold clunks) / done (jingle in the faction's key) / die (collapse + debris) / fire / amb */
 const PLACE={
   hub:F=>mk(.7,CLK(F,{f:105,g:1,t:.22}),CLK(F,{f:135,g:.85,del:.18,t:.22}),T(F,{f:120,f2:360,t:.26,a:.02,d:.3,g:.5,del:.34,cut:.6}),B(F,{type:'hp',f0:4200,a:.01,d:.22,g:.3,del:.32}),S(F,{f:62,f2:34,d:.3,g:1,del:.46})),
-  generator:F=>mk(.45,CLK(F,{f:210,g:.9,t:.12}),B(F,{type:'hp',f0:5200,a:.005,d:.2,g:.5,del:.1,trem:42,td:.9}),T(F,{f:1900,f2:420,t:.07,d:.09,g:.45,del:.06,sq:1}),T(F,{f:110,f2:240,t:.3,a:.04,d:.3,g:.4,del:.16,cut:.5})),
+  generator:F=>mk(.45,CLK(F,{f:210,g:.55,t:.12}),B(F,{type:'hp',f0:5200,a:.005,d:.2,g:.8,del:.1,trem:42,td:.9}),T(F,{f:1900,f2:420,t:.07,d:.09,g:.8,del:.06,sq:1}),T(F,{f:110,f2:240,t:.3,a:.04,d:.3,g:.8,del:.16,cut:.5})),
   depot:F=>mk(.5,CLK(F,{f:150,g:1,t:.22,m:'hollow'}),CLK(F,{f:190,g:.7,del:.16,t:.2,m:'hollow'}),B(F,{type:'lp',f0:1400,f1:500,d:.12,g:.35,del:.02})),
-  siphon:F=>mk(.55,B(F,{type:'bp',f0:1300,q:2.5,a:.01,d:.28,g:.7,trem:26}),CLK(F,{f:165,g:.8,t:.14,del:.1}),T(F,{f:320,f2:780,t:.18,a:.02,d:.2,g:.4,del:.26,vib:90})),
+  siphon:F=>mk(.55,B(F,{type:'bp',f0:1300,q:2.5,a:.01,d:.28,g:1.2,trem:26}),CLK(F,{f:165,g:.5,t:.14,del:.1}),T(F,{f:320,f2:780,t:.18,a:.02,d:.2,g:.8,del:.26,vib:90})),
   habitat:F=>mk(.5,K(F,{f:180,t60:.22,ks:1,bright:.2,g:1,n:2}),S(F,{f:150,f2:80,d:.08,g:.5}),K(F,{f:240,t60:.2,ks:1,bright:.2,g:.8,del:.13,n:2}),T(F,{f:520,d:.25,g:.35,del:.24,sine:1,solo:1}),B(F,{type:'lp',f0:700,d:.1,g:.25})),
   garrison:F=>mk(.6,CLK(F,{f:130,g:1,t:.18,m:'plate'}),CLK(F,{f:130,g:.9,del:.2,t:.18,m:'plate'}),CLK(F,{f:150,g:.8,del:.4,t:.2,m:'plate'}),B(F,{type:'lp',f0:1800,f1:700,d:.2,g:.3,del:.38})),
   armory:F=>mk(.55,K(F,{f:520,t60:.3,n:3,g:1}),C(F,{g:.5}),K(F,{f:620,t60:.28,n:3,g:.9,del:.12}),C(F,{g:.45,del:.12}),K(F,{f:470,t60:.34,n:3,g:.9,del:.25}),C(F,{g:.4,del:.25}),B(F,{type:'hp',f0:6000,a:.01,d:.15,g:.3,del:.25}),S(F,{f:90,f2:55,d:.12,g:.7})),
@@ -129,7 +134,7 @@ const PLACE={
   exchange:F=>mk(.45,C(F,{g:.8,f:5500}),C(F,{g:.7,f:5000,del:.06}),C(F,{g:.7,f:6000,del:.11}),C(F,{g:.6,f:5200,del:.16}),K(F,{f:1900,t60:.16,n:3,m:'bell',g:.8,del:.2}),S(F,{f:150,f2:90,d:.1,g:.8,del:.24})),
   foundry:F=>mk(.7,S(F,{f:75,f2:38,d:.26,g:1}),K(F,{f:130,t60:.3,n:3,m:'plate',g:.8}),C(F,{g:.5}),B(F,{type:'lp',f0:300,f1:1400,t:.35,a:.1,d:.35,g:.7,del:.12}),B(F,{type:'hp',f0:3500,a:.15,d:.25,g:.25,del:.25}),CLK(F,{f:110,g:.8,del:.4,t:.25})),
   airfield:F=>mk(.65,CLK(F,{f:190,g:.9,t:.18}),T(F,{f:90,f2:760,t:.5,a:.1,d:.5,g:.5,del:.12,cut:.7}),B(F,{type:'bp',f0:700,f1:4200,t:.4,q:1.2,a:.1,d:.35,g:.6,del:.14}),CLK(F,{f:210,g:.7,del:.34,t:.16})),
-  turret:F=>mk(.4,T(F,{f:300,f2:900,t:.18,a:.02,d:.2,g:.5,sq:1}),C(F,{g:.8,del:.17,f:3500}),C(F,{g:.7,del:.25,f:4200}),K(F,{f:520,t60:.14,n:2,g:.7,del:.17}),S(F,{f:115,f2:70,d:.09,g:.7,del:.17}))
+  turret:F=>mk(.4,T(F,{f:300,f2:900,t:.18,a:.02,d:.2,g:.9,sq:1}),C(F,{g:.4,del:.17,f:3500}),C(F,{g:.35,del:.25,f:4200}),K(F,{f:520,t60:.14,n:2,g:.5,del:.17}),K(F,{f:610,t60:.12,n:2,g:.4,del:.25}),S(F,{f:115,f2:70,d:.09,g:.45,del:.17}))
 };
 const DONE={
   hub:F=>mk(.9,JG(F,{k:'pluck',d:[0,4,7],o:0,st:.12,len:.16,g:[1,.9,.9]}),H(F,{abs:1,f:nt(F,0,1),del:.3,len:.5,a:.04,g:.9,s:.7}),K(F,{abs:1,f:nt(F,0,2),t60:.5,n:3,m:'bell',del:.34,g:.6}),S(F,{f:75,f2:50,d:.3,g:.9})),
@@ -150,7 +155,7 @@ const DIE={
   hub:F=>mk(2.4,C(F,{g:.35}),B(F,{type:'hp',f0:2500,a:.004,d:.18,g:.35}),B(F,{c:'brown',type:'lp',f0:2200,f1:90,t:2.0,a:.015,s:.55,dd:.35,len:2.0,r:.5,g:1.2}),S(F,{f:60,f2:22,a:.02,s:.7,dd:.2,len:1.6,r:.6,g:.6}),
     Rg(F,{f:180,q:10,d:.5,g:.5,del:.1}),Rg(F,{f:260,q:12,d:.4,g:.4,del:.35}),Rg(F,{f:150,q:9,d:.45,g:.4,del:.62}),Rg(F,{f:320,q:12,d:.3,g:.3,del:.95}),
     B(F,{type:'hp',f0:4500,a:.06,s:.3,dd:.3,len:1.2,r:.6,g:.25,del:.15}),S(F,{f:45,f2:20,d:.5,g:.5,del:1.1})),
-  generator:F=>mk(1.1,C(F,{g:.5}),S(F,{f:95,f2:40,d:.3,g:.9}),B(F,{type:'lp',f0:3000,f1:300,t:.5,a:.005,d:.5,g:.9}),B(F,{type:'hp',f0:5500,a:.01,s:.6,dd:.1,len:.7,r:.2,g:.4,trem:35,del:.1}),T(F,{f:1500,f2:150,t:.6,a:.01,d:.6,g:.3,sq:1,del:.05,cut:.8}),Rg(F,{f:240,q:10,d:.3,g:.4,del:.3})),
+  generator:F=>mk(1.1,C(F,{g:.3}),S(F,{f:95,f2:40,d:.3,g:.65}),B(F,{type:'lp',f0:3000,f1:300,t:.5,a:.005,d:.5,g:.6}),B(F,{type:'hp',f0:5500,a:.01,s:.6,dd:.1,len:.7,r:.2,g:.65,trem:35,del:.1}),T(F,{f:1500,f2:150,t:.6,a:.01,d:.6,g:.5,sq:1,del:.05,cut:.8}),Rg(F,{f:240,q:10,d:.3,g:.6,del:.3})),
   depot:F=>mk(1.1,C(F,{g:.4}),S(F,{f:110,f2:55,d:.3,g:.9}),B(F,{type:'lp',f0:1800,f1:300,t:.6,a:.004,d:.5,g:.8}),Rg(F,{f:210,q:8,d:.35,g:.8,del:.04}),K(F,{f:280,t60:.4,n:3,m:'hollow',g:.7,del:.12}),Rg(F,{f:340,q:10,d:.3,g:.6,del:.33}),Rg(F,{f:190,q:8,d:.3,g:.6,del:.52}),B(F,{type:'bp',f0:2500,q:1,a:.02,d:.5,g:.2,del:.1})),
   siphon:F=>mk(1.3,C(F,{g:.35}),S(F,{f:85,f2:38,d:.4,g:.8}),B(F,{type:'hp',f0:3500,f1:1500,t:.9,a:.02,s:.6,dd:.2,len:.8,r:.4,g:.6}),B(F,{c:'brown',type:'lp',f0:900,f1:120,t:1.0,a:.01,d:.9,g:.8}),T(F,{f:260,f2:80,t:.7,a:.02,d:.7,g:.35,vib:120,del:.1}),Rg(F,{f:300,q:10,d:.3,g:.5,del:.45})),
   habitat:F=>mk(1.0,C(F,{g:.3}),S(F,{f:100,f2:55,d:.25,g:.7}),B(F,{type:'lp',f0:1400,f1:250,t:.6,a:.01,d:.5,g:.7}),K(F,{f:180,t60:.25,n:2,ks:1,bright:.25,g:.9,del:.02}),K(F,{f:230,t60:.2,n:2,ks:1,bright:.25,g:.7,del:.16}),B(F,{type:'hp',f0:5500,a:.01,d:.4,g:.35,del:.05}),Rg(F,{f:1900,q:20,d:.25,g:.4,del:.28})),
@@ -183,11 +188,11 @@ const BCLS=(b,e)=>e==='place'||e==='done'?'impact':e==='die'?(BIG[b]?'boom':'imp
 const RVS={place:.5,done:.7,die:.35,fire:0,amb:1};                        // reverb send scale per event: a tail inside the loudness window lowers its RMS and pushes the transient over the peak limit
 const BVARY={place:{pitch:.03,filter:.08,gain:.05},done:{pitch:.012,filter:.06},die:{pitch:.03,filter:.08},fire:{pitch:.05,filter:.12,gain:.08},amb:{}};
 /*TRIM:BEGIN*/
-const TRIM={'airfield.die.aurora':0.8098,'airfield.die.meridian':0.6507,'airfield.die.obsidian':0.3608,'airfield.done.aurora':1.4524,'airfield.done.meridian':1.3334,'airfield.done.obsidian':0.7596,'airfield.place.aurora':0.6956,'airfield.place.meridian':0.6585,'airfield.place.obsidian':0.5036,'armory.die.aurora':0.7415,'armory.die.meridian':0.6386,'armory.die.obsidian':0.3822,'armory.done.aurora':0.6896,'armory.done.meridian':0.5605,'armory.done.obsidian':0.5119,'armory.place.aurora':0.6155,'armory.place.meridian':0.4532,'armory.place.obsidian':0.3983,'depot.die.aurora':0.6535,'depot.die.meridian':0.6293,'depot.die.obsidian':0.2858,'depot.done.aurora':0.7625,'depot.done.meridian':0.5672,'depot.done.obsidian':0.5377,'depot.place.aurora':0.6225,'depot.place.meridian':0.5983,'depot.place.obsidian':0.4346,'exchange.die.aurora':0.7074,'exchange.die.meridian':0.417,'exchange.die.obsidian':0.3247,'exchange.done.aurora':0.711,'exchange.done.meridian':0.6364,'exchange.done.obsidian':0.497,'exchange.place.aurora':1.1114,'exchange.place.meridian':0.9619,'exchange.place.obsidian':0.5965,'forum.die.aurora':0.6958,'forum.die.meridian':0.5051,'forum.die.obsidian':0.3478,'forum.done.aurora':0.4642,'forum.done.meridian':0.3793,'forum.done.obsidian':0.3751,'forum.place.aurora':0.7108,'forum.place.meridian':0.6586,'forum.place.obsidian':0.6136,'foundry.die.aurora':0.561,'foundry.die.meridian':0.5094,'foundry.die.obsidian':0.3026,'foundry.done.aurora':0.5801,'foundry.done.meridian':0.3684,'foundry.done.obsidian':0.3015,'foundry.place.aurora':0.6821,'foundry.place.meridian':0.6187,'foundry.place.obsidian':0.3982,'garrison.die.aurora':0.5728,'garrison.die.meridian':0.3533,'garrison.die.obsidian':0.1047,'garrison.done.aurora':0.5763,'garrison.done.meridian':0.4241,'garrison.done.obsidian':0.286,'garrison.place.aurora':0.6163,'garrison.place.meridian':0.6528,'garrison.place.obsidian':0.4947,'generator.amb.aurora':0.0416,'generator.amb.meridian':0.0488,'generator.amb.obsidian':0.0379,'generator.die.aurora':0.8149,'generator.die.meridian':0.6985,'generator.die.obsidian':0.4192,'generator.done.aurora':1.3059,'generator.done.meridian':1.1995,'generator.done.obsidian':0.7976,'generator.place.aurora':0.7158,'generator.place.meridian':0.648,'generator.place.obsidian':0.5824,'habitat.die.aurora':0.6669,'habitat.die.meridian':0.6264,'habitat.die.obsidian':0.4062,'habitat.done.aurora':0.5266,'habitat.done.meridian':0.5531,'habitat.done.obsidian':0.4174,'habitat.place.aurora':0.7141,'habitat.place.meridian':0.6758,'habitat.place.obsidian':0.5303,'hub.amb.aurora':0.066,'hub.amb.meridian':0.0592,'hub.amb.obsidian':0.0592,'hub.die.aurora':0.6323,'hub.die.meridian':0.4658,'hub.die.obsidian':0.3144,'hub.done.aurora':0.5151,'hub.done.meridian':0.3622,'hub.done.obsidian':0.2887,'hub.fire.aurora':0.4372,'hub.fire.meridian':0.2997,'hub.fire.obsidian':0.2135,'hub.place.aurora':0.6657,'hub.place.meridian':0.5919,'hub.place.obsidian':0.4278,'siphon.die.aurora':0.8085,'siphon.die.meridian':0.4872,'siphon.die.obsidian':0.3304,'siphon.done.aurora':1.22,'siphon.done.meridian':0.7418,'siphon.done.obsidian':0.4933,'siphon.place.aurora':0.8831,'siphon.place.meridian':0.7554,'siphon.place.obsidian':0.6364,'turret.die.aurora':0.6852,'turret.die.meridian':0.5979,'turret.die.obsidian':0.334,'turret.done.aurora':1.2904,'turret.done.meridian':1.1838,'turret.done.obsidian':0.8498,'turret.fire.aurora':0.5342,'turret.fire.meridian':0.4439,'turret.fire.obsidian':0.2741,'turret.place.aurora':0.6524,'turret.place.meridian':0.6646,'turret.place.obsidian':0.4855};
+const TRIM={'airfield.die.aurora':0.7066,'airfield.die.meridian':0.6859,'airfield.die.obsidian':0.5012,'airfield.done.aurora':1.3923,'airfield.done.meridian':1.3698,'airfield.done.obsidian':0.9637,'airfield.place.aurora':0.6209,'airfield.place.meridian':0.7112,'airfield.place.obsidian':0.5122,'armory.die.aurora':0.6662,'armory.die.meridian':0.6533,'armory.die.obsidian':0.4846,'armory.done.aurora':0.5352,'armory.done.meridian':0.5627,'armory.done.obsidian':0.4377,'armory.place.aurora':0.4224,'armory.place.meridian':0.4397,'armory.place.obsidian':0.3518,'cine.alarm':1.3091,'cine.boom':0.3783,'cine.chime':0.7253,'cine.click':1.485,'cine.comms':3.7703,'cine.crowd':1.8296,'cine.door':0.9805,'cine.engine':0.571,'cine.explosion':0.4937,'cine.glitch':2.3013,'cine.gong':0.4104,'cine.heartbeat':0.9028,'cine.impact':0.6022,'cine.laser':1.7908,'cine.powerdown':1.201,'cine.powerup':1.2628,'cine.rumble':0.2661,'cine.siren':0.4045,'cine.static':4.8467,'cine.stinger':0.5213,'cine.thunder':0.4544,'cine.warp':0.9783,'cine.whoosh':1.3587,'cine.wind':2.3001,'depot.die.aurora':0.499,'depot.die.meridian':0.5446,'depot.die.obsidian':0.4254,'depot.done.aurora':0.641,'depot.done.meridian':0.5624,'depot.done.obsidian':0.4622,'depot.place.aurora':0.5186,'depot.place.meridian':0.585,'depot.place.obsidian':0.4239,'exchange.die.aurora':0.7406,'exchange.die.meridian':0.5584,'exchange.die.obsidian':0.5998,'exchange.done.aurora':0.617,'exchange.done.meridian':0.6731,'exchange.done.obsidian':0.479,'exchange.place.aurora':0.9047,'exchange.place.meridian':0.9565,'exchange.place.obsidian':0.603,'forum.die.aurora':0.6559,'forum.die.meridian':0.581,'forum.die.obsidian':0.5143,'forum.done.aurora':0.409,'forum.done.meridian':0.3611,'forum.done.obsidian':0.3153,'forum.place.aurora':0.5697,'forum.place.meridian':0.6744,'forum.place.obsidian':0.5461,'foundry.die.aurora':0.5163,'foundry.die.meridian':0.6095,'foundry.die.obsidian':0.4064,'foundry.done.aurora':0.5004,'foundry.done.meridian':0.3713,'foundry.done.obsidian':0.2389,'foundry.place.aurora':0.6357,'foundry.place.meridian':0.6615,'foundry.place.obsidian':0.4486,'garrison.die.aurora':0.543,'garrison.die.meridian':0.5162,'garrison.die.obsidian':0.4886,'garrison.done.aurora':0.4979,'garrison.done.meridian':0.4322,'garrison.done.obsidian':0.2605,'garrison.place.aurora':0.5342,'garrison.place.meridian':0.6773,'garrison.place.obsidian':0.4832,'generator.amb.aurora':0.0462,'generator.amb.meridian':0.0488,'generator.amb.obsidian':0.0379,'generator.die.aurora':0.6545,'generator.die.meridian':0.7004,'generator.die.obsidian':0.5394,'generator.done.aurora':1.1939,'generator.done.meridian':1.2288,'generator.done.obsidian':0.7303,'generator.place.aurora':0.6674,'generator.place.meridian':0.8392,'generator.place.obsidian':0.5277,'global.alert':0.7645,'global.alertBase':0.344,'global.cancel':0.216,'global.click':0.4538,'global.cloak':0.8151,'global.coin':0.2697,'global.deliver':0.3097,'global.done':0.5054,'global.era':0.5264,'global.era.aurora':0.3746,'global.era.meridian':0.2987,'global.era.obsidian':0.1766,'global.err':0.236,'global.heal':0.7664,'global.hero':0.4034,'global.heroFall':0.9883,'global.heroRevive':0.6163,'global.level':0.7837,'global.lose':0.7145,'global.lose.aurora':0.3307,'global.lose.meridian':0.3899,'global.lose.obsidian':0.1783,'global.mine':0.2851,'global.place':0.5382,'global.research':0.3016,'global.siege':0.5464,'global.stim':0.6856,'global.supply':0.245,'global.tab':0.1969,'global.toast':0.2528,'global.trade':0.547,'global.train':0.2643,'global.win':0.6273,'global.win.aurora':0.3025,'global.win.meridian':0.2663,'global.win.obsidian':0.1527,'habitat.die.aurora':0.5326,'habitat.die.meridian':0.6398,'habitat.die.obsidian':0.4183,'habitat.done.aurora':0.4649,'habitat.done.meridian':0.5535,'habitat.done.obsidian':0.3332,'habitat.place.aurora':0.5469,'habitat.place.meridian':0.7219,'habitat.place.obsidian':0.4936,'hub.amb.aurora':0.0522,'hub.amb.meridian':0.0591,'hub.amb.obsidian':0.0591,'hub.die.aurora':0.599,'hub.die.meridian':0.4577,'hub.die.obsidian':0.4455,'hub.done.aurora':0.4152,'hub.done.meridian':0.373,'hub.done.obsidian':0.2315,'hub.fire.aurora':0.37,'hub.fire.meridian':0.2982,'hub.fire.obsidian':0.2087,'hub.place.aurora':0.6128,'hub.place.meridian':0.5737,'hub.place.obsidian':0.4443,'siphon.die.aurora':0.559,'siphon.die.meridian':0.4786,'siphon.die.obsidian':0.4027,'siphon.done.aurora':0.9643,'siphon.done.meridian':0.7235,'siphon.done.obsidian':0.5088,'siphon.place.aurora':0.9931,'siphon.place.meridian':1.1923,'siphon.place.obsidian':0.7266,'skill.banner':0.3111,'skill.barrage':0.5221,'skill.bloodlust':0.4602,'skill.orbital':0.4578,'skill.rampage':0.2579,'skill.regen':0.487,'skill.shock':0.3234,'skill.sing':0.3129,'skill.veil':1.1662,'turret.die.aurora':0.672,'turret.die.meridian':0.6212,'turret.die.obsidian':0.399,'turret.done.aurora':1.1803,'turret.done.meridian':1.1494,'turret.done.obsidian':0.7826,'turret.fire.aurora':0.4692,'turret.fire.meridian':0.4703,'turret.fire.obsidian':0.2596,'turret.place.aurora':0.7274,'turret.place.meridian':0.8783,'turret.place.obsidian':0.5654};
 /*TRIM:END*/
 for(const e in ARCH)for(const b in ARCH[e])for(const F of FP){
   const id=b+'.'+e+'.'+F.id,def=ARCH[e][b](F);
-  for(const L of def.layers)if(L.send)L.send.rev=R4(L.send.rev*RVS[e]);
+  for(const L of def.layers)if(L.send){L.send.rev=R4(L.send.rev*RVS[e]);if(F.ix===2)L.send.room=e==='done'?'hall':'plate';}
   const o={dur:def.dur,layers:def.layers,cls:BCLS(b,e),gain:TRIM[id]||1,vary:BVARY[e]};
   if(e==='amb'){o.range=.45;o.poly=2;o.gap=900;}
   registerVoice(id,o);
@@ -199,14 +204,14 @@ const SKILL={
   /* meridian */
   banner:{cls:'impact',def:()=>{const F=FM_;return mk(.95,T(F,{abs:1,f:nt(F,0,-1),a:.12,s:.7,len:.7,r:.15,g:1,cut:1.1}),T(F,{abs:1,f:nt(F,4,-1),a:.15,s:.7,len:.65,r:.15,g:.7,cut:1.1,del:.03}),
     K(F,{abs:1,f:nt(F,0,1),t60:.5,n:3,m:'bell',del:.1,g:.5}),S(F,{f:70,f2:50,d:.25,g:.7}),S(F,{f:70,f2:50,d:.25,g:.55,del:.45}));}},
-  barrage:{cls:'boom',def:()=>{const F=FM_,wh=(f0,f1,del)=>({k:'osc',type:'sine',f:f0,pitch:{from:f0,to:f1,t:.5},delay:del,dur:.52,env:{a:.06,d:.44},gain:.3,filter:{type:'lp',f0:4500},send:{rev:.08,room:'plate'}});
+  barrage:{cls:'boom',def:()=>{const F=FM_,wh=(f0,f1,del)=>({k:'osc',type:'sine',f:f0,pitch:{from:f0,to:f1,t:.5},delay:del,dur:.52,env:{a:.06,d:.44},gain:.55,filter:{type:'lp',f0:4500},send:{rev:.08,room:'plate'}});
     return mk(1.7,wh(3200,1000,0),wh(2800,900,.12),wh(3600,1100,.24),
-      [0,.12,.26].map((d,i)=>[S(F,{f:85-i*6,f2:38,d:.3,g:1,del:.62+d}),B(F,{type:'lp',f0:3000,f1:300,t:.35,d:.35,g:.9,del:.62+d}),C(F,{g:.3,del:.62+d})]),
-      B(F,{c:'brown',type:'lp',f0:700,f1:120,t:.9,a:.05,s:.7,dd:.15,len:.95,r:.35,g:.55,del:.6}));}},
+      [0,.12,.26].map((d,i)=>[S(F,{f:85-i*6,f2:38,d:.3,g:.7,del:.62+d}),B(F,{type:'lp',f0:3000,f1:300,t:.35,d:.35,g:.6,del:.62+d}),C(F,{g:.2,del:.62+d})]),
+      B(F,{c:'brown',type:'lp',f0:700,f1:120,t:.9,a:.05,s:.7,dd:.15,len:.95,r:.35,g:.9,drive:.5,del:.6}));}},
   orbital:{cls:'boom',def:()=>{const F=FM_;return mk(2.4,
-    {k:'osc',type:'sawtooth',f:120,pitch:{from:120,to:2600,t:1.2,curve:'exp'},dur:1.3,env:{a:.5,d:.7,s:.0001},filter:{type:'lp',f0:500,f1:6000,t:1.2},gain:.45},
-    {k:'osc',type:'sine',f:600,pitch:{from:600,to:4200,t:1.2},dur:1.3,env:{a:.6,d:.65},gain:.3},
-    {k:'noise',color:'white',dur:1.3,env:{a:.9,d:.35},filter:{type:'bp',f0:300,f1:6500,t:1.2,q:1.5},gain:.55,drive:.1},
+    {k:'osc',type:'sawtooth',f:120,pitch:{from:120,to:2600,t:1.2,curve:'exp'},dur:1.3,env:{a:.5,d:.7,s:.0001},filter:{type:'lp',f0:500,f1:6000,t:1.2},gain:.85},
+    {k:'osc',type:'sine',f:600,pitch:{from:600,to:4200,t:1.2},dur:1.3,env:{a:.6,d:.65},gain:.55},
+    {k:'noise',color:'white',dur:1.3,env:{a:.9,d:.35},filter:{type:'bp',f0:300,f1:6500,t:1.2,q:1.5},gain:1.1,drive:.1},
     B(F,{type:'hp',f0:2200,a:.003,d:.25,g:.8,del:1.26}),C(F,{g:.5,del:1.26}),
     {k:'osc',type:'sawtooth',f:90,pitch:{from:900,to:90,t:.35},delay:1.26,dur:.4,env:{d:.38},gain:.45,filter:{type:'lp',f0:3000}},
     S(F,{f:70,f2:24,a:.01,s:.8,dd:.2,len:1.0,r:.5,g:.9,del:1.26}),B(F,{c:'brown',type:'lp',f0:1800,f1:80,t:1.1,a:.01,s:.6,dd:.3,len:1.0,r:.4,g:1,del:1.26}));}},
@@ -231,9 +236,13 @@ const SKILL={
 for(const id in SKILL){const s=SKILL[id],d=s.def();registerVoice('skill.'+id,{dur:d.dur,layers:d.layers,cls:s.cls,prio:'hero',gain:TRIM['skill.'+id]||1,gap:150});}
 /* ------------------------------------------------------------------ GLOBALS: UI / economy / alerts / fanfares. Raw DSL layers (O osc, Z noise, M fm, P string pluck, D modal strike) */
 const O=(type,f,o)=>Object.assign({k:'osc',type,f},o),Z=(color,o)=>Object.assign({k:'noise',color},o),M=(f,ratio,idx,o)=>Object.assign({k:'fm',f,ratio,idx},o);
-const P=(f,o)=>Object.assign({k:'pluck',mode:'ks',f},o),D=(f,ratios,o)=>Object.assign({k:'pluck',mode:'modal',f,ratios},o);
+/* P string pluck / D modal strike: the strike's OWN decay shapes the sound (t60 = -80 dB time of the fundamental, partial i rings t60/(1+damp*i)); the layer envelope only holds and releases.
+   (An exponential layer envelope on top would square the decay: a "0.3 s" bell was -50 dB after 100 ms, a 22 dB crest.) tilt .4: each upper partial 8 dB down (all partials start in phase). */
+const P=(f,o)=>{const t=(o&&o.t60)||.3,r=Object.assign({k:'pluck',mode:'ks',f,damp:.4,bright:.6},o);r.t60=t;r.dur=t*.9+.08;r.env={a:.002,d:.01,s:1,r:.08};return r;};
+const D=(f,ratios,o)=>{const t=(o&&o.t60)||.4,r=Object.assign({k:'pluck',mode:'modal',f,ratios,tilt:.4,damp:.3},o);r.t60=t;r.dur=t+.06;r.env={a:.002,d:.01,s:1,r:.05};return r;};
 const lp=(f0,f1,t,q)=>({type:'lp',f0,f1,t,q}),hp=(f0,f1,t)=>({type:'hp',f0,f1,t}),bp=(f0,f1,t,q)=>({type:'bp',f0,f1,t,q});
 const hz=n=>KIT.hz(n);
+const fit=d=>{let m=d.dur;for(const L of d.layers)m=Math.max(m,(L.delay||0)+(L.dur||0));d.dur=Math.round(m*100)/100;return d;};   // declared length = end of the last layer (the gate bounds the audible end by dur + tail)
 const GLB={
   /* ---- ui (-26) */
   click:{cls:'ui',dur:.06,layers:[Z('white',{dur:.02,env:{d:.012},gain:.6,filter:hp(3500)}),O('sine',1900,{pitch:{from:2100,to:1500,t:.03},dur:.05,env:{d:.035},gain:.5})]},
@@ -265,7 +274,7 @@ const GLB={
   heal:{cls:'fire',dur:.6,gap:150,layers:[P(660,{t60:.35,damp:.4,bright:.7,dur:.5,env:{d:.48},send:{rev:.25,room:'plate'}}),P(990,{delay:.1,t60:.35,damp:.4,bright:.7,dur:.5,env:{d:.48},send:{rev:.25,room:'plate'}})]},
   stim:{cls:'fire',dur:.22,gap:100,layers:[Z('white',{dur:.07,env:{d:.06},filter:hp(6000)}),O('sawtooth',300,{pitch:{from:300,to:1200,t:.15},dur:.2,env:{d:.19},gain:.6,filter:lp(4000)})]}
 };
-for(const id in GLB){const d=GLB[id];registerVoice('global.'+id,Object.assign({},d,{gain:TRIM['global.'+id]||1}));}
+for(const id in GLB){const d=fit(GLB[id]);registerVoice('global.'+id,Object.assign({},d,{gain:TRIM['global.'+id]||1}));}
 /* ------------------------------------------------------------------ FANFARES: global.era|win|lose.<faction> (+ a faction-less global.era|win|lose for menus, tests and cinematics). The aurora versions use the 'hall' room (2 s) so dur + tail stays under 6 s */
 const FG=FP.map(f=>f.ix===2?Object.assign({},f,{room:'hall',rv:.16}):f);
 const chord=(F,degs,o,del,len,g,a)=>degs.map((d,i)=>H(F,{abs:1,f:nt(F,d,o[i]===undefined?0:o[i]),del,len,a:a||.04,g:g*(1-i*.12),s:.75}));
@@ -295,10 +304,10 @@ const LOSE={
 const FANF={era:{T:ERA,gap:1500,duck:.3},win:{T:WIN,gap:3000,duck:.4},lose:{T:LOSE,gap:3000,duck:.4}};
 for(const n in FANF){
   const fz=FANF[n];
-  for(const F of FG){const id='global.'+n+'.'+F.id,d=fz.T[F.id](F);
+  for(const F of FG){const id='global.'+n+'.'+F.id,d=fit(fz.T[F.id](F));
     for(const L of d.layers)if(L.send)L.send.rev=R4(L.send.rev*.7);
     registerVoice(id,{dur:d.dur,layers:d.layers,cls:'alert',gain:TRIM[id]||1,gap:fz.gap,duck:fz.duck});}
-  const d=fz.T.neutral();registerVoice('global.'+n,{dur:d.dur,layers:d.layers,cls:'alert',gain:TRIM['global.'+n]||1,gap:fz.gap,duck:fz.duck});
+  const d=fit(fz.T.neutral());registerVoice('global.'+n,{dur:d.dur,layers:d.layers,cls:'alert',gain:TRIM['global.'+n]||1,gap:fz.gap,duck:fz.duck});
 }
 /* ------------------------------------------------------------------ CINEMATIC EFFECTS: cine.<name> (class cine -18, non-positional): wide stereo (paired layers panned apart), reverb, long tails; dur + tail <= 6 s */
 const W2=(mkl,o)=>[mkl(Object.assign({pan:-.7},o)),mkl(Object.assign({pan:.7,delay:(o&&o.delay||0)+.03},o&&o.b?o.b:{}))];   // a stereo pair: the same layer twice, panned apart (the noise start offsets differ)
@@ -309,10 +318,11 @@ const CINE={
   boom:{dur:2.0,layers:[Z('brown',{dur:1.9,env:{a:.01,d:1.7},filter:lp(700,60,1.8),gain:1.4,pan:-.4,drive:.1}),Z('brown',{dur:1.9,env:{a:.01,d:1.7},filter:lp(700,60,1.8),gain:1.4,pan:.4,drive:.1}),O('sine',48,{pitch:{from:60,to:22,t:1.4},dur:1.8,env:{a:.01,d:1.6},gain:1}),Z('white',{dur:.3,env:{d:.28},filter:lp(3000,200,.3),gain:.7,send:{rev:.25,room:'hall'}})]},
   explosion:{dur:2.4,layers:[Z('white',{dur:2.2,env:{a:.004,d:2.0},filter:lp(6000,200,2),gain:.9,pan:-.8,drive:.1}),Z('white',{dur:2.2,env:{a:.004,d:2.0},filter:lp(5000,180,2),gain:.9,pan:.8,drive:.1}),O('sine',65,{pitch:{from:90,to:26,t:1.2},dur:1.6,env:{a:.01,d:1.5},gain:1.1}),Z('brown',{delay:.05,dur:2.2,env:{a:.05,d:2.0},filter:lp(250),gain:.9,send:{rev:.25,room:'hall'}}),D(300,CLANG,{delay:.3,t60:1.5,dur:1.6,env:{d:1.5},gain:.25}),Z('white',{delay:.15,dur:1.4,env:{a:.01,d:1.3},filter:hp(3000),gain:.2})]},
   alarm:{dur:1.6,layers:[0,1,2,3,4].map(i=>O('square',i%2?680:880,{delay:i*.3,dur:.27,env:{a:.01,d:.25},filter:lp(2400),gain:.6,pan:i%2?.5:-.5,send:{dly:.35,rev:.1,room:'plate'}}))},
-  comms:{dur:1.0,layers:[O('sine',1500,{dur:.08,env:{d:.07},pan:-.3}),O('sine',1900,{delay:.12,dur:.1,env:{d:.09},pan:-.3}),Z('white',{delay:.26,dur:.5,env:{a:.01,s:.6,d:.05,r:.2},filter:bp(1800,0,0,1.5),gain:.5,pan:-.3,trem:{f:22,depth:.5}}),Z('white',{delay:.26,dur:.5,env:{a:.01,s:.3,d:.05,r:.2},filter:hp(5000),gain:.15,pan:.4,send:{rev:.12,room:'plate'}}),O('sine',1700,{delay:.8,dur:.12,env:{d:.1},pan:-.3})]},
+  comms:{dur:1.0,layers:[O('sine',1500,{dur:.09,env:{d:.08},gain:.3,pan:-.3}),O('sine',1900,{delay:.12,dur:.11,env:{d:.1},gain:.3,pan:-.3}),Z('white',{delay:.26,dur:.5,env:{a:.01,s:.6,d:.05,r:.2},filter:bp(1800,0,0,1.5),gain:.5,drive:.6,pan:-.3,trem:{f:22,depth:.5}}),Z('white',{delay:.26,dur:.5,env:{a:.01,s:.3,d:.05,r:.2},filter:hp(5000),gain:.15,drive:.6,pan:.4,send:{rev:.12,room:'plate'}}),O('sine',1700,{delay:.8,dur:.12,env:{d:.1},gain:.3,pan:-.3})]},
   door:{dur:1.5,layers:[Z('pink',{dur:.9,env:{a:.05,s:.6,d:.1,r:.4},filter:bp(1400,600,.9,1.1),gain:1,pan:-.4}),Z('pink',{delay:.03,dur:.9,env:{a:.05,s:.6,d:.1,r:.4},filter:bp(1700,700,.9,1.1),gain:.8,pan:.4}),O('sawtooth',80,{pitch:{from:80,to:200,t:.8},dur:.9,env:{a:.1,d:.5,s:.0001},filter:lp(500),gain:.3}),O('sine',70,{delay:.9,pitch:{from:70,to:36,t:.3},dur:.4,env:{d:.38},gain:.9}),D(150,CLANG,{delay:.92,t60:.6,dur:.65,env:{d:.62},gain:.5,send:{rev:.22,room:'hall'}}),Z('white',{delay:.9,dur:.12,env:{d:.1},filter:lp(1500),gain:.5})]},
   engine:{dur:3.5,layers:[O('sawtooth',55,{unison:{n:3,spread:16,pan:.8},dur:3.5,env:{a:.7,s:.8,d:1,r:1},filter:lp(300,650,2.5,1.5),vib:{f:7,cents:12},gain:.7}),O('sawtooth',82,{detune:8,dur:3.5,env:{a:.7,s:.8,d:1,r:1},filter:lp(350),gain:.35,pan:-.4}),Z('brown',{dur:3.5,env:{a:.8,s:.6,d:1,r:1},filter:lp(400),gain:.8,pan:.3,send:{rev:.12,room:'hall'}})]},
-  laser:{dur:.8,layers:[O('sawtooth',2400,{pitch:{from:2600,to:240,t:.3},dur:.4,env:{a:.003,d:.35},filter:lp(6000,1500,.3),gain:.7,pan:-.5,send:{dly:.3}}),O('sawtooth',2400,{delay:.012,pitch:{from:2650,to:250,t:.3},dur:.4,env:{a:.003,d:.35},filter:lp(5500,1400,.3),gain:.5,pan:.5}),Z('white',{dur:.1,env:{d:.1},filter:hp(5000),gain:.3,send:{rev:.12,room:'plate'}})]},
+  laser:{dur:.7,layers:[O('sawtooth',2600,{pitch:{from:2650,to:240,t:.28},dur:.34,env:{a:.003,d:.3},filter:lp(7000,1500,.28),gain:.7,pan:-.6}),O('sawtooth',2500,{delay:.012,pitch:{from:2700,to:250,t:.28},dur:.34,env:{a:.003,d:.3},filter:lp(5500,1400,.28),gain:.5,pan:.6}),
+    O('sawtooth',1750,{delay:.2,pitch:{from:1850,to:160,t:.3},dur:.4,env:{a:.003,d:.36},filter:lp(5000,1000,.3),gain:.6,pan:.5}),Z('white',{dur:.12,env:{d:.1},filter:hp(5000),gain:.3}),Z('white',{delay:.2,dur:.1,env:{d:.09},filter:hp(4000),gain:.25,send:{rev:.1,room:'plate'}})]},
   rumble:{dur:4,layers:[Z('brown',{dur:3.9,env:{a:1,s:.8,d:1.2,r:1.2},filter:lp(220),gain:1.6,pan:-.6,trem:{f:.7,depth:.25}}),Z('brown',{delay:.1,dur:3.8,env:{a:1,s:.8,d:1.2,r:1.2},filter:lp(190),gain:1.4,pan:.6,trem:{f:.55,depth:.25}}),O('sine',38,{dur:3.9,env:{a:1,s:.8,d:1,r:1.2},gain:.8}),O('sine',51,{dur:3.9,env:{a:1.4,s:.6,d:1,r:1.2},gain:.3,trem:{f:.4,depth:.4}})]},
   glitch:{dur:.75,layers:[0,1,2,3,4,5,6,7,8].map(i=>O(i%3?'square':'sawtooth',[620,1480,330,2200,880,1760,440,2640,1180][i],{delay:i*.06+(i%2)*.012,dur:.045,env:{a:.002,d:.04},gain:.4,filter:lp(5000),pan:[-.8,.7,-.3,.9,-.6,.4,-.9,.2,.8][i],drive:.3})).concat([Z('white',{dur:.7,env:{a:.002,s:.35,d:.03,r:.05},filter:hp(6000),gain:.2,trem:{f:40,depth:.95},pan:.5})])},
   heartbeat:{dur:2.0,layers:[0,1.0].map(b=>[O('sine',60,{delay:b,pitch:{from:75,to:40,t:.2},dur:.34,env:{a:.012,d:.32},gain:1,send:{rev:.2,room:'hall'}}),O('sine',55,{delay:b+.24,pitch:{from:70,to:36,t:.2},dur:.34,env:{a:.012,d:.32},gain:.8,send:{rev:.2,room:'hall'}})]).reduce((a,b)=>a.concat(b),[]).concat([Z('brown',{dur:1.9,env:{a:.3,s:.3,d:.2,r:.6},filter:lp(150),gain:.2,pan:-.5})])},
@@ -324,12 +334,12 @@ const CINE={
   wind:{dur:4,layers:[Z('pink',{dur:3.9,env:{a:1.2,s:.7,d:1,r:1.2},filter:bp(500,1100,3.5,1.2),pan:-.7,trem:{f:.35,depth:.3}}),Z('pink',{delay:.3,dur:3.7,env:{a:1.4,s:.6,d:1,r:1.2},filter:bp(1100,500,3.5,1.2),pan:.7,trem:{f:.28,depth:.3}}),Z('white',{dur:3.9,env:{a:1.3,s:.5,d:1,r:1.2},filter:bp(2500,1500,3.5,2),gain:.22,send:{rev:.12,room:'hall'}})]},
   powerup:{dur:1.0,layers:[O('sawtooth',200,{pitch:{from:200,to:1600,t:.65},dur:.8,env:{a:.05,d:.7},filter:lp(800,6000,.65),gain:.6,pan:-.3}),M(400,2,{from:.5,to:3},{pitch:{from:400,to:3200,t:.65},delay:.1,dur:.8,env:{a:.05,d:.65},gain:.4,pan:.3}),D(2400,BELL,{delay:.7,t60:.6,dur:.6,env:{d:.55},gain:.5,send:{rev:.25,room:'plate'}})]},
   powerdown:{dur:1.4,layers:[O('sawtooth',1200,{pitch:{from:1200,to:80,t:.95},dur:1.1,env:{a:.01,d:1.0},filter:lp(5000,300,.95),gain:.6,pan:.3}),M(600,2,{from:3,to:.3},{pitch:{from:600,to:60,t:.95},dur:1.1,env:{a:.01,d:1.0},gain:.4,pan:-.3}),O('sine',50,{delay:.9,dur:.45,env:{a:.02,d:.4},gain:.7,send:{rev:.15,room:'plate'}})]},
-  click:{dur:.15,layers:[O('sine',1400,{pitch:{from:1500,to:900,t:.03},dur:.06,env:{d:.04},gain:.5}),Z('white',{dur:.015,env:{d:.01},filter:hp(3000),gain:.4}),O('sine',700,{delay:.005,dur:.1,env:{d:.09},gain:.2,send:{rev:.4,room:'plate'}})]},
+  click:{dur:.3,layers:[D(1350,[1,2.3,4.1],{t60:.5,gain:.5,pan:-.3,tilt:.25,damp:.2}),O('sine',1400,{pitch:{from:1500,to:900,t:.03},dur:.06,env:{d:.04},gain:.3}),Z('white',{dur:.015,env:{d:.01},filter:hp(3000),gain:.18}),O('sine',700,{delay:.005,dur:.14,env:{d:.12},gain:.3,pan:.4,send:{rev:.15,room:'plate'}})]},
   warp:{dur:2.4,layers:[Z('white',{dur:2.1,env:{a:.9,d:1.1},filter:bp(200,8000,1.4,2),gain:.9,pan:-.6}),Z('white',{delay:.04,dur:2.1,env:{a:.9,d:1.1},filter:bp(250,9000,1.4,2),gain:.9,pan:.6}),O('sine',100,{pitch:{from:100,to:1800,t:1.4},dur:1.8,env:{a:.5,d:1.2},gain:.5}),O('sawtooth',50,{pitch:{from:50,to:900,t:1.4},dur:1.8,env:{a:.5,d:1.2},gain:.3,filter:lp(1500),send:{rev:.3,room:'hall'}}),Z('white',{delay:1.5,dur:.5,env:{a:.005,d:.45},filter:hp(4000),gain:.5})]},
   siren:{dur:3.0,layers:[O('sine',700,{pitch:{pts:[[0,500],[.75,1000],[1.5,500],[2.25,1000],[2.9,500]]},dur:2.9,env:{a:.05,s:.9,d:.2,r:.25},filter:lp(3000),gain:.7,pan:-.4,send:{rev:.2,room:'hall'}}),O('square',350,{pitch:{pts:[[0,250],[.75,500],[1.5,250],[2.25,500],[2.9,250]]},dur:2.9,env:{a:.05,s:.9,d:.2,r:.25},filter:lp(1500),gain:.2,pan:.4})]},
   static:{dur:1.0,layers:[0,1,2].map(i=>Z('white',{delay:i*.22,dur:.18,env:{a:.004,s:.9,d:.01,r:.01},filter:bp(3000,0,0,.7),gain:.7,pan:[-.6,.5,-.2][i]})).concat([Z('white',{dur:.9,env:{a:.05,s:.5,d:.1,r:.2},filter:hp(7000),gain:.2,trem:{f:55,depth:.9},pan:.6}),Z('pink',{delay:.65,dur:.3,env:{a:.004,s:.8,d:.01,r:.05},filter:bp(1500,0,0,.8),gain:.5,send:{rev:.1,room:'plate'}})])},
   gong:{dur:3.4,layers:[D(110,[1,1.5,2,2.74,3.8,5.1],{t60:3.2,tilt:.55,damp:.6,dur:3.3,env:{d:3.2},send:{rev:.3,room:'hall'}}),Z('white',{dur:.06,env:{d:.05},filter:bp(900,0,0,1),gain:.2}),O('sine',55,{dur:2.4,env:{a:.03,d:2.3},gain:.3}),Z('white',{delay:.1,dur:2.2,env:{a:.4,d:1.8},filter:bp(4500,0,0,6),gain:.12,pan:.5})]}
 };
-for(const id in CINE){const d=CINE[id];registerVoice('cine.'+id,Object.assign({},d,{cls:'cine',gain:TRIM['cine.'+id]||1}));}
+for(const id in CINE){const d=fit(CINE[id]);registerVoice('cine.'+id,Object.assign({},d,{cls:'cine',gain:TRIM['cine.'+id]||1}));}
 /*STAGE:NEXT*/
 })();

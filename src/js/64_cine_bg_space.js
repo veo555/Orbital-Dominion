@@ -60,21 +60,32 @@ const CBS_NEB={
     const fil=Math.pow(r,4.5)*(.35+.65*haze),cov=cnSS(.15,.55,d*.7+haze*.55);
     O[0]=(haze*.34+fil*1.15)*cov*(.7+d*.5);O[1]=.18+fil*.82+haze*.12;O[2]=cnSS(.55,.85,cbsFbm(u*2.4,v*2.4+3,3,s+31))*.35*haze;
   },
-  /* teal: an expanding shell (planetary nebula): a ring of gas with inner glow, torn filaments and diffuse outer clouds, partly off frame */
+  /* teal: a planetary nebula. A bright, clumpy shell with a brighter bipolar waist, a hot inner cavity, a fainter outer shell with radial filaments, and a diffuse halo; the central star is added by the star pass */
   teal(u,v,s,d,K,O){
-    const dx=u-K.cu,dy=(v-K.cv)/.84,rr=Math.sqrt(dx*dx+dy*dy),ang=Math.atan2(dy,dx),ca=Math.cos(ang),sa=Math.sin(ang);
-    const br=cbsFbm(ca*1.5+4,sa*1.5+4,3,s+2),rs=K.r*(.86+.24*br),tk=K.r*(.09+.1*br);
-    const rim=cbsFbm(u*3.4+ca*.8,v*3.4+sa*.8,4,s+9),shell=Math.exp(-Math.pow((rr-rs)/tk,2))*(.35+.9*cnSS(.25,.75,rim));
-    const inner=cnSS(rs*1.05,0,rr)*(.22+.5*cbsFbm(u*2.2,v*2.2,4,s+4)),skin=Math.exp(-Math.pow((rr-rs*1.28)/(tk*2.6),2))*.32*cnSS(.35,.7,rim);
-    const out=cnSS(.3,.85,cbsFbm(u*.9+(br-.5),v*.9+.3,4,s+13))*cnSS(rs*3.4,rs*.7,rr)*.24;
-    O[0]=(shell*1.1+inner*.55+skin+out)*(.5+d*.6);O[1]=.14+shell*.5+inner*.3+skin*.3;O[2]=cnSS(.62,.85,cbsRidge(u*3.4,v*3.4,3,s+19))*shell*.3;
+    const dx=u-K.cu,dy=(v-K.cv)/.9,rr=Math.sqrt(dx*dx+dy*dy),ang=Math.atan2(dy,dx),ca=Math.cos(ang),sa=Math.sin(ang);
+    const br=cbsFbm(ca*1.6+4,sa*1.6+4,3,s+2),el=1+.2*Math.cos(2*(ang-K.a0))+.1*(br-.5),rs=K.r*el*(.9+.16*br);
+    const tk=K.r*(.075+.09*cbsFbm(ca*2.2+9,sa*2.2+1,3,s+6)),q=(rr-rs)/tk,body=Math.exp(-q*q);
+    const knot=cnSS(.38,.78,cbsFbm(u*6+ca*1.3,v*6+sa*1.3,5,s+9)),streak=cbsFbm(ang*2.4+3,rr*7,4,s+21);
+    const shell=body*(.3+.95*knot)*(.7+.5*cnSS(.3,.7,streak));
+    const inner=Math.pow(cnSS(rs*1.02,0,rr),1.4)*(.2+.5*cbsFbm(u*2.6,v*2.6,5,s+4)),cav=Math.exp(-rr*rr/(rs*rs*.12))*.5;
+    const q2=(rr-rs*1.38)/(tk*2.8),outer=Math.exp(-q2*q2)*.34*cnSS(.3,.75,cbsFbm(u*3.1+ca,v*3.1+sa,4,s+13));
+    const fil=Math.pow(cbsRidge(ang*2.8+br*2,rr*5.5,4,s+19),5)*cnSS(rs*1.7,rs*.8,rr)*cnSS(rs*.7,rs*1.05,rr)*.7;
+    const halo=cnSS(.3,.85,cbsFbm(u*.9+(br-.5),v*.9+.3,5,s+31))*cnSS(rs*3.6,rs*.6,rr)*.3;
+    O[0]=(shell*1.2+inner*.6+cav+outer+fil*.55+halo)*(.55+d*.6);O[1]=.1+shell*.5+inner*.3+cav*.4+fil*.3+halo*.1;O[2]=cnSS(.64,.86,cbsRidge(u*3.6,v*3.6,3,s+19))*(shell+outer)*.28;
   },
-  /* violet: a glowing backdrop with dark dust pillars silhouetted against it (absorption nebula) */
+  /* violet: a luminous cloud with dark dust pillars rising from below; each pillar is a feathered, domain-warped column of dust with wispy heads, silhouetted against the glow and rim-lit along its edge */
   violet(u,v,s,d,K,O){
-    const wx=cbsFbm(u*.7+2.2,v*.7+6.1,3,s+4),g=cnSS(.25,.9,cbsFbm(u*.6+(wx-.5)*.8,v*.6,4,s+8)),gl=g*(.16+d*.26),det=cbsFbm(u*5.2,v*5.2,3,s+23);
-    const pil=cbsFbm(u*2.1+(wx-.5)*1.3,v*.62+(wx-.5)*.5,5,s+14),dust=cnSS(.5-d*.1,.72,pil)*(.55+.45*cnSS(.2,.95,v));
-    const rim=Math.max(0,cnSS(.46,.6,pil)-cnSS(.6,.74,pil))*.55;
-    O[0]=(gl*(1-dust*.55)*(.75+.5*det)+rim*gl*.9+cbsGx(u-K.cu,v-K.cv,.5,.32)*.22);O[1]=.1+g*.42+rim*.3;O[2]=Math.min(.8,dust*.75);
+    const wx=cbsFbm(u*.7+2.2,v*.7+6.1,3,s+4),g=cnSS(.2,.82,cbsFbm(u*.55+(wx-.5)*.9,v*.55+(wx-.5)*.4,5,s+8)),det=cbsFbm(u*5.2,v*5.2,4,s+23);
+    const vg=cnSS(1.1,.05,v),gl=g*(.28+d*.52)*(.3+.7*vg)*(.7+.55*det)+cbsGx(u-K.cu,v-K.cv,.5,.34)*.3;
+    let D=0,T=0;
+    for(let i=0;i<K.P.length;i++){
+      const p=K.P[i],t0=v-p.top;if(t0<-.16)continue;
+      const wp=(cbsFbm(u*2.2+i*3.1,v*1.8,4,s+33)-.5)*.13+(cbsFbm(u*9+i,v*7,4,s+35)-.5)*.045,t=t0+wp*1.1,w=p.w*(1+1.05*Math.max(0,t0)),xc=p.x+p.lean*Math.max(0,t0),dx=(u-xc+wp)/w;
+      const f=Math.exp(-Math.pow(Math.abs(dx),2.6))*cnSS(-.14,.02,t)*p.k;if(f>D){D=f;T=t0;}
+    }
+    D*=.62+.7*cbsFbm(u*3.4,v*7.5,5,s+37);
+    const patch=cbsFbm(u*9,v*9,4,s+39),dust=cnSS(.3,.6,D),top=1-cnSS(0,.5,T),rim=Math.max(0,cnSS(.1,.3,D)-cnSS(.3,.62,D))*(.25+.85*patch)*(.4+.6*top);
+    O[0]=gl*(1-dust*.84)*(.8+.4*det)+rim*(.22+gl*1.5)+cnSS(.3,.9,D)*(.05+.14*top)*(.4+gl);O[1]=.1+g*.45+rim*.5;O[2]=Math.min(.94,dust*.9);
   },
   /* gold: a galactic dust band — a luminous, mottled band with one meandering dark rift along it and a few dust globules; the star pass crowds stars along it */
   gold(u,v,s,d,K,O){
@@ -89,7 +100,10 @@ function cbsNebK(kind,p,W,H,seed){                                              
   const r=i=>cnHash(seed,i,0x4e2,5),asp=W/H,left=r(1)<.5;
   const cx=left?.16+r(2)*.14:.74+r(2)*.12,cy=.16+r(3)*.14;
   const ang=-.16+r(4)*.28;
-  return{cu:cx*asp,cv:cy,r:(.26+r(5)*.1)+(kind==='teal'?.02:0),ca:Math.cos(ang),sa:Math.sin(ang),off:.2+r(6)*.14,w:.17+r(7)*.06,left};
+  if(kind==='teal')return{cu:(.4+r(2)*.2)*asp,cv:.3+r(3)*.08,r:.3+r(5)*.07,a0:r(4)*TAU,ca:Math.cos(ang),sa:Math.sin(ang),off:.2,w:.2,left};
+  if(kind==='violet'){const P=[],n=5;for(let i=0;i<n;i++)P.push({x:(.04+.92*(i+.1+.8*r(10+i))/n)*asp,top:.24+.4*r(20+i),w:.05+.06*r(30+i),lean:(r(40+i)-.5)*.34,k:i%2?.62:1});
+    return{cu:cx*asp,cv:cy,r:.3,P,ca:1,sa:0,off:.2,w:.2,left};}
+  return{cu:cx*asp,cv:cy,r:(.26+r(5)*.1),ca:Math.cos(ang),sa:Math.sin(ang),off:.2+r(6)*.14,w:.17+r(7)*.06,left};
 }
 /* quarter-resolution raster of: backdrop gradient + nebula emission + dust extinction -> opaque canvas drawn over S.fill; returns {ext(x,y)} for the star pass */
 function cbsSpaceRaster(g,W,H,F,seed,S,kind,dens,drift,o){
@@ -120,6 +134,12 @@ function cbsSpaceRaster(g,W,H,F,seed,S,kind,dens,drift,o){
 /* ------------------------------------------------ 3. stars ------------------------------------------------ */
 const CBS_STAR_COL=['#9db8ff','#c4d6ff','#eef4ff','#ffffff','#fff3d8','#ffdcae','#ffb99a'];
 function cbsStarCol(r){return CBS_STAR_COL[r<.16?0:r<.34?1:r<.62?2:r<.72?3:r<.86?4:r<.95?5:6];}
+/* a four-point diffraction cross that fades toward its tips (additive, thin) */
+function cbsSpike(g,x,y,L,col,a,u,rot){
+  g.save();g.translate(x,y);if(rot)g.rotate(rot);g.globalCompositeOperation='lighter';
+  for(let k=0;k<2;k++){g.fillStyle=cnLG(g,-L,0,L,0,[[0,cnA(col,0)],[.5,cnA(col,a)],[1,cnA(col,0)]]);g.fillRect(-L,-.55*u,L*2,1.1*u);g.rotate(Math.PI/2);}
+  g.restore();
+}
 /* n stars over F with a power-law brightness spread. weight(x,y) in 0..1 thins them out (dust lanes, calm zones); bright ones get a glow and some a diffraction cross */
 function cbsStars(g,F,seed,n,u,weight,cut){
   g.save();
@@ -130,7 +150,7 @@ function cbsStars(g,F,seed,n,u,weight,cut){
     g.fillStyle=cnA(col,a);g.fillRect(x-sz/2,y-sz/2,sz,sz);
     if(m>.58){
       cnGlow(g,x,y,(3+m*8)*u,col,.05+m*.2);
-      if(m>.985){g.fillStyle=cnA(col,.26);const L=(8+m*22)*u;g.fillRect(x-L,y-.35*u,L*2,.7*u);g.fillRect(x-.35*u,y-L,.7*u,L*2);g.fillStyle=cnA('#fff',.9);g.fillRect(x-1*u,y-1*u,2*u,2*u);}
+      if(m>.985){cbsSpike(g,x,y,(10+m*26)*u,col,.55,u,0);g.fillStyle=cnA('#fff',.9);g.fillRect(x-1*u,y-1*u,2*u,2*u);}
     }
   }
   g.restore();
@@ -145,7 +165,7 @@ function cbsTwinkle(g,F,seed,t,S,drift,n,ext){
     const m=.3+Math.pow(cnR(seed,i,14),1.6)*.7,col=cbsStarCol(cnR(seed,i,15)),ph=cnR(seed,i,16)*TAU,f=(1-amp)+amp*(.5+.5*Math.sin(t*sp*(.9+cnR(seed,i,17)*2.2)+ph));
     let a=m*f;if(ext)a*=1-Math.min(.85,ext(x,y)*1.2);
     const sz=(.9+m*1.1)*u;g.fillStyle=cnA(col,a*.9);g.fillRect(x-sz/2,y-sz/2,sz,sz);
-    if(m>.9){g.fillStyle=cnA(col,a*.18);g.fillRect(x-sz*2.6,y-sz*.14,sz*5.2,sz*.28);g.fillRect(x-sz*.14,y-sz*2.6,sz*.28,sz*5.2);}
+    if(m>.9)cbsSpike(g,x,y,sz*5,col,a*.5,u,0);
   }
   g.restore();
 }
@@ -170,6 +190,7 @@ function cbsSpaceBack(g,W,H,F,seed,S,kind,dens,drift,o){
   const base=Math.round((420+dens*560)*area*k*(o.starMul||1)*(kind==='gold'?1.9:1)),band=kind==='gold'?cbsNebK('gold',{},W,H,seed):null;
   const weight=(x,y)=>{let w=1-R.ext(x,y)*.9;w*=1-.3*cbsCalm(x/W,y/H);if(band){const per=Math.abs(-(x/H)*band.sa+(y/H)*band.ca-band.off);w*=.28+.72*Math.exp(-per*per/(band.w*band.w*2.2));}return w;};
   cbsStars(g,F,seed+7,base,u,weight);
+  if(kind==='teal'){const K=cbsNebK('teal',{},W,H,seed),x=K.cu*H,y=K.cv*H;cnGlow(g,x,y,H*.07,'#d8fff4',.55,{core:.9});cbsSpike(g,x,y,H*.09,'#e8fffa',.7,u,.2);cnGlow(g,x,y,H*.014,'#ffffff',1,{core:1});}
   if(kind==='none'||dens<.25)cbsGalaxies(g,F,W,H,seed+19,u,kind==='none'?3:1);
   return R;
 }
@@ -342,9 +363,9 @@ function cbsRegion(cx,cy,R,F,pad){
 function cbsSphere(g,cx,cy,R,o){
   if(!(R>.5))return;const F=o.F,rg=cbsRegion(cx,cy,R,F,1);if(!rg)return;
   const type=CBS_SURF[o.type]?o.type:'moon',pal=o.pal,K=cbsKit(type,pal,o.seed,o.freq||2.4),surf=CBS_SURF[type],L=o.L,Lx=L[0],Ly=L[1],Lz=L[2],ax=o.axis||[0,-1,0],atm=o.atm?K.atmK:0;
-  const cap=o.cap||CBS_SPH_CAP,sc=Math.max(.3,Math.min(cbsScale(g),Math.sqrt(cap/(rg.w*rg.h)))),rw=Math.max(2,Math.ceil(rg.w*sc)),rh=Math.max(2,Math.ceil(rg.h*sc));
+  const lk=o.lk||1,cap=o.cap||CBS_SPH_CAP,sc=Math.max(.3,Math.min(cbsScale(g),Math.sqrt(cap/(rg.w*rg.h)))),rw=Math.max(2,Math.ceil(rg.w*sc)),rh=Math.max(2,Math.ceil(rg.h*sc));
   const cv=cnScratch('cbsSph',rw,rh),cx2=cv.getContext('2d'),img=cx2.createImageData(rw,rh),d=img.data,out=new Float64Array(8);
-  const hazeK=o.haze==null?1:o.haze,tame=1-.6*(o.tame||0),Hx=Lx,Hy=Ly,Hz=Lz+1,Hl=Math.hypot(Hx,Hy,Hz)||1,hx=Hx/Hl,hy=Hy/Hl,hz=Hz/Hl,amb=K.amb,ph=(Lz+1)/2;
+  const hazeK=o.haze==null?1:o.haze,tame=1-.6*(o.tame||0),Hx=Lx,Hy=Ly,Hz=Lz+1,Hl=Math.hypot(Hx,Hy,Hz)||1,hx=Hx/Hl,hy=Hy/Hl,hz=Hz/Hl,amb=K.amb*(o.ambK||1),ph=(Lz+1)/2;
   const atmc=cbsRGB(pal.atm),twc=cbsMix3(atmc,[255,140,70],.55),amc=[.56,.7,1],sunc=[1,.97,.92],ring=o.ring,sharp=atm?[-.11,.8]:[-.03,.62],cld=K.cloud;
   /* ring geometry in the planet's frame: normal and the sun vector rotated into the ring frame */
   let rn=null,rl=null,rc=0,rs=0;
@@ -355,7 +376,7 @@ function cbsSphere(g,cx,cy,R,o){
       const dx=(rg.x+(i+.5)/sc-cx)/R,o4=(j*rw+i)*4;let r2=dx*dx+dy*dy;
       if(r2>1.03){d[o4+3]=0;continue;}
       let nx=dx,ny=dy;if(r2>.9996){const k=Math.sqrt(.9996/r2);nx*=k;ny*=k;r2=.9996;}
-      const nz=Math.sqrt(1-r2),rho=Math.sqrt(r2),k=rho>1e-4?Math.asin(rho)/rho:1,lam=nx*Lx+ny*Ly+nz*Lz,pa=nx*ax[0]+ny*ax[1]+nz*ax[2];
+      const nz=Math.sqrt(1-r2),rho=Math.sqrt(r2),k=rho>1e-4?Math.asin(rho)/rho:1,lam=(nx*Lx+ny*Ly+nz*Lz)*lk,pa=nx*ax[0]+ny*ax[1]+nz*ax[2];
       surf(nx*k,ny*k,pa,out,K);
       let dif=cnSS(sharp[0],sharp[1],lam);
       if(ring){                                                                                                             // the ring's shadow on the planet: follow the sun ray to the ring plane
@@ -394,7 +415,7 @@ function cbsRing(pal,seed,T,psi){
     dens[i]=cnC01(b);bri[i]=cnC01(.25+.75*(.55*f2+.45*f1));
   }
   return{rin,rout,T,psi,sT,cT,nrm:[0,-cT,sT],dens,bri,N,
-    light:cbsMix3(cbsRGB(pal.light),[230,218,198],.72),dark:cbsMix3(cbsRGB(pal.dark),[118,100,88],.68),
+    light:cbsMix3(cbsRGB(pal.light),[236,222,198],.5),dark:cbsMix3(cbsRGB(pal.dark),[112,94,86],.55),
     at(rr){const u=(rr-rin)/(rout-rin);if(u<0||u>1)return 0;const f=u*(N-1),i=f|0,w=f-i;return dens[i]+(dens[Math.min(N-1,i+1)]-dens[i])*w;}};
 }
 /* returns {cv,x,y,w,h} in the ring's own frame (x right along the major axis, y down the minor axis) or null when nothing is visible */
@@ -430,24 +451,24 @@ function cbsRingDraw(g,cx,cy,R,ring,rr,front){
 /* clustered city lights on the night side, restricted to land (or whatever the surface function says is habitable) and faded in past the terminator */
 function cbsCities(g,cx,cy,R,o,K,rg,u,dens){
   if(!(K.city>.02))return;const L=o.L,type=K.type,surf=CBS_SURF[type],out=new Float64Array(8),ax=o.axis||[0,-1,0],col=o.pal.city,sd=o.seed+0x77;
-  const N=Math.min(3600,Math.round(rg.w*rg.h/(95*u*u))),kk=(dens==null?1:dens)*K.city;
+  const N=Math.min(o.graze?5200:3600,Math.round(rg.w*rg.h/((o.graze?70:95)*u*u))),kk=(dens==null?1:dens)*K.city;
   g.save();g.globalCompositeOperation='lighter';
   for(let i=0;i<N;i++){
     const x=rg.x+cnR(sd,i,1)*rg.w,y=rg.y+cnR(sd,i,2)*rg.h,dx=(x-cx)/R,dy=(y-cy)/R,r2=dx*dx+dy*dy;if(r2>.93)continue;
-    const nz=Math.sqrt(1-r2);if(cnR(sd,i,3)>nz*1.05)continue;
-    const lam=dx*L[0]+dy*L[1]+nz*L[2];if(lam>-.05)continue;
+    const nz=Math.sqrt(1-r2);if(!o.graze&&cnR(sd,i,3)>nz*1.05)continue;
+    const lam=(dx*L[0]+dy*L[1]+nz*L[2])*(o.lk||1);if(lam>(o.graze?-.04:-.05))continue;
     const rho=Math.sqrt(r2),k=rho>1e-4?Math.asin(rho)/rho:1,uu=dx*k,vv=dy*k,pa=dx*ax[0]+dy*ax[1]+nz*ax[2];
     surf(uu,vv,pa,out,K);
     let ok;
     if(type==='azure'||type==='verdant')ok=out[6]<.28&&Math.abs(pa)<.84;else if(type==='ember')ok=out[3]<30&&out[0]>70;else if(type==='violet')ok=false;else ok=true;
     if(!ok)continue;
-    const cl=cbsFbm(uu*K.f*2.8+7,vv*K.f*2.8+3,3,K.s+55),thr=type==='azure'||type==='verdant'?.5-.1*kk:.58-.06*kk;if(cl<thr)continue;
-    const fade=cnSS(-.05,-.24,lam)*cnSS(0,.2,nz),n=2+Math.floor(cnR(sd,i,4)*6),rc=(.006+.016*cnR(sd,i,5))*R*(.5+.5*nz);
+    const cl=cbsFbm(uu*K.f*2.8+7,vv*K.f*2.8+3,3,K.s+55),thr=type==='azure'||type==='verdant'?.5-.1*kk:.58-.06*kk;if(o.graze?cnR(sd,i,12)>cnSS(.5,.66,cl)*Math.min(1,.55+.3*kk):cl<thr)continue;
+    const fade=(o.graze?cnSS(-.03,-.2,lam):cnSS(-.05,-.24,lam))*cnSS(0,o.graze?.045:.2,nz),n=2+Math.floor(cnR(sd,i,4)*6),rc=(.006+.016*cnR(sd,i,5))*R*(.5+.5*nz);
     for(let q=0;q<n;q++){
       const a=cnR(sd,i*13+q,6)*TAU,d=Math.sqrt(cnR(sd,i*13+q,7))*rc,px=x+Math.cos(a)*d,py=y+Math.sin(a)*d*(.5+.5*nz),sz=(.8+cnR(sd,i*13+q,8)*.9)*u,al=(.3+.65*cnR(sd,i*13+q,9))*fade;
       g.fillStyle=cnA(col,al);g.fillRect(px-sz/2,py-sz/2,sz,sz);
     }
-    if(cnR(sd,i,10)<.3)cnGlow(g,x,y,(4+cnR(sd,i,11)*6)*u,col,.09*fade);
+    if(cnR(sd,i,10)<(o.graze?.6:.3))cnGlow(g,x,y,(4+cnR(sd,i,11)*(o.graze?11:6))*u,col,(o.graze?.13:.09)*fade,o.graze?{squash:.45+.55*nz}:null);
   }
   if(type==='violet'){                                                                                                  // gas giant: lightning storms flicker under the night-side cloud deck
     for(let i=0;i<40;i++){
@@ -537,7 +558,7 @@ function cbsOrbitGeo(p,W,H,seed){
   else if(limb==='top'){R=W*1.7;cx=W*(.5+.1*sgn);cy=H*.28-R;ox=0;oy=1;tx=1;ty=0;}
   else if(limb==='left'){R=H*1.35;cx=W*.225-R;cy=H*.42;ox=1;oy=0;tx=0;ty=1;}
   else{R=H*1.35;cx=W*.775+R;cy=H*.42;ox=-1;oy=0;tx=0;ty=1;}
-  const lv=[tx*sgn*.95+ox*.12,ty*sgn*.95+oy*.12,.08],ll=Math.hypot(lv[0],lv[1],lv[2]),L=[lv[0]/ll,lv[1]/ll,lv[2]/ll];
+  const lv=[tx*sgn*.95-ox*.02,ty*sgn*.95-oy*.02,.08],ll=Math.hypot(lv[0],lv[1],lv[2]),L=[lv[0]/ll,lv[1]/ll,lv[2]/ll];
   /* the point on the horizon nearest to the sun: where the light grazes the air */
   const sx=limb==='bottom'||limb==='top'?W*(sgn<0?.05:.95):(limb==='left'?W*.225:W*.775),sy=limb==='bottom'||limb==='top'?0:H*.12;
   let hx=sx,hy;
@@ -551,15 +572,28 @@ function cbsHorizon(G,v){
   if(G.limb==='bottom'||G.limb==='top'){const dx=v-G.cx,h=Math.sqrt(Math.max(0,R*R-dx*dx));return G.limb==='bottom'?G.cy-h:G.cy+h;}
   const dy=v-G.cy,h=Math.sqrt(Math.max(0,R*R-dy*dy));return G.limb==='left'?G.cx+h:G.cx-h;
 }
-/* the sun coming up over the limb: a hot core, a wide warm veil and an anamorphic streak along the horizon */
+/* soft additive glow with a smooth, steep falloff (no plateau, no hard shoulder): intensity a*(1-d)^pw, optionally squashed along y after a rotation */
+function cbsFall(g,x,y,r,col,a,pw,sq,rot){
+  if(!(r>0)||!(a>0))return;const c=cnCol(col),st=[];
+  for(let i=0;i<=12;i++){const f=i/12;st.push([f,cnA(c,a*Math.pow(1-f,pw))]);}
+  g.save();g.translate(x,y);if(rot)g.rotate(rot);if(sq&&sq!==1)g.scale(1,sq);
+  g.fillStyle=cnRG(g,0,0,0,r,st);g.fillRect(-r,-r,r*2,r*2);g.restore();
+}
+/* the sun coming up over the limb: a wide warm veil spread along the horizon, a bright body, a white-hot core that the dark planet partly eclipses, and an anamorphic streak */
 function cbsSunrise(g,G,W,H,F,amt,u,tint){
-  if(!(amt>0))return;const x=G.sun.x,y=G.sun.y,hor=G.limb==='bottom'||G.limb==='top',r=H*(.2+.3*amt);
-  g.save();g.beginPath();g.rect(F.x,F.y,F.w,F.h);g.clip();
-  cnGlow(g,x,y,r*1.7,tint,.3*amt,{add:true});cnGlow(g,x,y,r*.8,'#fff0d8',.72*amt,{core:1});
-  g.globalCompositeOperation='lighter';
-  const len=hor?W*.55:H*.55,t=(1.4+2.2*amt)*u;
-  g.fillStyle=hor?cnLG(g,x-len*G.sgn*-.2,y,x+len*(G.sgn<0?1:-1),y,[[0,cnA('#fff4e0',.55*amt)],[.25,cnA(tint,.25*amt)],[1,cnA(tint,0)]]):cnLG(g,x,y,x,y+len,[[0,cnA('#fff4e0',.55*amt)],[.25,cnA(tint,.25*amt)],[1,cnA(tint,0)]]);
-  if(hor)g.fillRect(Math.min(x,x+len*(G.sgn<0?1:-1)),y-t/2,len,t);else g.fillRect(x-t/2,y,t,len);
+  if(!(amt>0))return;const x=G.sun.x,y=G.sun.y,hor=G.limb==='bottom'||G.limb==='top',R=H*(.2+.3*amt),rot=hor?0:Math.PI/2;
+  g.save();g.beginPath();g.rect(F.x,F.y,F.w,F.h);g.clip();g.globalCompositeOperation='lighter';
+  cbsFall(g,x,y,R*2.3,tint,.3*amt,2.6,.6,rot);
+  cbsFall(g,x,y,R*.8,cnMix(tint,'#ffe2b0',.4),.42*amt,2.4,.8,rot);
+  /* the hot core is hidden by the planet's body: clip it to the sky side of the limb */
+  g.save();g.beginPath();g.rect(F.x,F.y,F.w,F.h);g.arc(G.cx,G.cy,G.R,0,TAU,true);g.clip('evenodd');
+  cbsFall(g,x,y,R*.22,'#ffeccc',.85*amt,2,.9);cbsFall(g,x,y,R*.07,'#ffffff',1,1.5,1);
+  g.restore();
+  const len=hor?W*.55:H*.55,t=(1.2+1.8*amt)*u,dir=hor?(G.sgn<0?1:-1):1;
+  const st=[[0,cnA('#fff4e0',.55*amt)],[.2,cnA(tint,.24*amt)],[1,cnA(tint,0)]];
+  if(hor){g.fillStyle=cnLG(g,x,y,x+len*dir,y,st);g.fillRect(Math.min(x,x+len*dir),y-t/2,len,t);
+    g.fillStyle=cnLG(g,x,y,x-len*.3*dir,y,st);g.fillRect(Math.min(x,x-len*.3*dir),y-t/2,len*.3,t);}
+  else{g.fillStyle=cnLG(g,x,y,x,y+len,st);g.fillRect(x-t/2,y,t,len);g.fillStyle=cnLG(g,x,y,x,y-len*.3,st);g.fillRect(x-t/2,y-len*.3,t,len*.3);}
   g.restore();
 }
 
@@ -662,10 +696,10 @@ const ORBIT=(g,W,H,p,t,seed,S)=>{
   const F=S.fill,u=S.u,type=CN_PLANET[p.planet]?p.planet:'azure',pal=CN_PLANET[type],G=cbsOrbitGeo(p,W,H,seed),glow=cnC01(p.glow==null?.5:+p.glow);
   cbsSpaceBack(g,W,H,F,seed,S,'none',.55,0,{top:'#01030c',bot:'#070d22',starMul:.9});
   const R=G.R,rg=cbsRegion(G.cx,G.cy,R,F,1),tier=S.tier,atm=true;
-  const sunTint=cnMix(pal.atm,'#ffb878',.55);
+  const sunTint=cnMix(pal.atm,'#ffa860',.72);
   /* upper-air glow behind the limb, then the planet body, then the halo and the sunrise */
-  const K=cbsSphere(g,G.cx,G.cy,R,{type,pal,L:G.L,seed,F,freq:2.4*Math.min(3.4,Math.pow(R/(H*.33),.7)),atm,ring:null,axis:G.axis,haze:.42,tame:1,cap:Math.round(125000*S.part)});
-  if(K&&rg)cbsCities(g,G.cx,G.cy,R,{L:G.L,seed,pal,axis:G.axis},K,rg,u,.6+.8*glow);
+  const K=cbsSphere(g,G.cx,G.cy,R,{type,pal,L:G.L,seed,F,freq:2.4*Math.min(3.4,Math.pow(R/(H*.33),.7)),atm,ring:null,axis:G.axis,haze:.42,tame:1,lk:2.4,ambK:2.2,cap:Math.round(125000*S.part)});
+  if(K&&rg)cbsCities(g,G.cx,G.cy,R,{L:G.L,seed,pal,axis:G.axis,graze:1,lk:2.4},K,rg,u,.9+.9*glow);
   const hs=(.4+1.0*glow);cbsHalo(g,G.cx,G.cy,R,pal,G.L,hs*(K?K.atmK:1),Math.min(.2,95*u/R),u,F);
   cbsSunrise(g,G,W,H,F,glow,u,sunTint);
   /* the station and the traffic */
@@ -875,7 +909,7 @@ const ARRAY=(g,W,H,p,t,seed,S)=>{
   const R=oG.R,rg=cbsRegion(oG.cx,oG.cy,R,F,1),Kp=cbsSphere(g,oG.cx,oG.cy,R,{type,pal,L:oG.L,seed,F,freq:2.4*Math.min(3.4,Math.pow(R/(H*.33),.7)),atm:true,ring:null,axis:oG.axis,haze:.42,tame:1,cap:Math.round(100000*S.part)});
   if(Kp&&rg)cbsCities(g,oG.cx,oG.cy,R,{L:oG.L,seed,pal,axis:oG.axis},Kp,rg,u,.9);
   cbsHalo(g,oG.cx,oG.cy,R,pal,oG.L,.9*(Kp?Kp.atmK:1),Math.min(.2,95*u/R),u,F);
-  cbsSunrise(g,oG,W,H,F,.42,u,cnMix(pal.atm,'#ffb878',.55));
+  cbsSunrise(g,oG,W,H,F,.42,u,cnMix(pal.atm,'#ffa860',.72));
   const c={u,seed,bounce:pal.atm,L:oG.L,st:G.st,la:Math.atan2(-.5,oG.L[0]*.9)},impY=CBS_ARR_IMP(G,H,oG);
   if(G.st==='firing'){cnGlow(g,G.ax,impY,H*.36,A.hot,.55,{core:.9,squash:.34});cnGlow(g,G.ax,impY-H*.02,H*.16,'#fff0d8',.5,{core:.9,squash:.3});}
   cbsArrayShips(g,G,W,H,u,oG.L,pal.atm);

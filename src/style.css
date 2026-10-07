@@ -560,7 +560,7 @@ html.rm .cs-box,html.rm .cine-skip{animation:none;transition:none}
 .cd-new{color:var(--cry);font-weight:700;letter-spacing:1px;font-size:12px;text-transform:uppercase}
 .cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .cd-stat{width:100%;border-collapse:collapse;font-size:12.5px}.cd-stat td{padding:3px 0;border-top:1px solid var(--line)}.cd-stat td:last-child{text-align:right;color:var(--txt)}.cd-stat td:first-child{color:var(--dim)}.cd-stat tr:first-child td{border-top:0}
-.cd-unlock{margin:8px 0 0;padding:6px 10px;border:1px solid var(--ok);border-radius:var(--r2);color:var(--ok);background:var(--panel)}
+.cd-unlock{margin:4px 0 6px;padding:6px 10px;border:1px solid var(--ok);border-radius:var(--r2);color:var(--ok);background:var(--panel)}
 /* Extras gallery */
 .xg{margin:10px 0 2px}
 .xg>h3{margin:0 0 2px}
@@ -611,6 +611,7 @@ html.cr-on #toast{top:calc(var(--tH) + var(--crH,64px) + 22px)}
 @media (max-width:1240px){#campRadio{left:316px;transform:none;width:min(540px,calc(100vw - 332px))}}   /* beside the objectives panel instead of over it */
 /* touch / compact: 44 px targets, tighter chrome */
 html.touch .card.camp .btn,html.compact .card.camp .btn{min-height:44px}
+html.touch .mfoot .btn,html.compact .mfoot .btn{min-height:44px}   /* main-menu footer buttons (Campaign, Start Mission, ... and the link row) reach the 44 px target on touch / phones */
 @media (max-width:760px){.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.br-grid,.cd-grid{grid-template-columns:1fr}}
 @media (max-width:520px){.mgrid{grid-template-columns:1fr}.cu-head,.cu-body,.cm-bar,.cm-confirm,.cu-foot{padding-left:14px;padding-right:14px}}
 html.compact .card.camp{width:100%;max-height:100%;padding:0}
@@ -651,4 +652,21 @@ html.compact.portrait .cm-bar .btn.big{width:100%}
 html.compact.portrait .cm-bar .btn:not(.big):not(.cm-diff .btn){flex:1}
 html.compact.portrait .cu-foot .btn{flex:1}
 html.compact.portrait .cd-stars{font-size:36px}
+/* short landscape phone: the paused mission card and the debrief use the width instead of scrolling */
+html.compact:not(.portrait) #pauseMenu.campOn .card.narrow{width:min(760px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;align-content:start}
+html.compact:not(.portrait) #pauseMenu.campOn .card.narrow>.ttl{grid-column:1/-1;margin-bottom:6px}
+html.compact:not(.portrait) #pauseMenu.campOn .cpause{grid-column:1;margin:0;align-self:start}
+html.compact:not(.portrait) #pauseMenu.campOn .cpause .ol li:not(:first-child){display:block}
+html.compact:not(.portrait) #pauseMenu.campOn .col{grid-column:2;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+html.compact:not(.portrait) #pauseMenu.campOn .col .btn.big{grid-column:1/-1}
+html.compact:not(.portrait) #pauseMenu.campOn .col .btn{white-space:nowrap;padding-left:8px;padding-right:8px}
+html.compact .cd-top{margin:0 0 4px}
+html.compact .cd-top+.ol{display:flex;flex-wrap:wrap;gap:0 18px;margin-bottom:4px}
+html.compact .cd-top+.ol li{border-top:0;padding:2px 0 2px 20px}
+html.compact .cd-stat td{padding:2px 0}
+html.compact .cd-time b{font-size:18px}
+/* portrait phone: the primary action is a full-width button on top of the footer, nothing wraps inside a button */
+html.compact.portrait .cu-foot .btn.big{flex:1 0 100%;order:-1}
+html.compact.portrait .cm-bar .btn,html.compact.portrait .cu-foot .btn{white-space:nowrap}
+html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
 /* CAMP:END */

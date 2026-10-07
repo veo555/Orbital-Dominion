@@ -229,7 +229,7 @@ def main():
             try:
                 if callable(check): r = check()
                 else: r = run(pg, check)
-            finally: pg.evaluate("()=>__PT.unmutate()")
+            finally: pg.evaluate("()=>{__PT.unmutate();__RTS.CINE_PAINT.errors.length=0}")   # the wrong painters raise errors on purpose: do not leave them in the shared error list
             ok(bool(r), f'mutation control: {why} is caught' + ('' if r else ' -- NOT CAUGHT'))
         mut('blank', 'checkCoverage', 'a blank painter')
         mut('blank', 'checkModes', 'a blank painter (modes)')

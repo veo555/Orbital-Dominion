@@ -9,7 +9,7 @@
      crash        FAIL  a run threw an exception
      errors       FAIL  G.camp.errors is not empty in some run (malformed data, unknown ids, unplaceable buildings ...)
      stalled      FAIL  >= 10 % of the runs have no result by the cap (default cap = 2 x par, 600..2400 s)
-     playable     the AI completes the mission (victory) in >= 15 % of runs; below that: WARN "AI cannot judge: scripted human-only" when the mission still ends,
+     playable     the AI completes the primary objectives (a victory, or every primary objective done) in >= 15 % of runs; below that: WARN "AI cannot judge: scripted human-only" when the mission still ends,
                   FAIL when it also stalls (probably unwinnable)
      trivial      FAIL  win rate > 97 % AND median win time < 40 % of par
      triggers     FAIL  a trigger that fired in none of the runs (unless `optional:true` on the trigger or --optional)
@@ -39,9 +39,10 @@ function evaluate(a, T) {
   if (a.errors.length) add('FAIL', 'errors', 'G.camp.errors in ' + Math.max.apply(null, a.errors.map(e => e.runs)) + '/' + n + ' runs: ' + a.errors.slice(0, 3).map(e => e.msg).join(' ; ') + (a.errors.length > 3 ? ' ; (+' + (a.errors.length - 3) + ' more)' : ''));
   const stalledFail = a.rate.stalled >= T.stalledMax - 1e-9;
   if (stalledFail) add('FAIL', 'stalled', pc(a.rate.stalled) + ' of the runs (' + a.count.stalled + '/' + n + ') have no result after ' + a.cap + ' s (limit ' + pc(T.stalledMax) + ')');
-  if (a.rate.win < T.winMin - 1e-9 && !a.count.crash) {
+  const reach = Math.max(a.rate.win, a.rate.primaryAll || 0);      // "the AI completes the primary objectives": a victory, or every primary objective done (the win condition may ask for more)
+  if (reach < T.winMin - 1e-9 && !a.count.crash) {
     const prim = a.objectives.filter(o => o.kind === 'primary'), part = prim.map(o => o.id + ' ' + pc(o.fracEff === undefined ? o.frac : o.fracEff)).join(', ');
-    const facts = 'AI win ' + pc(a.rate.win) + ' (' + a.count.win + '/' + n + '), defeat ' + pc(a.rate.defeat) + ', stalled ' + pc(a.rate.stalled) + '; primaries done: ' + (part || 'none');
+    const facts = 'AI win ' + pc(a.rate.win) + ' (' + a.count.win + '/' + n + '), all primaries done ' + pc(a.rate.primaryAll || 0) + ', defeat ' + pc(a.rate.defeat) + ', stalled ' + pc(a.rate.stalled) + '; per objective: ' + (part || 'none');
     if (stalledFail) add('FAIL', 'playable', 'the AI never completes the mission and it does not end either: probably unwinnable (' + facts + ')');
     else add('WARN', 'playable', 'AI cannot judge: scripted human-only (' + facts + '). Not verified playable by this gate: needs a human playtest');
   }

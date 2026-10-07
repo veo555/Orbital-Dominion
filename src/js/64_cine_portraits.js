@@ -94,16 +94,16 @@ function cptResolve(id){
     ac,tr,acLo:cnShade(ac,-.5),acMd:cnShade(ac,-.25),acHi:cnShade(ac,.3),acHi2:cnShade(ac,.55),trLo:cnShade(tr,-.45),trHi:cnShade(tr,.4),
     gold:cnMix(tr,'#f2c64e',.62),
     /* face DNA */
-    wN:.162*bd.hs*(.91+.18*r(1)),wF:.184*bd.hs*(.91+.18*r(1))*(1+.01*r(2)),jN:.128*bd.jw*(.82+.36*r(3))+evil*.006,jF:.136*bd.jw*(.82+.36*r(3))+evil*.006,
-    cw:.056+.03*r(4)+mass*.05+evil*.006,sq:cnC01(.28+evil*.45+mass*1.5+.5*(r(5)-.5)-young*.15),
+    wN:.162*bd.hs*(.91+.18*r(1))*(1+.06*young),wF:.184*bd.hs*(.91+.18*r(1))*(1+.01*r(2))*(1+.06*young),jN:.128*bd.jw*(.82+.36*r(3))+evil*.006+.012*young,jF:.136*bd.jw*(.82+.36*r(3))+evil*.006+.012*young,
+    cw:.056+.03*r(4)+mass*.05+evil*.006+.02*young,sq:cnC01(.28+evil*.45+mass*1.5+.5*(r(5)-.5)+young*.1),
     cheek:cnC01(.35+.5*r(6)+old*.25+evil*.18),hollow:cnC01(old*.55+evil*.25+(bd===CPT_BLD.slight?.15:0)+.2*r(7)-young*.2),
     bt:(.0075+.0042*r(8)+evil*.0016+old*.003)*(1+.15*mass),browLen:.95+.2*r(9),
-    es:(.9+.22*r(10))*(young?1.1:old?.93:1)*(1-evil*.04),et:(r(11)-.35)*.012+evil*.005-old*.004,
+    es:(.9+.22*r(10))*(young?1.17:old?.93:1)*(1-evil*.04),et:(r(11)-.35)*.012+evil*.005-old*.004,
     noseW:.03+.012*r(12)+.003*mass,noseL:.088+.014*r(13),noseUp:(r(14)-.5)*.012,
     lipF:cnC01(.62+.45*r(15)-old*.3+young*.12),mw:.058+.014*r(16)+.004*mass,mouthY:.151+.006*(r(17)-.5),lipV:.92+.16*r(18),
     ear:(.038+.03*r(19))*bd.ear,lash:cnC01(.4+.5*r(20)),
     fh:.014*(r(21)-.5)+old*.012,gap:.5+r(22),
-    hv:Math.floor(r(23)*12),dch:(r(24)-.5)*.034,swk:.93+.14*r(26),nwk:.9+.2*r(27),hy:CPT_HY+(r(28)-.5)*.036,hs:CPT_HS*(.94+.12*r(29)),tb:(r(30)-.5)*.09,dx:(r(31)-.5)*.02,bp:3.7+1.5*r(32),bph:r(33)*TAU};
+    hv:Number.isInteger(hair.variant)&&hair.variant>=0?hair.variant%12:Math.floor(r(23)*12),sv:Number.isInteger(hair.variant)&&hair.variant>=0?hair.variant%8:Math.floor(r(23)*12)%4+4*Math.floor(r(36)*2),dch:(r(24)-.5)*.034-.022*young,swk:.93+.14*r(26),nwk:.9+.2*r(27),hy:CPT_HY+(r(28)-.5)*.036,hs:CPT_HS*(.94+.12*r(29))*(1+.05*young),hxk:.93+.14*r(34)+.03*young,hyk:.94+.12*r(35)-.05*young,tb:(r(30)-.5)*.09,dx:(r(31)-.5)*.02,bp:3.7+1.5*r(32),bph:r(33)*TAU};
   /* tight layer rectangles (blits cost per pixel, so a layer only covers what this look can paint) */
   const mane=hairStyle==='mane',halo=marks.includes('halo'),back=mane||halo||D.hood||hairStyle==='long'||hairStyle==='braid'||hairStyle==='bun';
   D.hw=Math.max(bd.sw*(armStyle==='crown'?1.12:1)*1.24,mane?.62:halo?.44:D.hood?.44:hairStyle==='long'?.46:hairStyle==='braid'?.4:.3,.42);
@@ -131,9 +131,9 @@ function cptMakeR(g,D,st,o,cx,cy,h,dir,mode,resMul){
   const X=cptRigLod(st.expr,lod),tk=cnC01(st.talk||0),bl=cnC01(st.blink||0),open=cnC01(X.op<.5?X.op+tk*(1-X.op*.6):X.op*(1-.5*tk)+.1*tk),   // speech opens a closed mouth; a wide-open one (shock, laugh) chatters between wide and about half
     openQ=Math.round(open*8)/8,gmax=.062*D.lipV*(X.gm||1);
   const jd=(mode==='silhouette'||mode==='shadow')?0:openQ*gmax*.8;
-  const R={g,D,X,tilt:X.tilt+D.tb,expr:cptXc[st.expr]?st.expr:'neutral',dir,res,lod,lx,ly,ls:lx>=0?1:-1,lm:cnC01(Math.abs(lx)*1.15+.22),rimCol,rimA,lkey:lx+','+ly+','+rimCol+','+rimA,key,lights:(o.lights||[]).filter(l=>l&&l.a>.05),mode,
+  const R={g,D,X,tilt:X.tilt+D.tb,expr:cptXc[st.expr]?st.expr:'neutral',dir,res,lod,lx,ly,ls:lx>=0?1:-1,lm:cnC01(Math.abs(lx)*1.15+.22),rimCol,rimA,lkey:lx+','+ly+','+rimCol+','+rimA,key,lights:(Array.isArray(o.lights)?o.lights:[]).filter(l=>l&&l.a>.05),mode,
     sil:mode==='silhouette',shd:mode==='shadow',holo:mode==='hologram',P:cptPmap(mode),px:1/res,t:st.t||0,tk,blink:bl,open,openQ,gap:open*gmax,gapQ:openQ*gmax,gmax,jd,cx,cy,h,sc,o,W,H,dx,dy};
-  const sw=D.bd.sw*D.swk*(D.armStyle==='crown'?1.12:D.armStyle==='hood'?1.08:D.armStyle==='suit'?.94:1);
+  const sw=D.bd.sw*D.swk*(D.armStyle==='crown'?1.12:D.armStyle==='hood'?1.08:D.armStyle==='suit'?.94:1)*(1-.1*D.young);   // children: narrower shoulders under a bigger head
   let yb=Math.max(.52,((o.bottom==null?cy+h*.5:o.bottom)-cy)/h);
   if(m&&m.d>1e-4){const yf=((H-m.f)/m.d-cy)/h+.16;if(yf<yb)yb=Math.max(.52,Math.ceil(yf/.04)*.04);}
   R.sw=sw;R.nw=D.bd.nw*D.nwk;R.yN=.2;R.yS=.256;R.B=yb;R.A=cptCalcA(D,jd);
@@ -145,7 +145,7 @@ function cptMakeR(g,D,st,o,cx,cy,h,dir,mode,resMul){
 /* idle breathing, a closed form of the scene time: the chest rises and widens a hair, the head follows with less amplitude and a slow sway (the engine adds its own tiny bob on top) */
 function cptBreath(R){const D=R.D,a=TAU*(R.t||0)/D.bp+D.bph,k=R.o&&R.o.S&&R.o.S.rm?.4:1;return{b:Math.sin(a)*k,sw:Math.sin(a*.37+D.bph*2.1)*k};}
 const cptBrXf=(g,R,b)=>{g.translate(0,R.B);g.scale(1+.0045*b,1+.006*b);g.translate(0,-R.B);};
-function cptHeadXf(R,fn){const g=R.g,D=R.D,br=R.br;g.save();g.translate(D.dx,D.hy+.2*D.hs-(br?.0035*br.b:0));g.rotate(R.tilt*(R.sil?.6:1)+(br?.006*br.sw:0));g.translate(0,-.2*D.hs);g.scale(D.hs,D.hs);fn();g.restore();}
+function cptHeadXf(R,fn){const g=R.g,D=R.D,br=R.br;g.save();const sy=D.hs*D.hyk;g.translate(D.dx,D.hy+.2*sy-(br?.0035*br.b:0));g.rotate(R.tilt*(R.sil?.6:1)+(br?.006*br.sw:0));g.translate(0,-.2*sy);g.scale(D.hs*D.hxk,sy);fn();g.restore();}
 function cptHeadPath(R){
   const g=R.g,A=R.A;g.beginPath();g.moveTo(0,A.yt);
   g.bezierCurveTo(A.wN*.58,A.yt,A.wN,-.15,A.wN,-.035);
@@ -593,7 +593,10 @@ function cptHalo(R){
 function cptHairFill(R,y0,y1){const D=R.D;return cptLG(R,R.ls*.12,y0,-R.ls*.12,y1,[[0,D.hcHi],[.3,D.hc],[1,D.hcLo]]);}
 function cptCapPath(R,o){
   const g=R.g,A=R.A,v=o.vol,hl=o.hl,sb=o.sb,part=o.part,wF=A.wF,wN=A.wN;
-  g.beginPath();g.moveTo(-wF-v*.7,sb);g.lineTo(-wF-v,-.035);g.bezierCurveTo(-wF-v,-.15,-(wF+v)*.58,A.yt-v,0,A.yt-v);g.bezierCurveTo((wN+v)*.58,A.yt-v,wN+v,-.15,wN+v,-.035);g.lineTo(wN+v*.7,sb);
+  g.beginPath();g.moveTo(-wF-v*.7,sb);g.lineTo(-wF-v,-.035);
+  if(o.flat){const ft=A.yt-v-.006,cr=.055;g.lineTo(-wF-v,ft+cr+.05);g.quadraticCurveTo(-wF-v,ft,-wF-v+cr,ft);g.lineTo(wN+v-cr,ft);g.quadraticCurveTo(wN+v,ft,wN+v,ft+cr+.05);g.lineTo(wN+v,-.035);}   // flat-top: square shoulders at the temples
+  else{g.bezierCurveTo(-wF-v,-.15,-(wF+v)*.58,A.yt-v,0,A.yt-v);g.bezierCurveTo((wN+v)*.58,A.yt-v,wN+v,-.15,wN+v,-.035);}
+  g.lineTo(wN+v*.7,sb);
   g.lineTo(wN-.012,sb);g.bezierCurveTo(wN-.006,-.1,wN*.84,hl[0]+.02,wN*.56,hl[0]);g.bezierCurveTo(wN*.3,hl[0]-.012,part+.06,hl[1]+.006,part,hl[1]);g.bezierCurveTo(part-.05,hl[1]-.002,-wF*.4,hl[2]-.006,-wF*.64,hl[2]);g.bezierCurveTo(-wF*.88,hl[2]+.01,-wF+.002,-.1,-wF+.006,-.075);g.lineTo(-wF+.006,sb);g.closePath();
 }
 function cptHairStrands(R,o,n,a){
@@ -610,7 +613,7 @@ function cptHairCap(R,o,tex){
   if(tex!==false)cptHairStrands(R,o,16,1);
   if(!R.sil){g.globalCompositeOperation='lighter';g.fillStyle=cptRG(R,R.ls*.07,-.2,0,.17,[[0,cnA(D.hcHi,.34)],[1,cnA(D.hcHi,0)]]);g.fillRect(-.3,-.35,.6,.35);}
   g.restore();
-  cptOutline(R,path,D.hcLo,.6,.003);cptRimLights(R,path,-R.A.wF,R.A.yt-o.vol,R.A.wN,o.sb,.011);
+  if(!o.noEdge){cptOutline(R,path,D.hcLo,.6,.003);cptRimLights(R,path,-R.A.wF,R.A.yt-o.vol,R.A.wN,o.sb,.011);}
 }
 /* an extra hair mass laid over the cap (quiff, fringe): cast shadow, fill, strands, outline on the outer edge only */
 function cptHairLobe(R,path,y0,y1,strands,edge){
@@ -634,14 +637,44 @@ function cptFringe(R,yLow){
   g.save();cptHeadPath(R);g.clip();
   cptHairLobe(R,path,-.22,yLow,pts.filter((p,i)=>i%2===0).map(p=>[p[0]*.7,-.2,(p[0]*.7+p[0])/2,(-.2+p[1])/2,p[0],p[1]-.006]),edge);g.restore();
 }
+/* four more short cuts (curls, tousled spikes, slicked pompadour on shaved sides, flat-top), so the commonest style no longer makes twins */
+function cptHairCurls(R){
+  const g=R.g,D=R.D,A=R.A,N=12,P=[];
+  for(let i=0;i<N;i++){const th=Math.PI*(i+.5)/N,c=Math.cos(th),sn=Math.sin(th);P.push({x:c*((c<0?A.wF:A.wN)+.024),y:-.06-sn*.222,r:.034+.014*cptRn(D,i,88)});}
+  const lobe=()=>{g.beginPath();for(const p of P){g.moveTo(p.x+p.r,p.y);g.arc(p.x,p.y,p.r,0,TAU);}};
+  cptCast(R,lobe,.016,.3);
+  for(const p of P){cptDot(g,p.x,p.y,p.r);g.fillStyle=cptHairFill(R,-.3,-.05);g.fill();g.strokeStyle=cptF(R,cnA(D.hcLo,.62));g.lineWidth=Math.max(.0032,R.px*.9);g.stroke();}
+  cptHairCap(R,{vol:.028,hl:[-.135,-.19,-.145],part:-.02,sb:.004,noEdge:1},false);
+  if(!R.sil){g.save();g.lineCap='round';for(let i=0;i<N;i++){const p=P[i];g.strokeStyle=cnA(D.hcHi,.5);g.lineWidth=Math.max(.0032,R.px*.8);g.beginPath();g.arc(p.x,p.y,p.r*.62,Math.PI*(1.05+.2*R.ls),Math.PI*(1.55+.2*R.ls));g.stroke();g.strokeStyle=cnA(D.hcLo,.4);g.beginPath();g.arc(p.x,p.y,p.r*.4,.3,1.7);g.stroke();}g.restore();}
+  cptRimLights(R,lobe,-A.wF-.05,-.3,A.wN+.05,-.02,.0045);
+}
+function cptHairTousle(R){
+  const g=R.g,D=R.D,A=R.A,N=8;cptHairCap(R,{vol:.012,hl:[-.135,-.19,-.15],part:-.05,sb:.006});
+  for(let i=0;i<N;i++){const th=Math.PI*(.1+.8*(i+.5)/N),c=Math.cos(th),sn=Math.sin(th),w=(c<0?A.wF:A.wN)*.97,bx=c*w,by=-.06-sn*.2,L=.028+.034*cptRn(D,i,89),tw=(cptRn(D,i,90)-.5)*.5,ang=Math.atan2(-sn*.8,c)+tw,nx=Math.cos(ang),ny=Math.sin(ang),tx=-ny,ty=nx,bw=.04+.012*cptRn(D,i,93);
+    const tipx=bx+nx*L,tipy=by+ny*L,b0=[bx-tx*bw,by-ty*bw],b1=[bx+tx*bw,by+ty*bw],sp=()=>{g.beginPath();g.moveTo(b0[0],b0[1]);g.quadraticCurveTo(bx-tx*bw*.4+nx*L*.7,by-ty*bw*.4+ny*L*.7,tipx,tipy);g.quadraticCurveTo(bx+tx*bw*.4+nx*L*.7,by+ty*bw*.4+ny*L*.7,b1[0],b1[1]);};
+    sp();g.closePath();g.fillStyle=cptHairFill(R,-.3,-.05);g.fill();sp();g.strokeStyle=cptF(R,cnA(D.hcLo,.7));g.lineWidth=Math.max(.0033,R.px*.9);g.stroke();
+    if(!R.sil){g.strokeStyle=cnA(D.hcHi,.45);g.lineWidth=.0028;g.beginPath();g.moveTo(bx+tx*bw*.2,by+ty*bw*.2);g.lineTo(tipx-nx*.004,tipy-ny*.004);g.stroke();}}
+}
+function cptHairPomp(R){
+  const g=R.g,A=R.A,wN=A.wN,wF=A.wF;cptHairCap(R,{vol:.006,hl:[-.17,-.205,-.175],part:0,sb:-.07});
+  const path=()=>{g.beginPath();g.moveTo(-wF*.95,-.175);g.bezierCurveTo(-wF*1.02,-.27,-wF*.45,-.345,wN*.1,-.33);g.bezierCurveTo(wN*.7,-.32,wN*1.08,-.27,wN*1.0,-.18);g.bezierCurveTo(wN*.8,-.215,wN*.4,-.245,0,-.24);g.bezierCurveTo(-wF*.4,-.238,-wF*.8,-.19,-wF*.95,-.175);g.closePath();};
+  const edge=()=>{g.beginPath();g.moveTo(-wF*.95,-.175);g.bezierCurveTo(-wF*1.02,-.27,-wF*.45,-.345,wN*.1,-.33);g.bezierCurveTo(wN*.7,-.32,wN*1.08,-.27,wN*1.0,-.18);};
+  cptHairLobe(R,path,-.34,-.2,[[-wF*.85,-.2,-wF*.5,-.3,wN*.1,-.325],[-wF*.6,-.21,-wF*.2,-.28,wN*.5,-.31],[-wF*.3,-.22,.0,-.27,wN*.85,-.27],[wN*.1,-.235,wN*.5,-.25,wN*.92,-.22]],edge);
+}
+function cptHairFlat(R){
+  const g=R.g,D=R.D,o={vol:.02,hl:[-.15,-.2,-.16],part:0,sb:-.01,flat:1};cptHairCap(R,o,false);
+  if(R.sil)return;g.save();cptCapPath(R,o);g.clip();g.strokeStyle=cnA(D.hcLo,.45);g.lineWidth=.0026;g.beginPath();for(let i=0;i<46;i++){const x=-.2+.4*((i*.618)%1),y=-.31+.14*cptRn(D,i,91);g.moveTo(x,y);g.lineTo(x+.004,y+.02);}g.stroke();
+  g.strokeStyle=cnA(D.hcHi,.4);g.beginPath();for(let i=0;i<30;i++){const x=-.18+.36*((i*.382+.1)%1),y=-.31+.1*cptRn(D,i,92);g.moveTo(x,y);g.lineTo(x+.003,y+.016);}g.stroke();g.restore();
+}
 function cptHairShort(R,o){
   const D=R.D,v=D.hv%4;
   if(o)return cptHairCap(R,Object.assign({vol:.018,hl:[-.135,-.19,-.15],part:-.06,sb:.006},o));
+  if(D.sv>=4){const w=D.sv-4;return w===0?cptHairCurls(R):w===1?cptHairTousle(R):w===2?cptHairPomp(R):cptHairFlat(R);}
   if(v===1)return cptHairCap(R,{vol:.007,hl:[-.17,-.218,-.185],part:0,sb:-.02});
   cptHairCap(R,v===3?{vol:.02,hl:[-.12,-.18,-.135],part:-.03,sb:.008}:{vol:.018,hl:[-.135,-.19,-.15],part:-.06,sb:.006});
   if(v===2)cptQuiff(R);else if(v===3)cptFringe(R,-.112);
 }
-function cptHairShaved(R){const D=R.D,v=D.hv%3,o={vol:v===1?.012:.003,hl:v===2?[-.19,-.215,-.19]:[-.17,-.2,-.17],part:0,sb:-.065,fill:null};const k0=[.3,.2,.4][v],k1=[.58,.46,.66][v];o.fill=cptLG(R,0,-.27,0,-.1,[[0,cnMix(D.hc,D.skin,k0)],[1,cnMix(D.hc,D.skin,k1)]]);   // stubble: the hair colour shows through the scalp
+function cptHairShaved(R){const D=R.D,v=D.hv%3,o={vol:v===1?.012:.003,hl:v===2?[-.19,-.215,-.19]:[-.17,-.2,-.17],part:0,sb:-.065,fill:null};const k0=[.05,.0,.12][v],k1=[.4,.3,.46][v];o.fill=cptLG(R,0,-.27,0,-.1,[[0,cnMix(D.hc,D.skin,k0)],[1,cnMix(D.hc,D.skin,k1)]]);   // stubble: the hair colour shows through the scalp
   cptHairCap(R,o,false);const g=R.g;g.save();cptCapPath(R,o);g.clip();g.fillStyle=cptF(R,cnA(D.hcLo,.2));for(let i=0;i<40;i++){cptDot(g,(cptRn(D,i,82)-.5)*.34,-.27+cptRn(D,i,83)*.2,.0016);g.fill();}g.restore();}
 function cptHairBald(R){
   const g=R.g,D=R.D,A=R.A;if(R.sil)return;g.save();cptHeadPath(R);g.clip();
@@ -784,7 +817,7 @@ const cptBlit=(R,e)=>R.g.drawImage(e.cv,e.ux0,e.uy0,e.uw,e.uh);
 function cptBodyDraw(R){
   if(R.D.marks.includes('halo')&&!R.sil)cptHalo(R);
   cptTorso(R,0);cptHeadXf(R,()=>cptHairBack(R));cptNeck(R);cptTorso(R,1);
-  if(!R.sil){const g=R.g,cy=R.D.hy+(.232+(R.D.dch||0)+.05)*R.D.hs;   // the chin's shadow on the neck, collar and chest: source-atop = only where the body already has pixels, so it can never fog the background
+  if(!R.sil){const g=R.g,cy=R.D.hy+(.232+(R.D.dch||0)+.05)*R.D.hs*R.D.hyk;   // the chin's shadow on the neck, collar and chest: source-atop = only where the body already has pixels, so it can never fog the background
     g.save();g.globalCompositeOperation='source-atop';g.fillStyle=cptRG(R,0,cy+.02,.02,.18,[[0,cptF(R,'rgba(0,0,0,.4)')],[1,cptF(R,'rgba(0,0,0,0)')]]);cptEll(g,0,cy+.035,.2,.09,0);g.fill();g.restore();}
 }
 function cptLayerBody(R){

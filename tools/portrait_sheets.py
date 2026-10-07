@@ -144,7 +144,8 @@ def dist_features(img, bg=(42, 49, 66)):
 # medians of the four terms over the 13 fixture characters (python3 tools/portrait_sheets.py --calibrate): they only scale each term, so that a typical pair scores about 1.0
 REF = {'pix': 24.5, 'head': 24.0, 'col': 1.3, 'struct': 7.0}
 W = {'pix': .2, 'head': .4, 'col': .2, 'struct': .2}
-MIN_PAIR = 0.45
+MIN_PAIR = 0.45          # every pair of characters at 64 px
+MIN_PAIR_48 = 0.40       # the 48 px chip (the LOD drops detail, so it gets a little less room)
 
 def _shift_min(A, B, n, k=1):
     """mean abs difference, minimised over +-k cell shifts (a half-pixel head bob is not a difference; a different layout is)"""

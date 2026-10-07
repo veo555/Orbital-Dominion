@@ -56,18 +56,20 @@ def wf(pg, js, t=8000, arg=None):
     except Exception: return False
 def save(pg): return pg.evaluate("k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return 'BAD'}}", KEY)
 def film_active(pg): return pg.evaluate("()=>__RTS.cineActive()")
-def skip_film(pg, what):
-    good = wf(pg, "()=>__RTS.cineActive()", 5000)
-    ok(good, f'{what}: the film starts')
+def skip_film(pg, what, fid=None):
+    """wait for a film (the one named `fid` when given), press Escape, wait until THAT run is over (a chained film may start right away)"""
+    good = wf(pg, "f=>{const r=__RTS.CNE.run;return !!r&&(!f||r.id===f)}", 5000, fid)
+    ok(good, f'{what}: the film starts' + (f' ({fid})' if fid else ''))
+    rid = pg.evaluate("()=>__RTS.CNE.run&&__RTS.CNE.run.id")
     pg.keyboard.press('Escape')
-    ok(wf(pg, "()=>!__RTS.cineActive()", 4000), f'{what}: Escape skips the film')
+    ok(wf(pg, "id=>{const r=__RTS.CNE.run;return !r||r.id!==id}", 4000, rid), f'{what}: Escape skips the film')
 def step(pg, n): pg.evaluate("n=>{const R=__RTS;for(let i=0;i<n;i++)R.step();}", n)
 def mission_time(pg): return pg.evaluate("()=>__RTS.G.camp?__RTS.G.camp.t:-1")
 def win_now(pg):
     pg.evaluate("()=>{const R=__RTS;for(const b of R.G.buildings.slice())if(b.team===1&&!b.dead)R.kill(b,0);}")
 def lose_now(pg):
     pg.evaluate("()=>{const R=__RTS;for(const b of R.G.buildings.slice())if(b.team===0&&!b.dead)R.kill(b,1);}")
-def text(pg, sel): return pg.evaluate("s=>{const e=document.querySelector(s);return e?e.innerText:null}", sel)
+def text(pg, sel): return pg.evaluate("s=>{const e=document.querySelector(s);return e?e.textContent:null}", sel)   # textContent: innerText would apply the CSS text-transform (UPPERCASE headings / buttons)
 def card_ids(pg): return pg.evaluate("()=>[...document.querySelectorAll('#cmBody .mc')].map(e=>e.dataset.m)")
 
 # ===================================================================================================================================================
@@ -120,8 +122,8 @@ def sec_flow(b):
     pg.click('#bCamp'); pg.wait_for_timeout(200)
     # first mission: intro film (first time), briefing film, briefing card
     pg.click('[data-act="play:m01"]')
-    skip_film(pg, 'intro')
-    skip_film(pg, 'briefing film')
+    skip_film(pg, 'intro', 'intro')
+    skip_film(pg, 'briefing film', 'm01_brief')
     ok(wf(pg, "()=>!document.getElementById('campBrief').classList.contains('hidden')", 3000), 'the briefing card follows the briefing film')
     s = save(pg); ok(s['seen'].get('intro') and s['seen'].get('m01_brief'), f'both films are marked seen in the save {s["seen"]}')
     br = pg.evaluate("()=>document.getElementById('cbCard').innerText")
@@ -132,7 +134,7 @@ def sec_flow(b):
     pg.keyboard.press('Escape'); pg.wait_for_timeout(200)
     ok(vis(pg, 'campMenu') and not vis(pg, 'campBrief'), 'Esc on the briefing returns to the chapter select')
     pg.click('[data-act="play:m01"]')
-    skip_film(pg, 'briefing film (intro is not repeated)')
+    skip_film(pg, 'briefing film (intro is not repeated)', 'm01_brief')
     ok(wf(pg, "()=>!document.getElementById('campBrief').classList.contains('hidden')", 3000), 'briefing card again')
     pg.click('#cbCard [data-act="diff:hard"]'); ok(save(pg)['diff'] == 'hard', 'difficulty can be changed on the briefing card too')
     pg.click('#cbCard [data-act="diff:normal"]')
@@ -173,8 +175,7 @@ def sec_flow(b):
         const t=document.getElementById('toast').innerText;return {pings:R.ui.pings.length-n0,t,mood:R.G.camp.mood}}""")
     ok(ev['pings'] >= 2 and 'Incoming orbital strike' in ev['t'] and '+200 crystals' in ev['t'] and 'Unlocked: Foundry' in ev['t'], f'ping / strike / give / unlock events become pings and toasts {ev}')
     # blocking cinematics: the world stands still until the film ends or is skipped; two queued films play one after the other
-    tick0 = pg.evaluate("()=>__RTS.G.tick")
-    pg.evaluate("()=>{__RTS.campDo(['cine','i1']);__RTS.campDo(['cine','i2']);}")
+    tick0 = pg.evaluate("()=>{__RTS.campDo(['cine','i1']);__RTS.campDo(['cine','i2']);return __RTS.G.tick}")   # read in the same task: the live frame loop keeps stepping between two evaluate() calls
     ok(pg.evaluate("()=>__RTS.G.camp.hold&&__RTS.cineActive()&&__RTS.G.camp.pendingCine"), 'a cine action holds the mission and starts the film')
     step(pg, 20); pg.wait_for_timeout(300)
     ok(pg.evaluate("t=>__RTS.G.tick===t", tick0), 'the simulation does not advance while the cinematic is held')
@@ -214,7 +215,7 @@ def sec_end(b, ctx=None):
     ok(not vis(pg, 'campDebrief'), 'the debrief waits for the end-of-match pause')
     ok(wf(pg, "()=>!document.getElementById('campDebrief').classList.contains('hidden')", 6000), 'the debrief card appears')
     d = text(pg, '#cdCard')
-    ok('Victory' in d and 'par 15:00' in d and 'Bonus objectives 1 / 1' in d and 'Under par time' in d and 'Battle report' in d.title() or 'BATTLE REPORT' in d, 'the debrief shows result, time against par, bonus count and the battle report')
+    ok('Victory' in d and 'par 15:00' in d and 'Bonus objectives 1 / 1' in d and 'Under par time' in d and 'Battle report' in d, 'the debrief shows result, time against par, bonus count and the battle report')
     ok(pg.evaluate("()=>document.querySelectorAll('#cdCard .cd-stars i.on').length") == 3, 'the debrief shows 3 stars')
     ok(pg.evaluate("()=>document.querySelectorAll('#cdCard .ol li.done').length>=4&&!document.querySelector('#cdCard .ol li.fail')"), 'every objective of the won mission reads done')
     ok('New mission unlocked: Mission 2' in d, 'the debrief announces the unlocked mission')
@@ -222,7 +223,7 @@ def sec_end(b, ctx=None):
     ok(isinstance(s, dict) and s['v'] == 1 and s['done']['m01']['stars'] == 3 and isinstance(s['done']['m01']['best'], int) and s['done']['m01']['diff'] == 'normal' and s['last'] == 'm02', f'progress is saved in localStorage {json.dumps(s)[:160]}')
     # Continue: debrief film, after film, then the chapter select with mission 2 open
     pg.click('#cdGo')
-    skip_film(pg, 'debrief film'); skip_film(pg, 'after film (interlude)')
+    skip_film(pg, 'debrief film', 'm01_win'); skip_film(pg, 'after film (interlude)', 'i1')
     ok(wf(pg, "()=>!document.getElementById('campMenu').classList.contains('hidden')", 4000), 'after the films the chapter select opens')
     ok(pg.evaluate("()=>!__RTS.G.camp&&__RTS.ui.demo"), 'the finished mission is gone (menu background match)')
     st = pg.evaluate("()=>[...document.querySelectorAll('#cmBody .mc')].slice(0,3).map(e=>({open:!e.querySelector('[data-act^=\"play:\"]').disabled,stars:e.querySelectorAll('.cu-stars i.on').length,next:e.classList.contains('next')}))")
@@ -231,7 +232,7 @@ def sec_end(b, ctx=None):
     s = save(pg); ok(s['seen'].get('m01_win') and s['seen'].get('i1'), 'debrief and after film are marked seen')
     # defeat path on mission 2 (give it a defeat film in the data)
     pg.evaluate("()=>{__RTS.STORY.missions[1].defeat='defeat';}")
-    pg.click('[data-act="play:m02"]'); skip_film(pg, 'briefing film (mission 2)')
+    pg.click('[data-act="play:m02"]'); skip_film(pg, 'briefing film (mission 2)', 'm02_brief')
     ok(wf(pg, "()=>!document.getElementById('campBrief').classList.contains('hidden')", 3000), 'mission 2 briefing')
     pg.click('#cbStart'); pg.wait_for_timeout(900); step(pg, 60)
     ok(pg.evaluate("()=>__RTS.G.camp.id")=='m02' and pg.evaluate("()=>__RTS.G.teams[0].faction")==FIX['missions'][1]['setup']['faction'], 'mission 2 runs with its own setup')
@@ -254,7 +255,7 @@ def sec_end(b, ctx=None):
     ok(wf(pg, "()=>!document.getElementById('campMenu').classList.contains('hidden')", 3000), 'Esc on the defeat card returns to the chapter select')
     ok(pg.evaluate("()=>!__RTS.ui.campMission"), 'campaign state is cleared when back in the menu')
     # pause menu "Chapter select" from a running mission
-    pg.click('[data-act="play:m02"]'); skip_film(pg, 'briefing film'); pg.click('#cbStart'); pg.wait_for_timeout(700)
+    pg.click('[data-act="play:m02"]'); skip_film(pg, 'briefing film', 'm02_brief'); pg.click('#cbStart'); pg.wait_for_timeout(700)
     pg.keyboard.press('Escape'); pg.wait_for_timeout(200); pg.click('#bToMenu'); pg.wait_for_timeout(600)
     ok(vis(pg, 'campMenu') and pg.evaluate("()=>!__RTS.ui.campMission&&!__RTS.G.camp"), 'pause > Chapter select leaves the mission and opens the chapter select')
     # reset with confirmation
@@ -307,7 +308,7 @@ def sec_extras(b):
     n = pg.evaluate("()=>({open:document.querySelectorAll('#exBody .xr:not(.lock)').length,lock:[...document.querySelectorAll('#exBody .xr.lock')].reduce((a,e)=>a+(+e.dataset.locked||0),0)})")
     ok(n['open'] == 3 and n['lock'] == NCINE - 3, f'before the ending only the seen cinematics are playable ({n}, total {NCINE})')
     ok('3 of %d seen' % NCINE in text(pg, '#exTag'), 'the header counts seen cinematics')
-    pg.click('[data-act="film:intro"]'); skip_film(pg, 'gallery Play')
+    pg.click('[data-act="film:intro"]'); skip_film(pg, 'gallery Play', 'intro')
     ok(vis(pg, 'extrasMenu'), 'the gallery is still open after the film')
     pg.keyboard.press('Escape'); pg.wait_for_timeout(200)
     ok(vis(pg, 'menu') and not vis(pg, 'extrasMenu'), 'Esc leaves the gallery')
@@ -356,7 +357,7 @@ def sec_layout(b):
     for name, w, h, dpr, mob in VIEWS:
         ctx, pg = open_page(b, w, h, dpr, mob)
         pg.evaluate("k=>localStorage.setItem(k,JSON.stringify({v:1,done:{m01:{stars:3,best:600,diff:'normal'},m02:{stars:2,best:800,diff:'hard'}},seen:{intro:true,i1:true},last:'m03',diff:'normal'}))", KEY)
-        def check(screen, ids, card=None):
+        def check(screen, ids, card=None, scope=None):
             sw = pg.evaluate("()=>document.documentElement.scrollWidth<=innerWidth+1&&document.body.scrollWidth<=innerWidth+1")
             rs = {i: pg.evaluate(RECT, i) for i in ids}
             ok(sw and all(inside(r, w, h) for r in rs.values()), f'{name} / {screen}: no horizontal overflow, {", ".join("#"+i for i in ids)} inside the viewport')
@@ -364,10 +365,10 @@ def sec_layout(b):
                 c = pg.evaluate("s=>{const e=document.querySelector(s);const r=e.getBoundingClientRect();return[r.left,r.top,r.right,r.bottom,e.scrollWidth>e.clientWidth+1]}", card)
                 ok(inside(c[:4], w, h) and not c[4], f'{name} / {screen}: the card fits the viewport without horizontal scrolling')
             if mob:
-                small = pg.evaluate("s=>[...document.querySelectorAll(s+' .btn')].filter(e=>e.offsetParent!==null&&!e.disabled&&e.getBoundingClientRect().height<43.5).map(e=>e.innerText)", card or 'body')
+                small = pg.evaluate("s=>[...document.querySelectorAll(s+' .btn')].filter(e=>e.offsetParent!==null&&!e.disabled&&e.getBoundingClientRect().height<43.5).map(e=>e.textContent)", scope or card or 'body')
                 ok(not small, f'{name} / {screen}: every button is >= 44 px tall {small[:3]}')
         pg.wait_for_timeout(300)
-        check('main menu', ['bCamp', 'bStart', 'bHelp', 'bSet', 'bExtras'])
+        check('main menu', ['bCamp', 'bStart', 'bHelp', 'bSet', 'bExtras'], scope='#menu .mfoot')   # the skirmish option rows above are not part of this task
         pg.evaluate("()=>__RTS.campOpen()"); pg.wait_for_timeout(300)
         check('chapter select', ['cmContinue', 'cmBack'], '#campMenu .card')
         sc = pg.evaluate("()=>{const e=document.getElementById('cmBody');return e.scrollHeight>e.clientHeight}")
@@ -386,6 +387,11 @@ def sec_layout(b):
         ok(rs['radio'][1] >= rs['top'][3] - 1, f'{name} / match: the radio strip sits below the top bar')
         tr = pg.evaluate("()=>{const o=document.getElementById('objectives'),r=o.getBoundingClientRect();return{text:o.innerText.length>5,w:r.width,h:r.height}}")
         ok(tr['text'] and tr['h'] > 20, f'{name} / match: the objective tracker is not empty {tr}')
+        pg.evaluate("()=>__RTS.togglePause()"); pg.wait_for_timeout(250)
+        rs = {i: pg.evaluate(RECT, i) for i in ('bResume', 'bRestart', 'bToMenu', 'bSurr')}
+        ok(all(inside(r, w, h) for r in rs.values()), f'{name} / pause: Resume, Restart mission, Chapter select and Surrender are all reachable without scrolling {rs}')
+        ok('Mission 3' in text(pg, '#campPause'), f'{name} / pause: the mission block is shown')
+        pg.evaluate("()=>__RTS.togglePause()")
         pg.evaluate("()=>{__RTS.G.camp.cnt.trained[0].rifleman=6}"); step(pg, 12); win_now(pg); pg.evaluate("()=>{__RTS.ui.endAt=0}")
         ok(wf(pg, "()=>!document.getElementById('campDebrief').classList.contains('hidden')", 5000), f'{name} / debrief opens')
         check('debrief', ['cdGo', 'cdRetry'], '#campDebrief .card')
@@ -401,16 +407,83 @@ def sec_touch(b):
     tap('[data-act="play:m01"]'); ok(wf(pg, "()=>__RTS.cineActive()", 4000), 'a tap on Play starts the first film (touch)')
     pg.touchscreen.tap(400, 200); pg.wait_for_timeout(400)
     tap('#cineSkip'); ok(wf(pg, "()=>!__RTS.cineActive()||__RTS.CNE.run&&__RTS.CNE.run.id!=='intro'", 4000), 'tapping the Skip button ends the intro (touch)')
-    skip_film(pg, 'briefing film (touch)')
+    skip_film(pg, 'briefing film (touch)', 'm01_brief')
     ok(wf(pg, "()=>!document.getElementById('campBrief').classList.contains('hidden')", 3000), 'the briefing card follows (touch)')
     tap('#cbStart'); pg.wait_for_timeout(1200)
     ok(pg.evaluate("()=>__RTS.G.camp&&__RTS.G.camp.id==='m01'&&__RTS.ui.touchMode"), 'a tap on Start launches the mission in touch mode')
     step(pg, 30 * 6); pg.mouse.move(0, 0)
-    pg.touchscreen.tap(420, 105); pg.wait_for_timeout(200)       # tap the radio strip: skip
-    ok(pg.evaluate("()=>!__RTS.CU.radio.cur||__RTS.CU.radio.cur.id!=='r11'"), 'a tap on the radio strip dismisses the line (touch)')
+    ok(pg.evaluate("()=>!!__RTS.CU.radio.cur&&__RTS.CU.radio.cur.id==='r11'") and vis(pg, 'campRadio'), 'the scripted radio line is on screen before the tap')
+    r = pg.evaluate("()=>{const r=document.getElementById('campRadio').getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2]}")
+    pg.touchscreen.tap(r[0], r[1]); pg.wait_for_timeout(200)       # tap the radio strip: skip
+    ok(pg.evaluate("()=>!__RTS.CU.radio.cur")  and not vis(pg, 'campRadio'), 'a tap on the radio strip dismisses the line (touch)')
     ctx.close()
 
-SECTIONS = [('menu', sec_menu), ('flow', sec_flow), ('end', sec_end), ('extras', sec_extras), ('layout', sec_layout), ('touch', sec_touch)]
+
+def sec_finale(b):
+    print('--- the last mission: debrief, ending, credits, then everything is unlocked', flush=True)
+    ctx, pg = open_page(b)
+    ids = [m['id'] for m in FIX['missions']]
+    d = {i: {'stars': 2, 'best': 700, 'diff': 'normal'} for i in ids[:-1]}
+    pg.evaluate("([k,v])=>localStorage.setItem(k,JSON.stringify(v))", [KEY, {'v': 1, 'done': d, 'seen': {}, 'last': 'm09', 'diff': 'normal'}])
+    pg.click('#bCamp'); pg.wait_for_timeout(250)
+    ok('complete' not in text(pg, '#cmProg').lower(), 'with the last mission still open the campaign is not complete')
+    pg.click('[data-act="play:m09"]'); skip_film(pg, 'briefing film (mission 9)', 'm09_brief')
+    pg.click('#cbStart'); pg.wait_for_timeout(900); step(pg, 30 * 8)
+    ok(pg.evaluate("()=>__RTS.G.camp.id")=='m09', 'mission 9 runs')
+    win_now(pg)
+    ok(wf(pg, "()=>!document.getElementById('campDebrief').classList.contains('hidden')", 6000), 'the debrief card appears')
+    t = text(pg, '#cdCard')
+    ok('Final mission complete' in t and 'New mission unlocked' not in t, 'the last debrief announces the ending instead of a new mission')
+    s = save(pg); ok(s['done']['m09']['stars'] >= 1 and s['last'] == 'm09', f'the last mission is saved and `last` stays on it {s["last"]}')
+    ok(not s['seen'].get('credits'), 'the credits are not marked seen before they play')
+    pg.click('#cdGo')
+    skip_film(pg, 'debrief film', 'm09_win'); skip_film(pg, 'ending', 'ending'); skip_film(pg, 'credits', 'credits')
+    ok(wf(pg, "()=>!document.getElementById('campMenu').classList.contains('hidden')", 4000), 'after the credits the chapter select opens')
+    s = save(pg); ok(s['seen'].get('credits') and s['seen'].get('ending'), 'the ending and the credits are marked seen')
+    ok('complete' in text(pg, '#cmProg').lower(), 'the chapter select says the campaign is complete')
+    pg.keyboard.press('Escape'); pg.click('#bExtras'); pg.wait_for_timeout(300)
+    n = pg.evaluate("()=>({open:document.querySelectorAll('#exBody .xr:not(.lock)').length,lock:document.querySelectorAll('#exBody .xr.lock').length})")
+    ok(n['open'] == NCINE and n['lock'] == 0, f'the gallery unlocks every cinematic after the credits ({n})')
+    ctx.close()
+
+def sec_a11y(b):
+    print('--- keyboard-only play and reduced motion', flush=True)
+    ctx = b.new_context(viewport={'width': 1366, 'height': 768}, reduced_motion='reduce')
+    ctx.add_init_script("window.__TEST='live'")
+    ctx, pg = open_page(b, ctx=ctx)
+    pg.focus('#bCamp'); pg.keyboard.press('Enter'); pg.wait_for_timeout(250)
+    ok(vis(pg, 'campMenu') and pg.evaluate("()=>document.activeElement.id")=='cmContinue', 'Enter on Campaign opens the chapter select with focus on Continue')
+    pg.keyboard.press('Enter')
+    skip_film(pg, 'intro (keyboard)', 'intro'); skip_film(pg, 'briefing film (keyboard)', 'm01_brief')
+    ok(wf(pg, "()=>document.activeElement&&document.activeElement.id==='cbStart'", 3000), 'the briefing card focuses "Start mission"')
+    pg.keyboard.press('Enter'); pg.wait_for_timeout(1000)
+    ok(pg.evaluate("()=>__RTS.G.camp&&__RTS.G.camp.id==='m01'&&__RTS.ui.running&&!__RTS.ui.demo"), 'Enter starts the mission: the whole path works without a pointer')
+    step(pg, 30 * 6)
+    ok(vis(pg, 'campRadio'), 'the radio strip shows')
+    ad = pg.evaluate("()=>{const f=s=>{const e=document.querySelector(s);return e?parseFloat(getComputedStyle(e).animationDuration)||0:-1};return{radio:f('#campRadio')}}")
+    ok(0 <= ad['radio'] <= 0.001, f'with prefers-reduced-motion the radio strip animation is ~0 s ({ad})')
+    pg.evaluate("()=>{const R=__RTS;R.G.camp.cnt.trained[0].rifleman=6;for(let i=0;i<12;i++)R.step();for(const b of R.G.buildings.slice())if(b.team===1&&!b.dead)R.kill(b,0);R.ui.endAt=0}")
+    ok(wf(pg, "()=>!document.getElementById('campDebrief').classList.contains('hidden')", 6000), 'the debrief opens')
+    ad = pg.evaluate("()=>{const e=document.querySelector('#cdCard .cd-stars i.on');return e?parseFloat(getComputedStyle(e).animationDuration)||0:-1}")
+    ok(0 <= ad <= 0.001, f'with prefers-reduced-motion the star animation is ~0 s ({ad})')
+    ok(pg.evaluate("()=>document.activeElement&&document.activeElement.id")=='cdGo', 'the debrief focuses Continue')
+    ctx.close()
+
+def sec_endhold(b):
+    print('--- a mission that ends while a cinematic is held: the film plays first, then the debrief', flush=True)
+    ctx, pg = open_page(b)
+    pg.evaluate("()=>{const R=__RTS;R.CU.save=null;R.campLaunch(R.STORY.missions[0]);}"); pg.wait_for_timeout(800)
+    pg.evaluate("()=>{__RTS.campDo(['cine','i1']);__RTS.campDo(['win']);__RTS.ui.endAt=0}")
+    ok(pg.evaluate("()=>__RTS.cineActive()&&__RTS.G.camp.hold&&__RTS.G.camp.result&&__RTS.G.camp.result.res==='victory'&&__RTS.G.camp.result.reason==='win'"), 'a trigger [cine, win] ends the mission while its film is held')
+    pg.wait_for_timeout(700)
+    ok(not vis(pg, 'campDebrief') and film_active(pg), 'the debrief waits for the film')
+    skip_film(pg, 'the held film', 'i1')
+    ok(wf(pg, "()=>!document.getElementById('campDebrief').classList.contains('hidden')", 4000), 'then the debrief card appears')
+    ok('Victory' in text(pg, '#cdCard') and save(pg)['done'].get('m01'), 'with the victory saved')
+    ok(not pg.evaluate("()=>__RTS.G.camp.hold"), 'and the mission is no longer held')
+    ctx.close()
+
+SECTIONS = [('menu', sec_menu), ('flow', sec_flow), ('end', sec_end), ('endhold', sec_endhold), ('extras', sec_extras), ('finale', sec_finale), ('a11y', sec_a11y), ('layout', sec_layout), ('touch', sec_touch)]
 with sync_playwright() as p:
     b = p.chromium.launch(args=['--no-sandbox', '--autoplay-policy=no-user-gesture-required'])
     for name, fn in SECTIONS:
