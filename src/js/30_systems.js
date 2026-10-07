@@ -304,7 +304,7 @@ function updateBuilding(b,dt){
   if(b.cd>0)b.cd-=dt;if(b.flash>0)b.flash-=dt;if(b.revealT>0)b.revealT-=dt;if(b.dmgFlash>0)b.dmgFlash-=dt;
   if(!b.done){
     if(b.nb>0){const dp=dt*(b.nb+2)/(3*d.time);b.prog=Math.min(1,b.prog+dp);b.hp=Math.min(b.maxhp,b.hp+b.maxhp*0.9*dp);}
-    if(b.prog>=1){b.prog=1;b.done=true;
+    if(b.prog>=1){b.prog=1;b.done=true;if(G.camp)campNote('built',b.team,b.type);   // `built` condition counter (45_campaign.js)
       if(b.team===0&&!G.ais[0]){toast(d.name+' complete','good');sfx('done');if(b.type==='generator')say('Supply increased');}
       uiDirty();G.fx.push({x:b.x,y:b.y,t:0,max:0.8,kind:'ring',r:b.r*1.2,col:'#9fe8ff'});}
     return;}
@@ -362,6 +362,7 @@ function setTax(team,lv){G.teams[team].tax=clamp(lv,0,2);uiDirty();}
 function dayNight(){
   G.daylight=clamp(0.5+0.85*Math.cos(TAU*(G.time/360-0.17)),0,1);
   G.sightMul=lerp(0.62,1,G.daylight);
+  if(G.camp)campDaylight();   // mission setup.daylight 'day' / 'night' pins the cycle
 }
 function sampleStats(){
   const s={t:G.time};
@@ -378,6 +379,7 @@ function endGame(res){
 
 /* ---------------------------- simulation step ------------------------- */
 function step(){
+  if(G.camp&&G.camp.hold)return;   // a blocking `cine` action is playing: the world stands still until campaignResume() (45_campaign.js)
   G.tick++;G.time+=TICK;G.pathBudget=16;
   dayNight();rebuildCells();recalcTeams();buildDetectors();
   for(const b of G.buildings){b.nb=b._cnt;b._cnt=0;}

@@ -1,8 +1,5 @@
 /* =========================================================================
-   SFX LIBRARY (stub) — voice specs, cinematic sfx, offline render hooks. Contract: docs/AUDIO_SPEC.md.
+   SFX LIBRARY — voice specs. Register voices here with registerVoice(id,def[,meta]) (docs/AUDIO_SPEC.md §8).
+   The engine (80_audio.js) already implements sfxUnit, sfxBuilding, cineSfx, audioVoices, audioRender and generic fallback voices
+   (global.<name>, cine.<name>); every voice registered below takes precedence over the fallback of the same id automatically.
    ========================================================================= */
-function sfxUnit(type,ev,x,y,faction){}
-function sfxBuilding(type,ev,x,y,faction){}
-function cineSfx(name){}
-function audioVoices(){return[];}
-function audioRender(spec,seconds,sampleRate){return Promise.resolve(null);}

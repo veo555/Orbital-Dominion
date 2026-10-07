@@ -17,7 +17,8 @@ function mkG(seed,diff,f0,f1){
     det:[[],[]],stats:[],statT:0,events:[],shake:0,terrainCv:null,mmBg:null,decalDirty:[],lastAlertT:-99,fightT:0,popups:0};
 }
 function newGame(opts){
-  opts=opts||{};const diff=opts.diff||'normal',f0=opts.faction||'meridian';
+  opts=opts||{};if(opts.campaign)opts=campaignOpts(opts);   // 45_campaign.js: seed/faction/enemy/diff default to the mission's setup
+  const diff=opts.diff||'normal',f0=opts.faction||'meridian';
   let seed=opts.seed!==undefined?opts.seed:((Math.random()*1e9)|0),att=0,f1=opts.enemy&&opts.enemy!=='random'?opts.enemy:null;
   if(!f1){const others=FACTION_IDS.filter(f=>f!==f0);f1=others[Math.floor(mulberry32(seed+3)()*others.length)];}
   if(f1===f0)f1=FACTION_IDS.find(f=>f!==f0);
@@ -207,6 +208,7 @@ function updateVision(){
     mark(u.team,u.x,u.y,u.def.sight*sm,u.flying?9:G.H[tileOf(u.x,u.y)],u.flying);}
   for(const b of G.buildings){if(b.dead)continue;mark(b.team,b.x,b.y,(b.done?b.def.sight:120)*sm,G.H[tileOf(b.x,b.y)],false);}
   for(const n of G.neutrals){if(n.type==='tower'&&n.ctrl>=0)mark(n.ctrl,n.x,n.y,20*TILE,9,true);}
+  if(G.camp&&G.camp.reveals.length)campReveal();   // mission `reveal` actions: timed live vision for the player
   for(const b of G.buildings){if(b.dead)continue;
     if(b.team===1&&!b.seen0&&inFog(0,b))b.seen0=true;
     if(b.team===0&&!b.seen1&&inFog(1,b))b.seen1=true;}
@@ -287,6 +289,7 @@ function queueEra(b){
 }
 function queueHero(b){
   const T=G.teams[b.team],H=T.hero,id=FACTIONS[T.faction].hero,d=UDEF[id];
+  if(G.camp){const L=campLocked(b.team,'hero',id);if(L){msg(b.team,L);return false;}}   // mission hero policy 'none'
   if(H.alive||H.reviving||b.queue.some(q=>q.k==='hero')||G.buildings.some(x=>!x.dead&&x.team===b.team&&x.queue.some(q=>q.k==='hero'))){msg(b.team,'Hero already in play');return false;}
   const dead=H.deaths>0,cost=dead?{c:150+30*H.level,e:50+15*H.level}:d.cost,time=dead?30+5*H.level:d.time;
   if(!afford(T,cost)){msg(b.team,T.c<cost.c?'Not enough crystals':'Not enough ether');return false;}
@@ -322,6 +325,7 @@ function spawnUnit(b,id){
     else setOrder(u,{t:'move',x:r.x,y:r.y});}
   else if(b.type==='hub'&&d.worker){const r=nearestRes(b.x,b.y,'crystal',true,700)||nearestRes(b.x,b.y,'crystal',false,700);if(r)setOrder(u,{t:'gather',res:r,st:'go',hx:r.x,hy:r.y});}
   if(enroll)agEnroll(u,true);
+  if(G.camp)campNote('trained',b.team,id);   // `trained` condition counter (45_campaign.js)
   return u;
 }
 function recalcTeams(){
@@ -331,6 +335,7 @@ function recalcTeams(){
     if(b.done&&b.def.supply)T.cap+=b.def.supply;
     if(b.done&&b.type==='habitat')T.hab++;
     for(const q of b.queue){if(q.k==='u')T.used+=UDEF[q.id].supply;else if(q.k==='hero')T.used+=3;}}
+  if(G.camp&&G.camp.supplyBonus)G.teams[0].cap+=G.camp.supplyBonus;   // mission setup.start.supplyBonus (still limited by MAXSUP)
   for(let t=0;t<2;t++)G.teams[t].cap=Math.min(MAXSUP,G.teams[t].cap);
 }
 
@@ -386,6 +391,7 @@ function finishOrder(u){
 }
 function orderBuild(u,type,tx,ty,q){
   const T=G.teams[u.team],c=bCost(u.team,type);
+  if(G.camp&&campLocked(u.team,'building',type))return false;   // mission restriction (the UI already greys the button; this stops agents / the Overseer)
   if(!afford(T,c))return false;
   const prev=u.order,after=(!q&&prev.t==='gather')?{t:'gather',res:prev.res,st:u.carry>0?'ret':'go',hx:prev.hx,hy:prev.hy}:null;
   pay(T,c);
@@ -548,6 +554,7 @@ function kill(e,by){
     }
     explode(e.x,e.y,false,e.flying);sfx('boom',e.x,e.y);
     G.decalDirty.push({x:e.x,y:e.y,r:e.r*1.5,k:'scorch'});
+    if(G.camp&&e.team===2&&e.camp>=0)campCreepKilled(e,by);   // `camps` condition: who cleared which creep camp
   }else{
     G.needBlocked=true;explode(e.x,e.y,true);sfx('boomBig',e.x,e.y);G.shake=Math.max(G.shake,8);
     if(by!==undefined&&by!==e.team&&by<2){G.teams[by].kills++;giveXP(by,e.x,e.y,60);}

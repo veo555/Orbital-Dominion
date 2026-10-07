@@ -173,6 +173,7 @@ function bindInput(){
   $('bToMenu').onclick=toMenu;$('bAgain').onclick=()=>{startGame();};$('bEndMenu').onclick=toMenu;
   $('setMusic').addEventListener('input',e=>{SET.music=e.target.value/100;applyVolumes();saveSettings();});
   $('setSfx').addEventListener('input',e=>{SET.sfx=e.target.value/100;applyVolumes();saveSettings();});
+  $('setVoice').addEventListener('input',e=>{SET.voiceVol=e.target.value/100;applyVolumes();saveSettings();});
   for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).addEventListener('change',e=>{SET[k]=e.target.checked;saveSettings();if(k==='hints')renderObjectives();if(k==='rm')rootEl.classList.toggle('rm',SET.rm);});
   $('set_quality').addEventListener('change',e=>setQualityMode(e.target.value));
 
@@ -219,6 +220,7 @@ function bindInput(){
 let lastT=0,acc=0;
 function frame(ts){
   requestAnimationFrame(frame);
+  if(cineActive()){lastT=ts;return;}                  // a cinematic owns the screen (and has paused the match): spend nothing on the game canvas
   if(Q.fps&&ts-lastT<1000/Q.fps-1.5)return;           // battery saver: render at most 30 fps (the sim keeps its own fixed step)
   qualityFrame(ts-lastT);
   const dt=Math.min(0.1,(ts-lastT)/1000||0.016);lastT=ts;
@@ -250,5 +252,5 @@ if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
-  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,cinePlay,cineStop,cineActive,cineFrame,cineExport,cineGallery,cineDuration,speak,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,cineSfx,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents};}
+  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,cinePlay,cineStop,cineActive,cineFrame,cineExport,cineGallery,cineDuration,speak,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,cineSfx,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents,AUD};}
 boot();
