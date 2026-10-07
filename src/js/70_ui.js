@@ -264,12 +264,12 @@ function buildCommands(){
     mk(i++,{icon:'u:'+id+':'+T.faction,name:d.name,cost:uCost(0,id),time:uTime(0,id),tip:d.desc,ok:r.ok,why:r.why,supply:d.supply+' supply',def:d,badge:q||'',run:()=>{const bb=pickBuilding(x=>prodList(x).includes(id)&&x.queue.length<5)||b;queueUnit(bb,id);}});}
   if(b.type==='hub'){
     const hid=FACTIONS[T.faction].hero,hd=UDEF[hid],H=T.hero,hc=heroCost(0);
-    const busy=H.alive||H.reviving,ok=!busy&&afford(T,hc)&&T.used+hd.supply<=T.cap;
+    const hLock=G.camp?campLocked(0,'hero',hid):null,busy=H.alive||H.reviving,ok=!busy&&!hLock&&afford(T,hc)&&T.used+hd.supply<=T.cap;   // hLock: campaign hero policy 'none'
     mk(i++,{icon:'u:'+hid+':'+T.faction,name:(H.deaths>0?'Revive ':'Train ')+hd.name,cost:hc,time:H.deaths>0?30+5*H.level:hd.time,tip:hd.desc+' Levels up by fighting; gains skills and auras.',ok,def:hd,supply:'3 supply',
-      why:H.alive?'Hero is in play':H.reviving?'Hero is being trained':!afford(T,hc)?(T.c<hc.c?'Not enough crystals':'Not enough ether'):'Build more Generators',run:()=>queueHero(b)});
-    if(T.era<3){const E=ERAS[T.era+1],ok2=afford(T,E.cost)&&(T.era===1?hasDone(0,'garrison'):hasDone(0,'armory'))&&!G.buildings.some(x=>!x.dead&&x.team===0&&x.queue.some(q=>q.k==='era'));
+      why:hLock||(H.alive?'Hero is in play':H.reviving?'Hero is being trained':!afford(T,hc)?(T.c<hc.c?'Not enough crystals':'Not enough ether'):'Build more Generators'),run:()=>queueHero(b)});
+    if(T.era<3){const E=ERAS[T.era+1],eLock=G.camp?campLocked(0,'era',T.era+1):null,ok2=!eLock&&afford(T,E.cost)&&(T.era===1?hasDone(0,'garrison'):hasDone(0,'armory'))&&!G.buildings.some(x=>!x.dead&&x.team===0&&x.queue.some(q=>q.k==='era'));
       mk(i++,{icon:'g:era',name:'Advance to Era '+E.rom+': '+E.name,cost:E.cost,time:E.time,tip:'Unlocks '+(T.era===1?'Rocketeers, Menders, Howitzers, Juggernauts, Skiffs, the Forum, Exchange, Foundry, Airfield and unique units.':'Titans, level 3 upgrades and +5 morale per era.')+' Needs '+(T.era===1?'a Garrison.':'an Armory.'),ok:ok2,
-        why:G.buildings.some(x=>!x.dead&&x.team===0&&x.queue.some(q=>q.k==='era'))?'Already advancing':!hasDone(0,T.era===1?'garrison':'armory')?'Requires '+(T.era===1?'Garrison':'Armory'):T.c<E.cost.c?'Not enough crystals':'Not enough ether',run:()=>queueEra(b)});}
+        why:eLock||(G.buildings.some(x=>!x.dead&&x.team===0&&x.queue.some(q=>q.k==='era'))?'Already advancing':!hasDone(0,T.era===1?'garrison':'armory')?'Requires '+(T.era===1?'Garrison':'Armory'):T.c<E.cost.c?'Not enough crystals':'Not enough ether'),run:()=>queueEra(b)});}
     mk(i++,{icon:'g:call',name:b.garr.length?'Release Haulers':'Call to Arms',tip:'Up to 15 Haulers shelter inside the Hub; each adds +3 damage to the Hub cannon. Press again to release them.',ok:true,badge:b.garr.length||'',run:()=>callToArms(0,b)});
   }
   if(b.def.research)for(const id of b.def.research){const R=TECH[id],lv=techLevel(T,id),L=techNext(T,id),qd=ownBuildings().some(x=>x.queue.some(q=>q.k==='r'&&q.id===id));

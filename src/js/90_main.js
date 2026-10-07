@@ -7,17 +7,23 @@ function resetUI(){
   $('ecoPanel').classList.add('hidden');$('ecoPanel').dataset.h='';$('objectives').dataset.h='';$('groups').dataset.h='';
   swReset();
 }
-function startGame(){
+/* startGame() = a skirmish from the main-menu settings; startGame({campaign:mission,diff}) = a campaign mission (seed, factions, setup come from the mission data) */
+function startGame(opts){
+  opts=opts||{};const camp=opts.campaign||null;
   stopSpeech();
-  newGame({diff:SET.diff,faction:SET.faction,enemy:SET.enemy,seed:ui.seedOverride!=null?ui.seedOverride:undefined});
+  if(camp)newGame({campaign:camp,diff:opts.diff||SET.diff});
+  else newGame({diff:SET.diff,faction:SET.faction,enemy:SET.enemy,seed:ui.seedOverride!=null?ui.seedOverride:undefined});
   ui.demo=false;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateVision();updateFog(1,true);
+  if(typeof campMatchStart==='function')campMatchStart(camp);
   cam.z=cam.tz=rootEl.classList.contains('compact')?1.2:1;const hub=G.buildings.find(b=>b.team===0&&b.type==='hub');centerOn(hub.x,hub.y);
   setSel([hub]);
   hideOverlays();$('hud').classList.remove('hidden');overlayStack=[];measureHud();centerOn(hub.x,hub.y);
-  setAccent(FACTIONS[SET.faction].col);
+  setAccent(FACTIONS[G.teams[0].faction].col);
   setTxt('bSpeedT','1×');G.speed=1;
   platMatchStart();
-  toast(ui.touchMode?'Tap your Hub to train Haulers, then expand — destroy all enemy structures to win.':'Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');say('Mission started');
+  if(camp){const o=typeof campObjectives==='function'?campObjectives().find(x=>x.kind==='primary'):null;toast((camp.title||'Mission')+(o?' — '+o.text:''),'good');}
+  else toast(ui.touchMode?'Tap your Hub to train Haulers, then expand — destroy all enemy structures to win.':'Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');
+  say('Mission started');
 }
 function stopSpeech(){try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch(e){}}
 function startDemo(){
@@ -27,7 +33,7 @@ function startDemo(){
   $('hud').classList.add('hidden');
   const s=G.sites[0];centerOn(s.cx*TILE,s.cy*TILE);
 }
-function toMenu(){stopSpeech();platMatchStop();startDemo();syncMenu();showOverlay('menu');overlayStack=[];}
+function toMenu(){stopSpeech();platMatchStop();if(typeof campMatchStop==='function')campMatchStop();startDemo();syncMenu();showOverlay('menu');overlayStack=[];}
 function togglePause(){
   if(!G||G.over||ui.demo)return;G.paused=!G.paused;
   if(G.paused){showOverlay('pauseMenu');}else{hideOverlays();overlayStack=[];}
@@ -168,9 +174,9 @@ function bindInput(){
   $('bHelp').onclick=()=>{audioInit();openSub('helpMenu');};$('bSet').onclick=()=>{audioInit();openSub('setMenu');};
   $('bHelpX').onclick=closeSub;$('bSetX').onclick=()=>{saveSettings();closeSub();};
   $('bResume').onclick=togglePause;$('bPHelp').onclick=()=>openSub('helpMenu');$('bPSet').onclick=()=>openSub('setMenu');
-  $('bRestart').onclick=()=>{startGame();};
+  $('bRestart').onclick=()=>{if(typeof campRestart==='function'&&campRestart())return;startGame();};
   $('bSurr').onclick=()=>{if(performance.now()-ui.surr<3500){ui.surr=0;hideOverlays();G.paused=false;endGame('defeat');}else{ui.surr=performance.now();$('bSurr').textContent='Click again to confirm';setTimeout(()=>{$('bSurr').textContent='Surrender';},3600);}};
-  $('bToMenu').onclick=toMenu;$('bAgain').onclick=()=>{startGame();};$('bEndMenu').onclick=toMenu;
+  $('bToMenu').onclick=()=>{if(typeof campPauseBack==='function'&&campPauseBack())return;toMenu();};$('bAgain').onclick=()=>{startGame();};$('bEndMenu').onclick=toMenu;
   $('setMusic').addEventListener('input',e=>{SET.music=e.target.value/100;applyVolumes();saveSettings();});
   $('setSfx').addEventListener('input',e=>{SET.sfx=e.target.value/100;applyVolumes();saveSettings();});
   $('setVoice').addEventListener('input',e=>{SET.voiceVol=e.target.value/100;applyVolumes();saveSettings();});
@@ -184,6 +190,7 @@ function bindInput(){
     if(k==='escape'){
       const cur=currentOverlay();
       if(cur==='helpMenu'||cur==='setMenu'){closeSub();return;}
+      if(typeof campEsc==='function'&&campEsc(cur))return;   // campaign menu / briefing / debrief / Extras: back one step
       if(cur==='menu')return;
     }
     if(!G||!ui.running||ui.demo)return;
@@ -228,13 +235,14 @@ function frame(ts){
   frameBody(dt,ts/1000);
 }
 function frameBody(dt,t){
-  if(!G.paused&&(!G.over||G.time-G.overT<3)){acc+=dt*G.speed;let n=0;while(acc>=TICK&&n<14){step();acc-=TICK;n++;}if(n>=14)acc=0;}
+  if(G.camp&&G.camp.hold)acc=0;   // a blocking campaign cinematic holds the world (step() also returns early): no catch-up burst after the resume
+  else if(!G.paused&&(!G.over||G.time-G.overT<3)){acc+=dt*G.speed;let n=0;while(acc>=TICK&&n<14){step();acc-=TICK;n++;}if(n>=14)acc=0;}
   if(Math.abs(cam.tz-cam.z)>0.002)setZoom(cam.z+(cam.tz-cam.z)*Math.min(1,dt*12),ui.zx,ui.zy);
   if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);touchUpdate(dt);if(ui.place)updatePlaceGhost();}
   updateFog(dt,ui.fogForce);ui.fogForce=false;
   terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
   render(t,dt);drawMinimap();fpsOverlay(dt);
-  if(!ui.demo){hudUpdate(dt);cursorUpdate();
+  if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof campUiTick==='function')campUiTick(dt);
     if(ui.endRes&&performance.now()>ui.endAt)showEnd();}
 }
 

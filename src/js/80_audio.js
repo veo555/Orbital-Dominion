@@ -29,7 +29,7 @@ const LIMF=[0.35,0.9,0.6,0.7,0.8,0.9,1,1];   // admission limit as a fraction of
 const VARY={ui:{pitch:0.01},fire:{pitch:0.05,filter:0.12,gain:0.08},impact:{pitch:0.05,filter:0.10,gain:0.06},boom:{pitch:0.04,filter:0.10},voice:{pitch:0.02},alert:{},cine:{pitch:0.02},amb:{},music:{}};
 const FACP={meridian:1,obsidian:0.84,aurora:1.22,wild:0.72};   // pitch bias of GENERIC fallback voices per faction (content voices replace this with real timbres)
 const VOICES=new Map(),RENDERERS={},READY=[];
-let DER=Object.create(null),GEN=Object.create(null),legacyOn=true;
+let DER=Object.create(null),GEN=Object.create(null),FG=Object.create(null),legacyOn=true;
 const S={buses:[],A:[],cache:null,nodes:0,nodesM:0,master:null,comp:null,an:null,anBuf:null,fresh:true,anchor:null,hidden:false,spoken:0};
 const BSET=new Set(typeof BUILDING_TYPES!=='undefined'?BUILDING_TYPES:[]);
 const FACS=typeof SFX_FACTIONS!=='undefined'?SFX_FACTIONS:['meridian','obsidian','aurora','wild'];
@@ -336,7 +336,7 @@ function mkVoice(id,def,meta){
 }
 function registerVoice(id,def,meta){
   if(typeof id!=='string'||!id)throw new Error('registerVoice: id must be a non-empty string');
-  const v=mkVoice(id,def,meta);VOICES.set(id,v);DER=Object.create(null);GEN=Object.create(null);return id;
+  const v=mkVoice(id,def,meta);VOICES.set(id,v);DER=Object.create(null);GEN=Object.create(null);FG=Object.create(null);return id;
 }
 function registerRenderer(kind,fn){
   if(typeof kind!=='string'||typeof fn!=='function')throw new Error('registerRenderer(kind,fn)');
@@ -362,7 +362,7 @@ function whoInfo(who){
   if(fa==='neutral'||fa==='none')fa='wild';
   W.fa=fa||null;
 }
-const EVN={select:'select',ack:'ack',fire:'fire',melee:'melee',die:'die',ready:'ready',hit:'hit',shoot:'fire',bolt:'fire',rocket:'fire',shell:'fire',acid:'fire',boom:'die',boomBig:'die',done:'*',place:'place'};
+const EVN={select:'select',ack:'ack',fire:'fire',melee:'melee',die:'die',ready:'ready',hit:'hit',shoot:'fire',bolt:'fire',rocket:'fire',shell:'fire',acid:'fire',boom:'die',boomBig:'die',done:'*',place:'place',amb:'amb'};
 function derived(ty,ev,fa){
   const a=DER[ty]||(DER[ty]={}),b=a[ev]||(a[ev]={});let v=b[fa];
   if(v===undefined){v=VOICES.get(ty+'.'+ev+'.'+fa)||(ev==='fire'?VOICES.get(ty+'.melee.'+fa):ev==='melee'?VOICES.get(ty+'.fire.'+fa):null)||null;b[fa]=v;}
@@ -373,10 +373,20 @@ function generic(name){
   const nm=name.indexOf(':')>=0?name.replace(':','.'):name;
   return GEN[name]=VOICES.get(nm)||VOICES.get('ui.'+nm)||VOICES.get('global.'+nm)||null;
 }
+/* per-faction GLOBAL voices (81_sfx_world.js): global.<name>.<faction> / ui.<name>.<faction>, e.g. the era / win / lose fanfares. The faction is the one of `who`; the three fanfare names
+   called WITHOUT `who` (the sim does: sfx('era'), sfx('win')) use the local player's faction (G.teams[0]). Cached per (name, faction); the cache is dropped by registerVoice. */
+const FACG={era:1,win:1,lose:1};
+function facGlobal(name,fa){
+  const a=FG[name]||(FG[name]=Object.create(null));let v=a[fa];
+  if(v===undefined)v=a[fa]=VOICES.get('global.'+name+'.'+fa)||VOICES.get('ui.'+name+'.'+fa)||null;
+  return v;
+}
 function resolve(name,who){
   whoInfo(who);
   let v=VOICES.get(name);if(v)return v;
   if(W.ty&&W.fa){const ev=EVN[name];if(ev){v=derived(W.ty,ev==='*'?(W.kind==='building'||BSET.has(W.ty)?'done':'ready'):ev,W.fa);if(v){W.der=true;return v;}}}
+  let fa=W.fa;if(!fa&&FACG[name]===1&&typeof G!=='undefined'&&G&&G.teams&&G.teams[0])fa=G.teams[0].faction;
+  if(fa){v=facGlobal(name,fa);if(v){W.fa=fa;W.der=true;return v;}}
   return generic(name);
 }
 

@@ -89,6 +89,7 @@ function syncMenu(){
   for(const el of $('enemyRow').children)el.classList.toggle('sel',el.dataset.e===SET.enemy);
   for(const el of $('diffRow').children)el.classList.toggle('sel',el.dataset.d===SET.diff);
   setAccent(FACTIONS[SET.faction].col);
+  if(typeof campSyncMenu==='function')campSyncMenu();
   $('setMusic').value=SET.music*100;$('setSfx').value=SET.sfx*100;$('setVoice').value=SET.voiceVol*100;
   for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).checked=!!SET[k];
   $('set_quality').value=SET.quality;
@@ -101,6 +102,7 @@ function currentOverlay(){const o=document.querySelector('.overlay:not(.hidden)'
 function closeSub(){const prev=overlayStack.pop();if(prev)showOverlay(prev);else hideOverlays();}
 
 function showEnd(){
+  if(G&&G.camp&&typeof campShowEnd==='function'){const r=ui.endRes;ui.endRes=null;if(campShowEnd(r))return;}   // campaign match: debrief card (76_campaign_ui.js)
   const res=ui.endRes,win=res==='victory';ui.endRes=null;
   const T0=G.teams[0],T1=G.teams[1];
   $('endTitle').textContent=win?'Victory':'Defeat';$('endTitle').className=win?'win':'lose';

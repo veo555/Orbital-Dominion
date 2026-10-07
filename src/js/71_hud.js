@@ -138,6 +138,7 @@ const OBJECTIVES=[
   {t:'Build an Exchange and send a Freighter to a Trading Post',d:()=>G.teams[0].tradeEarn>0},
   {t:'Destroy every enemy structure to win',d:()=>false}];
 function renderObjectives(){
+  if(G&&G.camp&&typeof campRenderObjectives==='function'){campRenderObjectives();return;}   // campaign mission: its own objectives replace the tutorial hints
   const host=$('objectives');if(!SET.hints){host.classList.add('hidden');return;}host.classList.toggle('hidden',!ui.objOpen);if(!ui.objOpen)return;
   const todo=[];for(const o of OBJECTIVES)if(!o.d())todo.push(o);
   const html='<b>Objectives</b>'+todo.slice(0,3).map((o,i)=>'<div class="ob'+(i?' dim':'')+'">'+(ui.touchMode&&o.tt?o.tt:o.t)+'</div>').join('');
