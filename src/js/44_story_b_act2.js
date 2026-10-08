@@ -522,7 +522,7 @@ Object.assign(STORY.cine,{
         lines:[
           {who:"lyra",text:"Six Specters, one night, the Wake's Roll. What's it worth to you?",t:0.6,dur:3.9,style:"normal",expr:"determined"},
           {who:"oru",text:"The Syndicate does not rob a census. No charge for the advice.",t:5,dur:3.7,style:"normal",expr:"smile"},
-          {who:"lyra",text:"Then the Syndicate can pay for the sequel.",t:9.2,dur:2.6,style:"normal",expr:"cold"}
+          {who:"lyra",text:"Then the Syndicate can pay for the next one.",t:9.2,dur:2.6,style:"normal",expr:"cold"}
         ],
         sfx:[
           {t:0.2,name:"wind"}
@@ -618,8 +618,8 @@ Object.assign(STORY.cine,{
           {k:"vignette",t0:0,t1:7.9,a:0.6}
         ],
         lines:[
-          {who:"lyra",text:"Class Nine: the Collective. First.",t:1.2,dur:2.4,style:"normal",expr:"determined"},
-          {who:"lyra",text:"Ostrander, Y.: exempt, essential.",t:4.8,dur:2.4,style:"normal",expr:"cold"}
+          {who:"lyra",text:"Class Nine is the Collective. Its own people, first.",t:1.2,dur:2.8,style:"normal",expr:"determined"},
+          {who:"lyra",text:"And the author isn't on it. She wrote herself out.",t:4.8,dur:2.7,style:"normal",expr:"cold"}
         ],
         sfx:[
           {t:0.2,name:"wind"},
@@ -642,7 +642,7 @@ Object.assign(STORY.cine,{
           {k:"vignette",t0:0,t1:5.4,a:0.65}
         ],
         lines:[
-          {who:"lyra",text:"Oh. I know that handwriting.",t:2.6,dur:2,style:"normal",expr:"sad"}
+          {who:"lyra",text:"My warning. Oru kept it in a drawer.",t:2.6,dur:2,style:"normal",expr:"sad"}
         ],
         sfx:[
           {t:0.3,name:"click"}
@@ -690,7 +690,7 @@ Object.assign(STORY.cine,{
           {k:"vignette",t0:0,t1:3.6,a:0.65}
         ],
         lines:[
-          {who:"narrator",text:"It wants its Key-bearer.",t:0.9,dur:2,style:"thought"}
+          {who:"narrator",text:"The Veil showed her a hand on the Key.",t:0.9,dur:2.3,style:"thought"}
         ],
         sfx:[
           {t:0.3,name:"heartbeat"}
@@ -1120,7 +1120,7 @@ Object.assign(STORY.cine,{
           {k:"vignette",t0:0,t1:5,a:0.8}
         ],
         lines:[
-          {who:"kaz",text:"I was never cruel. I was obedient, which is worse.",t:0.9,dur:3.2,style:"normal",expr:"weary"}
+          {who:"kaz",text:"I was never cruel. I did what I was told.",t:0.9,dur:3.2,style:"normal",expr:"weary"}
         ],
         sfx:[],
         trans:{in:"cut",out:"cut",len:0.4}

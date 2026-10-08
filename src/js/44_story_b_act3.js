@@ -467,7 +467,7 @@ Object.assign(STORY.cine,{
         props:[{k:"beacon",t0:0,t1:9.1,at:[0.36,0.7],scale:0.12,col:"#ffb347"}],
         fx:[{k:"embers",t0:0,t1:9.1,a:0.25,col:"#ffb070"},{k:"vignette",t0:0,t1:9.1,a:0.6}],
         lines:[
-          {who:"lyra",text:"Hers was a pen. The Axis wants the Key.",t:0.6,dur:2.5,style:"normal",expr:"determined"},
+          {who:"idris",text:"Hers was a pen. The Axis wants the Key.",t:0.6,dur:2.5,style:"normal",expr:"cold"},
           {who:"lyra",text:"I tune it. It will want something of mine too.",t:3.5,dur:2.8,style:"normal",expr:"determined"},
           {who:"idris",text:"I am not asking anyone to stop me.",t:6.7,dur:2.2,style:"normal",expr:"cold"}
         ],
@@ -626,7 +626,7 @@ Object.assign(STORY.cine,{
         fx:[{k:"rings",t0:0.4,t1:4.5,a:0.5,col:"#ffd9a0",x:0.5,y:0.6},{k:"vignette",t0:0,t1:4.5,a:0.5}],
         lines:[
           {who:"idris",text:"One life. Count me.",t:1.0,dur:1.5,style:"normal",expr:"determined"},
-          {who:"mags",text:"I'm here.",t:2.9,dur:1.4,style:"normal",expr:"weary"}
+          {who:"mags",text:"Here.",t:2.9,dur:1.4,style:"normal",expr:"weary"}
         ],
         trans:{in:"cut",out:"cut",len:0.4}
       },
@@ -888,7 +888,7 @@ Object.assign(STORY.cine,{
         sfx:[{t:0.2,name:"wind"},{t:3.5,name:"crowd"}],
         lines:[
           {who:"pim",text:"Does it hurt, carrying?",t:1.2,dur:1.8,style:"normal",expr:"neutral"},
-          {who:"kaz",text:"Yes. Carry it anyway.",t:3.4,dur:1.7,style:"normal",expr:"sad"}
+          {who:"kaz",text:"Yes. It hurts. Carry it anyway.",t:3.4,dur:1.9,style:"normal",expr:"sad"}
         ],
         trans:{in:"cut",out:"cut",len:0.4}
       },

@@ -703,7 +703,7 @@ Object.assign(STORY.cine,{
         ],
         lines:[
           {who:"idris",text:"Who built it?",t:0.4,dur:1.2,style:"normal",expr:"determined"},
-          {who:"brio",text:"Nobody signs a door. (I can tell you who's been using it, though.)",t:2,dur:3.8,style:"normal",expr:"smirk"},
+          {who:"brio",text:"Nobody signs a door. I can tell you who's been using it, though.",t:2,dur:3.8,style:"normal",expr:"smirk"},
           {who:"brio",text:"Give me five camps and a day.",t:6.3,dur:1.9,style:"normal",expr:"determined"}
         ],
         sfx:[]

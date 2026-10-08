@@ -169,3 +169,61 @@ Workflow: `const r=await audioRender({sfx:id,seed:0},0,44100); const a=audioAnal
 
 ### 8.10 Honest limits
 Only structural and measured properties are claimed here: level, spectrum, pitch, determinism, governance, latency. Nobody has listened to any of it. The fallback voices are a faithful port of the original beeps with calibrated levels, not designed sounds; they were checked for distinct hashes, not for taste. Stealing of older voices, per-class mix trims, and HRTF/occlusion are not implemented. Headless Chromium proves the Web Audio graph builds and renders; it does not prove mobile loudness, latency or the iOS/Android lifecycle.
+
+## 9. Music data format and authoring guide
+The sequencer is `src/js/82_music.js`. The data is plain objects read at play time: a cue is `MUSIC_DATA[id]`, a leitmotif is `MOTIF[id]`. Files: `83_music_factions.js` (the three faction themes, the worked examples), `83_motifs.js` (the eight leitmotifs), `83_music_cues_a.js` (title, intro, hope, mystery, tension, dread, villain, march, battle). `MUSIC.info(id)` and `MUSIC.check(id)` (warnings) read any cue.
+
+### 9.1 Cue
+| field | meaning |
+|---|---|
+| `tempo` | BPM. One tempo per cue (`tempoEra` ramps live by at most 1.5 BPM per bar; campaign cues do not use it) |
+| `meter:[n,d]` | time signature, default 4/4. A bar is `n·grid/d` steps |
+| `grid` | steps per whole note (16 = sixteenths) |
+| `key`, `mode` | tonic (`'D'`, `'F#'`) and scale (`major`, `dorian`, `phrygian`, `lydian`, `mixolydian`, `locrian`, `minor`, `pentatonic`, …) |
+| `loop`, `loopFrom`, `tail` | a looping cue repeats from `loopFrom` (default 0); `tail` is the ring-out in seconds after a non-looping cue ends |
+| `gain`, `room`, `dly`, `dlyFb` | cue gain; default reverb room (`hall`, `plate`, `air`); delay time in beats; delay feedback |
+| `stems` | defaults per stem: `inst`, `reg` (`'C3'`), `ref` (`chord` or `scale`), `gain`, `rev`, `room`, `prio` (0..1; a lower value drops first when the node budget is full), `voices`, `kind:'lanes'` for drum-like stems |
+| `sections` | the ordered list (9.1b). A loop lasts `Σ bars·beats·60/tempo` seconds |
+
+#### 9.1b Section
+`{name, bars, chords, mode?, key?, meter?, inst?, play, motifs?}`
+* `chords`: one symbol per bar (`'Dm C#dim Bb A'`); `@n` holds a chord for n bars (`'D@3'`); `/` gives a bass (`'G/B'`). Qualities are the `CQ` table of 82_music.js (`m`, `7`, `maj7`, `sus2`, `sus4`, `add9`, `dim`, `m7b5`, `mb9`, `add#11`, `maj7#11`, …).
+* `inst`: `{stem: instrument}`, the timbre of a stem for the whole section.
+* `play`: `{stem: entry or [entries]}`. The entries of one stem all sound together.
+* `motifs`: `[{id, bar, beat, stem, inst?, key?, mode?, oct?, transpose?, vel?, rate?, gate?}]`. `bar` and `beat` count from the section start; `stem` names the stem that carries the motif.
+
+#### 9.1c Entries and patterns
+An entry is `{p, inst?, vel?, voices?, oct?, gate?}`. A lanes stem takes `{kick: …, snare: …}`: every key that is not an option name is a lane, and a lane name is an instrument name.
+* `p`, melodic: whitespace-separated tokens, one per step (`:n` = n steps): `.` rest, `-` tie, `C` the whole chord, `B` the chord bass, `1…n` a chord tone (ref `chord`) or a scale degree (ref `scale`), `#`/`b` accidentals, `'` octave up, `,` octave down, `!` accent, `~` soft. `p:'chord'` is a sustained chord, one voicing per chord change.
+* lanes: one character per step: `x` hit, `X` accent, `o` soft, `g` ghost, `f` flam, `d` drag, `r` roll, `.` rest.
+* An array of patterns gives one pattern per bar (bar index modulo the length); a single pattern repeats through the section. A pattern's length divides its bar, or is a whole number of bars that divides the section.
+* `vel` multiplies the velocity of a melodic entry or a sustained chord; a motif's `vel` multiplies its notes. Lanes take their level from the characters.
+* Source nodes: a cue may have at most 24 sounding (`BUDGET` = `AUD.capMusic`). A note costs its layers (an osc with `unison` costs one per copy, a modal pluck one per partial). A note that does not fit is dropped, lowest `prio` first; after `audioRender`, `MUSIC.last()` reports the drops per stem.
+
+### 9.2 Leitmotifs
+`MOTIF[id](key, mode, voice)` returns `{inst, notes}` (a bare array of notes is also accepted). A note is `{n: midi, b, d, v}` (`n` may also be a name such as `'D4'`): `b` is the start in beats from the motif's own beat, `d` the length in beats, `v` the velocity 0..1. `inst` is the default instrument. `voice` is the sequencer's context (`inst, oct, vel, bpm, beat, stem, era, night, intensity`); the eight motifs in 83_motifs.js ignore it, and a motif must not add `oct` itself (the entry's `oct` is added by the engine). The function is pure in (key, mode): no randomness, no clock, no sim state.
+A section's motif entry sets the instrument (`inst` overrides the default), the restatement (`key`, `mode`), `transpose` (semitones), `oct`, `vel`, and `rate` (2 plays it twice as fast). The ids are the `MOTIFS` list of 43_vocab.js: `idris`, `kaz`, `lyra`, `villain`, `worker`, `colony`, `array`, `hope`. Shapes and default instruments are in the header of 83_motifs.js.
+
+### 9.3 The intro: section table
+`intro` is 26 bars of 4/4 at 80 BPM (3.000 s per bar), key D, one pass (`loop:false`, `len` 78). "Start" is the straight-through start; a steer moves it (9.5).
+
+| section | index | start (s) | bars | length (s) | content |
+|---|---|---|---|---|---|
+| A | 0 | 0.0 | 6 | 18.0 | planet-rise: a soft heartbeat on the quarters, a swell on a D pedal, the worker figure (bars 2–3), the colony hymn (bars 4–5) |
+| B | 1 | 18.0 | 7 | 21.0 | colony hymn (bars 0–1), then Meridian (bars 2–3, the Idris fanfare), Aurora (bar 4, the Lyra bells), Obsidian (bars 5–6, the Kaz stomp); ends on Bb |
+| C | 2 | 39.0 | 5 | 15.0 | villain reveal: a darkening pad (Dm, C#dim, C, Bb, A), the villain cluster on a pedal each bar, a quickening heartbeat; the array tolls at bar 4 |
+| D | 3 | 54.0 | 6 | 18.0 | war: the drive bass and groove over Dm (bars 0–2), then Bb, C and the cadence on A; Idris, Kaz, Idris a fourth up, Kaz, Lyra |
+| E | 4 | 72.0 | 2 | 6.0 | title hit on D major: crash, timpani and a brass chord held over both bars; the hope motif resolves; the lyra bell answers |
+
+### 9.4 Rules for campaign cues
+* **Static.** No `int`, `era` or `night` entry gates and no stem `on`/`mix` curves. A section's `mix` applies per bar only in live play; an offline render applies the first section's mix to the whole piece, so live and rendered music would differ. Dynamics come from `vel`, instrument choice and pattern.
+* **One timbre per stem in a section.** The entries of a stem sound together. For a second timbre in the same section, use another stem or a motif entry (each names its own instrument).
+* **A pulse in the first 24 s.** The tempo gate reads the first 24 s of a cue, so put a steady pulse at the declared tempo there (a quarter-note kick, tick or bass). A reading of twice or half the declared tempo passes the gate.
+* **Loops match `len`.** `Σ bars·beats·60/tempo` should equal `MUSIC_CUES[id].len` (title 48, hope 40, mystery 40, tension 32, dread 40, villain 40, march 40, battle 40).
+* **Loop seams are cadences.** A loop's last chord leads into its first.
+* **Level.** A programme sits near −20 dBFS RMS (the gate window is −26 to −14); the cue's `gain` sets it.
+
+### 9.5 Steering a sectioned cue from a film
+* `musicPlay(cue, {section})` (index or name) starts that section at its first bar; the fade is the caller's (the film uses 0.8 s). Without a steer the sections play in order, and a non-looping cue ends after its last section.
+* A steer is safe when the section it cuts would not have ended before the steer. With the lengths of 9.3 (18, 21, 15, 18 and 6 s), the steer points of the current `intro` film (44_story_b_intro.js) work out as follows: section 1 needs no steer at 18.0 s, its natural start (a steer at 18.4 restarts it 0.4 s late); section 2 at 28.2 s (section 1 would end at 39.0); section 1 again at 41.1 s (section 2 would end at 43.2); section 3 at 59.9 s (section 1 would end at 62.1); section 4 at 75.5 s (section 3 would end at 77.9). Section 4 then plays 6 s, and the film's title scene ends at 80.7 s.
+* Re-check these inequalities whenever the film or the section lengths change.

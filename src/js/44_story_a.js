@@ -110,7 +110,7 @@ const STORY={
       voice:{pitch:0.68,rate:0.9,timbre:"rough",formant:0.34,ttsPitch:0.58,ttsRate:0.9},
       look:{skin:"#7a4a30",hair:{style:"crest",color:"#2a1c1c"},eyes:"#ff9a3c",armor:{style:"plate",col:"#ff4d4d",trim:"#ffb0a8"},mark:["scar-l"],build:"massive",age:"adult",emblem:"faction"},
       motif:"kaz",
-      quote:"I was never cruel. I was obedient, which is worse."
+      quote:"I was never cruel. I did what I was told."
     },
     lyra:{
       id:"lyra",name:"Seer Lyra Sennet",short:"Lyra",title:"Seer of the Aurora Syndicate",

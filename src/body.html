@@ -128,6 +128,7 @@
     <label class="chk"><input type="checkbox" id="set_haptics"> Vibration feedback (phones)</label>
     <label class="chk"><input type="checkbox" id="set_wake"> Keep the screen awake during a match</label>
     <label class="chk"><input type="checkbox" id="set_fps"> Show frame-rate statistics</label>
+    <div class="row"><button class="btn" id="bSoundLab" type="button">Sound lab</button><span class="dim small">Every voice, music cue and character</span></div>
     <div class="row end"><button class="btn big" id="bSetX">Done</button></div>
   </div>
 </div>
@@ -163,6 +164,9 @@
 </div>
 
 <!-- AUDIO:BEGIN  (WF-audio only: Sound Lab panel) -->
+<div id="soundLab" class="overlay dim hidden" role="dialog" aria-modal="true" aria-labelledby="slTitle" data-sound-lab>
+  <div class="card sl-card" id="slCard"></div>
+</div>
 <!-- AUDIO:END -->
 <!-- CINE:BEGIN  (WF-cinematics only: #cineOverlay canvas, subtitle strip, skip button) -->
 <div id="cineOverlay" class="cine-ov hidden" role="dialog" aria-modal="true" aria-label="Cinematic" tabindex="-1">

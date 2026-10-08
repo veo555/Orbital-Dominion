@@ -39,10 +39,10 @@ Object.assign(STORY.radio,{
 
   /* ---------------- M3 The Axis: Day 4, creep clearing, the ambush and the hold ---------------- */
   m03_r1:{who:"brio",text:"Vantage survey, Marshal. Beacons go down at every camp you clear.",style:"radio",dur:4.0},
-  m03_r2:{who:"brio",text:"One beacon down. The next camp is lit on your map, Marshal. (Yes, I know. I drew it.)",style:"radio",dur:4.6},
+  m03_r2:{who:"brio",text:"One beacon down. The next camp is lit on your map, Marshal. Yes, I know. I drew it.",style:"radio",dur:4.6},
   m03_r3:{who:"brio",text:"Two down. Still a ring, Marshal. Still a very large door, and I can count its hinges.",style:"radio",dur:4.6},
   m03_r4:{who:"marr",text:"Six riflemen up the forward road, Marshal. I signed for them, and every camp is in my book.",style:"radio",dur:5.0},
-  m03_r5:{who:"brio",text:"Four down. The last one is the ring itself. Brutes, and crystal fused like glass.",style:"radio",dur:4.6},
+  m03_r5:{who:"brio",text:"Four beacons down. The ring is open, Marshal. Brutes in the middle, and crystal fused like glass.",style:"radio",dur:5.4},
   m03_r6:{who:"overseer",text:"AXIS. ACCESS GRANTED.",style:"radio",dur:2.0},
   m03_r7:{who:"brio",text:"Founders' script, Marshal. Whoever bears the Key and has spent the Lantern may pay the Lantern once.",style:"radio",dur:5.8},
   m03_r8:{who:"marr",text:"Forgive me, Marshal.",style:"radio",dur:2.2},
