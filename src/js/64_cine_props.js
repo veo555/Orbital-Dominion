@@ -952,5 +952,41 @@ function cprHolo(g,x,y,size,p,t,seed,S){
 }
 CINE_PAINT.prop.holo=cprHolo;
 
+/* crowd: a silhouetted gathering of one faction. Back rows are drawn first, figures are rim-lit from the scene light,
+   a few raise an arm and one banner waves; all motion is closed-form in t (no state, reduced motion holds still). */
+function cprFigure(g,x,yb,h,col,L,arm,rm,t,ph){
+  const hw=h*.15,dark=cprDark(col.base),rim=col.light;
+  g.save();g.fillStyle=dark;g.lineCap='round';
+  g.beginPath();g.moveTo(x-hw,yb);g.lineTo(x-hw*.9,yb-h*.42);g.quadraticCurveTo(x-hw*1.15,yb-h*.62,x-hw*.6,yb-h*.66);
+  g.lineTo(x+hw*.6,yb-h*.66);g.quadraticCurveTo(x+hw*1.15,yb-h*.62,x+hw*.9,yb-h*.42);g.lineTo(x+hw,yb);g.closePath();g.fill();
+  g.beginPath();g.arc(x,yb-h*.8,h*.1,0,TAU);g.fill();
+  const sx=x+hw*.9,sy=yb-h*.6;
+  g.strokeStyle=dark;g.lineWidth=Math.max(1.2,h*.07);g.beginPath();g.moveTo(sx,sy);
+  if(arm)g.lineTo(sx+hw*.5+(rm?0:Math.cos(ph)*h*.06),sy-h*.36);else g.lineTo(sx+hw*.15,sy+h*.22);
+  g.stroke();
+  const side=L.x<0?-1:1;g.strokeStyle=rim;g.lineWidth=Math.max(1,h*.02);g.globalAlpha=.55;
+  g.beginPath();if(side<0)g.arc(x,yb-h*.8,h*.1,2.2,4.1);else g.arc(x,yb-h*.8,h*.1,-1.1,1.9);g.stroke();
+  g.globalAlpha=1;g.restore();
+}
+function cprCrowd(g,x,y,size,p,t,seed,S){
+  const fk=FACTIONS[p.faction]?p.faction:'meridian',col=FACTIONS[fk].col,L=cprLight(g,x,y,S),rm=!!(S&&S.rm);
+  const n=6+Math.floor(cnHash(seed,2,11)*5),yb=y+size*.5,w=size*1.2;
+  cnShadow(g,x,yb+size*.01,w*.55,size*.05,.35);
+  for(const back of[true,false])for(let i=0;i<n;i++){
+    const isBack=(i*7)%3===0;if(isBack!==back)continue;
+    const u=n>1?i/(n-1):.5,fx=x-w*.5+u*w+(cnHash(seed,i,3)-.5)*size*.06;
+    const h=size*(isBack?.7:.84)*(.86+cnHash(seed,i,5)*.26);
+    const bob=rm?0:Math.sin(t*1.7+i*1.1)*size*.008;
+    cprFigure(g,fx,yb-(isBack?size*.03:0)+bob,h,col,L,i%3===1,rm,t,rm?0:Math.sin(t*2+i)*.9);
+  }
+  const pxm=x+(cnHash(seed,9,13)-.5)*size*.2,top=yb-size*.95,pw=Math.max(1,size*.01);
+  g.save();g.fillStyle='#8d9ab2';g.fillRect(pxm-pw/2,top,pw,size*.95);
+  const wave=rm?0:Math.sin(t*2.4)*size*.02;
+  g.fillStyle=col.base;g.beginPath();g.moveTo(pxm,top);g.quadraticCurveTo(pxm+size*.12,top+size*.04+wave,pxm+size*.2,top+size*.02+wave*.6);
+  g.lineTo(pxm+size*.2,top+size*.12+wave*.6);g.quadraticCurveTo(pxm+size*.12,top+size*.1+wave,pxm,top+size*.14);g.closePath();g.fill();
+  g.restore();
+}
+CINE_PAINT.prop.crowd=cprCrowd;
+
 /*@@END@@*/
 })();
