@@ -255,6 +255,38 @@ function cbgFarLand(g,C,opt){
   return out;
 }
 
+/* local summits of a ridge layer (for lava glows, beacons, plumes). Cached: a pure function of its key */
+const CBG_PK=new Map();
+function cbgPeaks(C,L,amp,base,minK){
+  const key=C.seed+'|'+C.W+'|'+C.H+'|'+C.E.bio+'|'+L+'|'+C.F.x+'|'+C.F.w;let r=CBG_PK.get(key);if(r)return r;
+  const prof=cbgProfile(C.E.bio,L,C.seed+0),F=C.F,st=7,n=Math.ceil(F.w/st),hs=new Float32Array(n);r=[];
+  for(let i=0;i<n;i++)hs[i]=prof((F.x+i*st)/C.H);
+  for(let i=6;i<n-6;i++){let m=true;for(let j=-6;j<=6;j++)if(hs[i+j]>hs[i]+1e-6){m=false;break;}if(m&&hs[i]>minK)r.push({x:F.x+i*st,y:base-hs[i]*amp,h:hs[i]});}
+  r=r.slice(0,40);if(CBG_PK.size>24)CBG_PK.clear();CBG_PK.set(key,r);return r;
+}
+/* ash worlds: glowing lava veins down the flanks of the nearer volcanoes and a leaning ash column (static) */
+function cbgLava(g,C){
+  const{E,H,W,u,hzY,seed,F}=C,night=E.night,k=night?1.3:E.tod==='day'?.55:.95;
+  const layers=[{L:1,amp:H*.23,off:H*.004},{L:2,amp:H*.16,off:H*.012}];let tallest=null;
+  g.save();g.globalCompositeOperation='lighter';g.lineCap='round';g.lineJoin='round';
+  for(const l of layers){
+    for(const pk of cbgPeaks(C,l.L,l.amp,hzY+l.off,.5)){
+      cnGlow(g,pk.x,pk.y,H*.07*(1+l.L*.2),'#ff5a1a',.42*k);
+      for(let sd=0;sd<3;sd++){
+        const dir=(sd-1)*(.7+cnR(seed,pk.x|0,sd)*.4);let x=pk.x,y=pk.y+2;
+        for(let j=0;j<9;j++){const nx=x+dir*H*.012+(cnR(seed,j+sd*9,(pk.x|0))-.5)*H*.012,ny=y+H*.012*(1+cnR(seed,j,sd+3)),a=(1-j/9)*.7*k;
+          g.strokeStyle=cnA('#ff7a2a',a);g.lineWidth=Math.max(1,u*(1.8-j*.15));g.beginPath();g.moveTo(x,y);g.lineTo(nx,ny);g.stroke();x=nx;y=ny;}
+      }
+      if(!tallest||pk.y<tallest.y)tallest=pk;
+    }
+  }
+  g.restore();
+  if(tallest){      /* ash column */
+    const T=tallest;
+    for(let i=0;i<16;i++){const q=i/15,x=T.x+q*W*.12+Math.sin(q*5+seed)*W*.01,y=T.y-q*H*.36,r=H*(.018+.065*q);cbgPuff(g,x,y,r*1.3,E.sh('#2a2022',.35),.3*(1-q*.5));cbgPuff(g,x+(E.ld>0?r*.3:-r*.3),y-r*.1,r*.7,E.sh('#6a5a58',.9),.18*(1-q*.4));}
+  }
+}
+
 /* ------------------------------------------------ 5. ground plane: perspective bands, scatter, contact shadows ------------------------------------------------ */
 function cbgGroundFill(g,C,o){
   o=o||{};const{F,E,H,W,u,hzY}=C,M=E.mat,y1=F.y+F.h;
@@ -263,6 +295,11 @@ function cbgGroundFill(g,C,o){
   /* sun / moon sheen on the ground (specular on ice, dust haze elsewhere) */
   const sun=C.sun;if(sun){const a=E.bio==='ice'?.4:.2;g.save();g.globalCompositeOperation='lighter';g.fillStyle=cnRG(g,sun.x,hzY,0,W*.5,[[0,cnA(E.glow,a*E.T.gl)],[1,cnA(E.glow,0)]]);
     g.save();g.beginPath();g.rect(F.x,hzY,F.w,y1-hzY);g.clip();g.translate(0,hzY);g.scale(1,.22);g.translate(0,-hzY);g.fillRect(F.x,hzY-W*.5,F.w,W);g.restore();g.restore();}
+  /* large soft light / dark patches break up the flat ground tone (cloud shadows, mineral stains, wind scour) */
+  for(let i=0;i<18;i++){
+    const k=Math.pow(cnR(C.seed,i,81),.75),y=hzY+(y1-hzY)*k*.95,x=F.x+cnR(C.seed,i,82)*F.w,rx=W*(.07+.18*cnR(C.seed,i,83))*(.35+k),ry=rx*.17*(.5+k),light=cnR(C.seed,i,84)<.5;
+    g.save();g.translate(x,y);g.scale(1,ry/rx);g.fillStyle=cnRG(g,0,0,0,rx,[[0,light?cnA(E.sh(M.ground[0],1.15),.2):cnA(E.sh(M.ground[1],.05),.26)],[1,'rgba(0,0,0,0)']]);g.fillRect(-rx,-rx,rx*2,rx*2);g.restore();
+  }
   /* perspective bands: crest lines get steadily larger toward the viewer (dunes / terraces / drifts) */
   const nb=o.bands||7,amp=(o.dune?2.3:1)*H*.012;
   for(let i=0;i<nb;i++){
@@ -721,6 +758,7 @@ const SURFACE=(g,W,H,p,t,seed,S)=>{
   const feats=Array.isArray(p.features)?p.features:[];
   cbgSky(g,C);
   const ridges=cbgFarLand(g,C,{amp:feats.includes('cliffs')?1.15:1,near:true,groundTop:E.fog(E.sh(E.mat.ground[0],.7),.45)});
+  if(bio==='ash')cbgLava(g,C);
   cbgGroundFill(g,C,{dune:feats.includes('dunes'),bands:feats.includes('dunes')?6:7});
   cbgScatter(g,C,{n:feats.includes('dunes')?24:50});
   if(feats.includes('cliffs'))cbgCliffs(g,C);

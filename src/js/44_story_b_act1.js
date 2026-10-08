@@ -351,7 +351,7 @@ Object.assign(STORY.cine,{
         cam:{from:{x:0.5,y:0.66,z:1.05,r:0},to:{x:0.5,y:0.4,z:1.35,r:0},ease:"inout"},
         actors:[],
         props:[
-          {k:"beacon",t0:0,t1:8.9,at:[0.5,0.3],scale:1,col:"#33524e",a:0.95}
+          {k:"beacon",t0:0,t1:8.9,at:[0.5,0.3],scale:1,col:"#33524e",a:0.5}
         ],
         fx:[
           {k:"dust",t0:0,t1:8.9,col:"#9ff3df",a:0.35,n:0.5},
@@ -411,7 +411,7 @@ Object.assign(STORY.cine,{
           {id:"mags",char:"mags",at:[0.74,0.68],h:0.82,face:"l",expr:"neutral",mode:"bust",t0:0,t1:11.2}
         ],
         props:[
-          {k:"beacon",t0:0,t1:11.2,at:[0.5,0.13],scale:0.6,col:"#33524e",a:0.95,z:-1}
+          {k:"beacon",t0:0,t1:11.2,at:[0.5,0.13],scale:0.6,col:"#33524e",a:0.5,z:-1}
         ],
         fx:[
           {k:"dust",t0:0,t1:11.2,col:"#9ff3df",a:0.35,n:0.5},

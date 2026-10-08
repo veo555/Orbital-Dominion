@@ -146,6 +146,21 @@ def ltas_centroid(x, sr, lo=150.0, hi=5000.0):
     return float((f[m] * acc[m]).sum() / max(1e-30, acc[m].sum()))
 
 
+def ltas_bands(x, sr, nb=14, lo=100.0, hi=7000.0):
+    """long-term average spectrum in nb log-spaced bands (dB, mean removed = timbre shape without level), active frames only"""
+    act, n, p = active_frames(x, sr)
+    N = 2048; w = np.hanning(N); acc = np.zeros(N // 2 + 1); k = 0
+    for s0 in range(0, len(x) - N, N // 2):
+        fr = x[s0:s0 + N]
+        if len(p) == 0 or (fr ** 2).mean() < p.max() * 1e-3: continue
+        acc += np.abs(np.fft.rfft(fr * w)) ** 2; k += 1
+    f = np.fft.rfftfreq(N, 1 / sr); edges = np.geomspace(lo, hi, nb + 1); v = []
+    for a, b in zip(edges[:-1], edges[1:]):
+        m = (f >= a) & (f < b); v.append(10 * np.log10(acc[m].sum() / max(1, k) + 1e-20))
+    v = np.array(v)
+    return v - v.mean()
+
+
 def band_ratio_db(x, sr, lo, hi):
     X = np.abs(np.fft.rfft(x)) ** 2; f = np.fft.rfftfreq(len(x), 1 / sr)
     m = (f >= lo) & (f < hi)
