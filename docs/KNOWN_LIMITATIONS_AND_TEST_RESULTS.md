@@ -52,6 +52,20 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
 * All numbers are against the **built-in AI**, which cheats by knowing your start corner and does not scout; they say
   little about how a human would fare against Autopilot (or Autopilot against a human).
 
+### 1.2 Added in 3.2: story, campaign, cinematics, sound (headless Chromium and Node only; read with §3)
+
+* **Story data** is checked by `tools/validate_story.js`: structure, ids, timing (lines are read at 19 characters a second),
+  scripted spawn and building tiles on each mission's own map, flags read only after being set, radio line counts, and the
+  unlock chain. Its self-test (`tests/story/validate_selftest.js`) corrupts a valid fixture in 56 ways and checks that each is caught.
+* **Campaign runtime** (`tests/sim/campaign.js`): every condition and action operation, restrictions, the hold and resume
+  protocol, determinism, malformed data, the save helpers, and swarm-off inertness. All checks pass.
+* **Sound**: a headless browser starts a real match (which creates the audio context), plays all 25 music cues, and fires
+  unit, building, hero and cinematic sounds and speech with no page errors. Offline rendering is deterministic by design
+  (each voice has a seeded generator). The objective metric gates in `tests/audio/` exist but were not executed in this pass.
+* **Cinematics**: every one of the 19 effect kinds draws pixels in a headless browser; the crowd, banner and unit props were
+  spot-checked. The intro film starts and runs for 2 s with no painter errors recorded.
+* **Content**: 32 films and 9 missions exist and validate. The generated screenplay (`docs/story/SCRIPT.md`) is produced by `tools/story_to_md.js`.
+
 ## 2. Defects found and fixed in the final round (regression ideas)
 1. Overseer stalled unit production while "saving" for a build that was short only of *ether*, with 500+ crystals
    floating → saving now triggers only when crystals are the bottleneck (`ovBuildings`, era branch).
@@ -77,6 +91,14 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
 * No accessibility audit (colour contrast, colour-blindness, text scaling, reduced motion).
 * No long-session soak (30–60 min), no memory-leak profiling, no save/load (does not exist).
 * No security review — but the attack surface is currently nil (no network, no storage except settings).
+
+* **Nothing has been heard.** Music, voices and effects have not been listened to by a person. Loudness, balance and taste are unmeasured by ear.
+* **The campaign has not been played by a human and has not been balanced.** The mission simulator (`tools/mission_sim.js`, using the built-in AI as a stand-in) exists but was not run in this pass; mission difficulty is unknown.
+* **Films are real-time procedural canvas**, not video files. Their smoothness and subtitle legibility were not checked on real phones. WebM export was not tested on iOS Safari.
+* **Speech depends on the device.** Voices differ across Android WebViews, iOS and desktop. The synthesized fallback voice was checked only as a signal, not for intelligibility.
+* **The new screens were not screenshot-reviewed on phones** in this pass (campaign select, briefing, debrief, Sound Lab).
+* **Writing quality** comes from automated authoring passes checked by the validator (structure, references, timing). No editor has read the script.
+
 
 ## 4. Known limitations of the product
 1. *(3.0 limitation, resolved in 3.1 — emulation only)* Touch input and phone layouts now exist; see §1.0 and `docs/TOUCH_SPEC.md`. The `screenshots/mobile_*` files in this package show the **3.0** layout, not the current one (regenerate with `tools/shots.py`).

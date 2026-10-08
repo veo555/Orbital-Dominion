@@ -12,7 +12,26 @@ offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) f
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
 
-## 0. What changed in 3.1 (6 Oct 2026)
+## 0. What changed in 3.2 (8 Oct 2026): story, campaign, cinematics, sound
+
+The game now has a single-player campaign, *The Lantern Tithe*: nine missions in three acts, films between them, and a
+new sound engine. Everything here was produced by automated authoring passes and checked with the commands below. Read
+the last column before relying on any claim.
+
+| Area | What is in the build | Checked in headless Chromium / Node | Not checked |
+|---|---|---|---|
+| **Story** | 9 missions; 16 characters (8 good, 3 evil, the rest grey or narrator); 32 films (intro ≈ 81 s, 9 briefings, 9 debriefs, 8 interludes, ending ≈ 128 s, credits, 3 defeat scenes; ≈ 20 min of film, 391 spoken lines); 113 radio lines; hero and worker barks | `node tools/validate_story.js`: 0 errors, 0 warnings. `node tests/story/validate_selftest.js`: 56 deliberate corruptions, all caught | Whether the writing lands with players; no editor has read it |
+| **Campaign** | Chapter select, briefings, radio strip, objectives and stars, debriefs, progress saved in the browser, cinematics gallery | `node tests/sim/campaign.js`: 394 checks pass (every condition and action op, restrictions, determinism, swarm-off inertness, save helpers) | Difficulty for humans; the balance playtests (`tools/mission_sim.js`, `tests/sim/campaign_balance.js`) exist but were not run |
+| **Cinematics** | Real-time procedural films: 12 backgrounds, 12 prop kinds, 19 effects, portraits drawn from each character's look data, subtitles, skip, WebM export where the browser can record | A headless browser draws every effect kind; the crowd, banner and unit props were spot-checked; the intro plays for 2 s with no painter errors | Real GPUs and phones; WebM export on iOS; subtitle legibility on phones |
+| **Sound** | Synthesized engine; 478 voices (unit types × factions, workers and fighters, hero skills, buildings, UI, cinematic sfx); 25 music cues including the three faction themes; leitmotifs; synthesized character voices, plus device speech where available; Sound Lab under Settings | A headless browser starts a real match (creating the audio context), plays all 25 music cues, and fires unit, building, hero, cinematic sounds and speech with no page errors | **Nobody has listened to it.** Loudness, balance and taste are not measured by ear |
+
+Commands: `python3 build.py` (rebuild every variant), `node tools/validate_story.js` (story data), `node tests/story/validate_selftest.js`
+(the validator's own mutation test), `node tests/sim/campaign.js` (campaign runtime), `node tests/sim/smoke.js` (simulation),
+`python3 tools/cine_contact.py` (contact sheets of film frames).
+
+---
+
+## 0b. What changed in 3.1 (6 Oct 2026)
 
 | Area | Change | Evidence |
 |---|---|---|
@@ -90,6 +109,10 @@ docs/                         all handoff documents (below)
 | `docs/TOUCH_SPEC.md` | Gesture specification mapped to the tests that verify it |
 | `docs/DEPLOY.md` | Release as a file, as a web app, as store apps; checklist |
 | `docs/MONETIZATION.md` | Optional Stripe payments: modes, security model, store rules, setup, what is verified |
+| `docs/story/BIBLE.md` | The series bible: premise, chronology, characters with voice guides, factions, the nine missions, the cinematic manifest |
+| `docs/CAMPAIGN_SPEC.md` | Mission data format, the condition and action language, runtime semantics, progress save |
+| `docs/CINEMATIC_SPEC.md` | Film format, renderer contract, painter registry, player API |
+| `docs/AUDIO_SPEC.md` | Sound engine, voice language, sound-design matrix, music data format, Sound Lab |
 
 ## 4. What was deliberately dropped — and what changed
 
