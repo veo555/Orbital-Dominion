@@ -17,7 +17,7 @@ data and not against the real story. What is asserted (data and DOM, never "look
               viewport, 44 px targets on touch, radio strip never over the minimap / command card / touch dock / objectives
   touch       a real touch tap path (tap Campaign, tap Play, tap the film's Skip button)
   hygiene     zero page errors, zero console errors, zero network requests, G.camp.errors empty
-MUTATION CONTROLS (CLAUDE.md rule 15): tests/out/campaign/ui_mutate.py breaks the built page in 10 ways and requires this script to fail on each.
+MUTATION CONTROLS (CLAUDE.md rule 15): tests/out/campaign/ui_mutate.py breaks the built page in 23 ways (plus one comment-only control that must NOT fail) and requires this script to fail on each.
 Limits: Chromium software raster; audio is a stub / not exercised; films are skipped (their rendering belongs to e2e_cine.py); no real phone, no WebKit."""
 import json, os, pathlib, subprocess, sys, time
 from playwright.sync_api import sync_playwright
@@ -157,7 +157,11 @@ def sec_flow(b):
     # queue: one visible, <= 3 waiting, a newer line of the same speaker replaces the queued one
     q = pg.evaluate("""()=>{const R=__RTS;R.campRadioClear();const out=[];for(const id of['r11','r12','r13','r14','r21','r22'])R.campRadio(id);
         out.push(R.CU.radio.cur.id,R.CU.radio.q.map(x=>x.id).join(','));return out}""")
-    ok(q == ['r11', 'r14,r21,r22'], f'radio queue: first line visible, max 3 waiting, same-speaker replacement {q}')
+    ok(q == ['r11', 'r14,r21,r22'], f'radio queue: first line visible, max 3 waiting, oldest dropped beyond 3 {q}')
+    # same-speaker replacement must be tested on its own: with <= 3 waiting lines the cap cannot hide a missing replacement (r12 and r21 are both lyra)
+    q = pg.evaluate("""()=>{const R=__RTS;R.campRadioClear();for(const id of['r11','r12','r14','r21'])R.campRadio(id);
+        return[R.CU.radio.cur.id,R.CU.radio.q.map(x=>x.id).join(',')]}""")
+    ok(q == ['r11', 'r14,r21'], f'a newer line of the same speaker replaces her stale queued line (r12 -> r21) {q}')
     pg.evaluate("()=>{__RTS.CU.radio.left=0}"); pg.wait_for_timeout(250)
     ok(pg.evaluate("()=>__RTS.CU.radio.cur.id") == 'r14', 'the queue advances when the visible line has run out')
     pg.mouse.move(683, 140); pg.click('#campRadio', timeout=2000); pg.wait_for_timeout(100)
@@ -364,6 +368,11 @@ def sec_layout(b):
             if card:
                 c = pg.evaluate("s=>{const e=document.querySelector(s);const r=e.getBoundingClientRect();return[r.left,r.top,r.right,r.bottom,e.scrollWidth>e.clientWidth+1]}", card)
                 ok(inside(c[:4], w, h) and not c[4], f'{name} / {screen}: the card fits the viewport without horizontal scrolling')
+                # the card clips (overflow:hidden) and its body scrolls, so a too-wide grid would not show up in the card's own scrollWidth: look at the body and at every child
+                ov = pg.evaluate("""s=>{const c=document.querySelector(s),cr=c.getBoundingClientRect(),bad=[];
+                    for(const e of c.querySelectorAll('*')){if(e.offsetParent===null||!e.getClientRects().length)continue;const r=e.getBoundingClientRect();if(r.width>0&&r.right>cr.right+1)bad.push((e.className&&e.className.baseVal===undefined?e.className:e.tagName)+':'+Math.round(r.right-cr.right))}
+                    const sw=[...c.querySelectorAll('.cu-body')].filter(b=>b.scrollWidth>b.clientWidth+1).map(b=>b.id||b.className);return{bad:bad.slice(0,4),sw}}""", card)
+                ok(not ov['bad'] and not ov['sw'], f'{name} / {screen}: nothing inside the card sticks out to the right and its body does not scroll sideways {ov}')
             if mob:
                 small = pg.evaluate("s=>[...document.querySelectorAll(s+' .btn')].filter(e=>e.offsetParent!==null&&!e.disabled&&e.getBoundingClientRect().height<43.5).map(e=>e.textContent)", scope or card or 'body')
                 ok(not small, f'{name} / {screen}: every button is >= 44 px tall {small[:3]}')

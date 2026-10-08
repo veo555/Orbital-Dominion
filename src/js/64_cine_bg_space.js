@@ -50,8 +50,11 @@ const CBS_NEB={
     const wx=cbsFbm(u*.8+3.1,v*.8+1.2,3,s),wy=cbsFbm(u*.8+8.7,v*.8+4.4,3,s+5),qx=(wx-.5)*2.1,qy=(wy-.5)*2.1;
     const n=cbsFbm(u*1.1+qx,v*1.1+qy,5,s+9),det=cbsFbm(u*4.6+qx*2.5,v*4.6+qy*2.5,4,s+27),thr=.60-d*.2;
     const haze=cnSS(.3,.72,n)*.3,body=cnSS(thr,thr+.26,n),hi=Math.pow(cnSS(.6,.82,n*.62+det*.46),2.2);
-    const core=cbsGx(u-K.cu,v-K.cv,.55,.36),lane=cnSS(.55,.9,cbsRidge(u*1.9+qy*1.1,v*1.9+qx*.6,4,s+21))*.5;
-    O[0]=(haze*.55+body*(.3+.55*det)+hi*.55+core*(.3+.6*body))*(.55+d*.6);O[1]=.1+body*.32+hi*.5+core*.55;O[2]=lane*Math.min(1,haze*2.5+body)*.8;
+    /* the embedded core is torn into wisps by the detail noise (a plain gaussian read as a smudge), and thin bright ribbons follow the flow of the gas */
+    const cg=cbsGx(u-K.cu,v-K.cv,.55,.36),core=cg*(.3+.7*cnSS(.3,.7,det*.7+n*.4)),lane=cnSS(.55,.9,cbsRidge(u*1.9+qy*1.1,v*1.9+qx*.6,4,s+21))*.5;
+    const fil=Math.pow(cbsRidge(u*1.6+qx*1.3+2.2,v*1.6+qy*1.3+5.1,5,s+41),5.5)*(.2+.8*cnSS(.28,.66,n))*(.5+.6*cg+.4*body);
+    const fine=cbsFbm(u*11+qx*3,v*11+qy*3,3,s+47);
+    O[0]=(haze*.55+body*(.3+.55*det)*(.78+.44*fine)+hi*.55*(.8+.4*fine)+core*(.3+.5*body)+fil*.85)*(.55+d*.6);O[1]=.1+body*.32+hi*.5+core*.5+fil*.45;O[2]=lane*Math.min(1,haze*2.5+body)*.8;
   },
   /* red: emission filaments — thin bright ribbons (ridged noise) over a faint haze, like a supernova remnant */
   red(u,v,s,d,K,O){
@@ -265,7 +268,7 @@ function cbsKit(type,pal,seed,freq,planet){
   const s=(seed&0xfff)+(type.length*131),c=k=>cbsRGB(pal[k]);
   const K={type,s,f:freq,ox:cnHash(seed,1,0x51)*60,oy:cnHash(seed,2,0x51)*60,cox:cnHash(seed,3,0x51)*40,coy:cnHash(seed,4,0x51)*40,cloud:[255,255,255],cloudA:.7,sea:.5,atmK:1,amb:.1,sx:(cnHash(seed,5,0x51)-.5)*1.1,sy:.12+(cnHash(seed,6,0x51)-.5)*.5,city:.8,pal};
   switch(type){
-    case'azure':  K.deep=cbsMix3(c('dark'),[6,26,62],.55);K.shal=cbsMix3(c('base'),[96,196,226],.35);K.l1=c('land');K.l2=[176,150,98];K.rock=[104,92,80];K.snow=[240,246,250];K.sea=.5;K.cloudA=.72;K.city=.95;break;
+    case'azure':  K.deep=cbsMix3(c('dark'),[6,26,62],.55);K.shal=cbsMix3(c('base'),[96,196,226],.35);K.l1=c('land');K.l2=[176,150,98];K.rock=[104,92,80];K.snow=[240,246,250];K.sea=.545;K.cloudA=.72;K.city=.95;break;
     case'verdant':K.deep=[10,58,72];K.shal=[44,140,156];K.l1=c('land');K.l2=c('base');K.l3=c('light');K.rock=[118,102,74];K.snow=[238,246,240];K.sea=.4;K.cloudA=.6;K.city=.85;break;
     case'ember':  K.dark=cbsMix3(c('dark'),[28,10,8],.35);K.r1=c('base');K.r2=cbsMix3(c('light'),[200,120,60],.45);K.lava=[255,96,28];K.lava2=[255,214,110];K.cloud=[72,40,32];K.cloudA=.4;K.atmK=.8;K.city=.5;K.amb=.14;break;
     case'ice':    K.i1=c('base');K.i2=c('light');K.crack=[74,138,182];K.deep=[110,178,214];K.cloud=[236,248,255];K.cloudA=.5;K.city=.38;K.amb=.14;break;
@@ -589,12 +592,13 @@ function cbsSunrise(g,G,W,H,F,amt,u,tint){
   g.save();g.beginPath();g.rect(F.x,F.y,F.w,F.h);g.arc(G.cx,G.cy,G.R,0,TAU,true);g.clip('evenodd');
   cbsFall(g,x,y,R*.22,'#ffeccc',.85*amt,2,.9);cbsFall(g,x,y,R*.07,'#ffffff',1,1.5,1);
   g.restore();
-  const len=hor?W*.55:H*.55,t=(1.2+1.8*amt)*u,dir=hor?(G.sgn<0?1:-1):1;
+  const len=hor?W*.42:H*.5,t=(1.2+1.8*amt)*u,dir=hor?(G.sgn<0?1:-1):1;
   const st=[[0,cnA('#fff4e0',.55*amt)],[.2,cnA(tint,.24*amt)],[1,cnA(tint,0)]];
+  g.save();g.beginPath();g.rect(F.x,F.y,F.w,F.h);g.arc(G.cx,G.cy,G.R,0,TAU,true);g.clip('evenodd');                        // the streak lives in the sky: across the planet's body it read as a rendering seam
   if(hor){g.fillStyle=cnLG(g,x,y,x+len*dir,y,st);g.fillRect(Math.min(x,x+len*dir),y-t/2,len,t);
     g.fillStyle=cnLG(g,x,y,x-len*.3*dir,y,st);g.fillRect(Math.min(x,x-len*.3*dir),y-t/2,len*.3,t);}
   else{g.fillStyle=cnLG(g,x,y,x,y+len,st);g.fillRect(x-t/2,y,t,len);g.fillStyle=cnLG(g,x,y,x,y-len*.3,st);g.fillRect(x-t/2,y-len*.3,t,len*.3);}
-  g.restore();
+  g.restore();g.restore();
 }
 
 /* ---- the station: spine truss, habitat module with a spun ring, solar wings, dish, spire, docking port. Lit from one side, planet-glow bounce from the other ---- */

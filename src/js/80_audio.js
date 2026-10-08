@@ -1,8 +1,8 @@
 /* =========================================================================
    AUDIO ENGINE — context abstraction (live + offline), bus graph, synth kit, voice DSL, registry, dispatcher,
-   polyphony governance, announcer. Contract: docs/AUDIO_SPEC.md §1–2 and §8 (engine reference).
+   polyphony governance (the announcer say() and the character voices live in 84_voice.js). Contract: docs/AUDIO_SPEC.md §1–2 and §8 (engine reference).
    Everything private lives inside AUDIO (a closure) so this file cannot collide with other modules' names.
-   Public globals: AC muted busSfx busMusic musicFx AUD KIT audioInit applyVolumes toggleMute say sfx sfxUnit sfxBuilding cineSfx
+   Public globals: AC muted busSfx busMusic musicFx AUD KIT audioInit applyVolumes toggleMute sfx sfxUnit sfxBuilding cineSfx
                    registerVoice registerRenderer audioVoices audioRender audioStats audioPlay audioDuck audioBus audioA audioDelay
                    audioOffline audioAnalyse audioHash audioClasses audioOnReady audioLegacyScore audioMeter tone noiseBurst
    No sim state is read except G.teams[].faction (faction of an entity) and cam/VW/VH (positional pan). Never Math.random/Date in a voice.
@@ -443,7 +443,8 @@ function audioInit(){
 }
 function toggleMute(){
   muted=!muted;applyVolumes();
-  if(muted&&typeof speechSynthesis!=='undefined')try{speechSynthesis.cancel();}catch(e){}
+  if(muted){if(typeof speakStop==='function')try{speakStop();}catch(e){}   // 84_voice.js: ends the line being spoken (its onEnd still fires) and cancels speechSynthesis
+    if(typeof speechSynthesis!=='undefined')try{speechSynthesis.cancel();}catch(e){}}
   return muted;
 }
 function audioOnReady(fn){READY.push(fn);if(AC){try{fn(AC);}catch(e){}}}
@@ -622,18 +623,7 @@ function audioHash(ch,exact){
   return(h>>>0).toString(16).padStart(8,'0');
 }
 
-/* ------------------------------------------------------------------ announcer (speech synthesis) */
-let annVoice=null,sayLast=0;const sayMap={};
-function pickVoice(){try{const vs=speechSynthesis.getVoices();annVoice=vs.find(v=>/en[-_]US/i.test(v.lang)&&/Google|Samantha|Daniel|Alex/i.test(v.name))||vs.find(v=>/^en/i.test(v.lang))||null;}catch(e){}}
-function say(txt){
-  if(!SET.voice||muted||!AC||ui.demo||typeof speechSynthesis==='undefined')return;
-  const now=performance.now();if(now-sayLast<2200||(sayMap[txt]&&now-sayMap[txt]<9000))return;sayLast=now;sayMap[txt]=now;
-  try{
-    if(!annVoice)pickVoice();const u=new SpeechSynthesisUtterance(txt);if(annVoice)u.voice=annVoice;u.rate=1.05;u.pitch=0.75;
-    u.volume=cl(SET.voiceVol===undefined?0.9:SET.voiceVol,0,1);speechSynthesis.cancel();speechSynthesis.speak(u);C.says++;
-    audioDuck('music',0.4,400+txt.length*65);
-  }catch(e){}
-}
+/* ------------------------------------------------------------------ announcer: moved to 84_voice.js (say(), speak(), bark(), speakStop(); same rate limits, SET.voice switch and music ducking) */
 
 /* ------------------------------------------------------------------ legacy helpers + fallback score (steps aside as soon as a music module registers a 'cue' renderer) */
 function tone(f,d,type,v,slide,delay,pan){
@@ -761,13 +751,12 @@ for(const id in G0){const d=G0[id];registerVoice('global.'+id,d,{fallback:true,g
 for(const id in CI){const d=CI[id];registerVoice('cine.'+id,d,{cls:'cine',fallback:true,gain:TRIM['cine.'+id]||1});}
 })();
 
-return{init:audioInit,applyVolumes,toggleMute,say,sfx,sfxUnit,sfxBuilding,cineSfx,registerVoice,registerRenderer,audioVoices,audioRender,audioStats,audioPlay,audioDuck,audioBus,audioA,audioDelay,
+return{init:audioInit,applyVolumes,toggleMute,sfx,sfxUnit,sfxBuilding,cineSfx,registerVoice,registerRenderer,audioVoices,audioRender,audioStats,audioPlay,audioDuck,audioBus,audioA,audioDelay,
   audioOffline:renderOffline,logReset,audioAnalyse,audioHash,audioClasses,audioOnReady,audioLegacyScore,audioMeter,tone,noiseBurst,mkVoice,VOICES,RENDERERS,resolve,calcPos,CLS,PRIO,hz,S};
 })();
 function audioInit(){AUDIO.init();}
 function applyVolumes(){AUDIO.applyVolumes();}
 function toggleMute(){return AUDIO.toggleMute();}
-function say(txt){AUDIO.say(txt);}
 function sfx(name,x,y,who){return AUDIO.sfx(name,x,y,who);}
 function sfxUnit(type,ev,x,y,faction){return AUDIO.sfxUnit(type,ev,x,y,faction);}
 function sfxBuilding(type,ev,x,y,faction){return AUDIO.sfxBuilding(type,ev,x,y,faction);}

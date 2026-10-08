@@ -27,6 +27,7 @@ const VOX_VOW={a:[730,1090,2440],ae:[660,1720,2410],e:[530,1840,2480],ih:[390,19
 /* vowel letter groups -> [start vowel, optional end vowel (diphthong glide)] */
 const VOX_DIG={ai:['e','ih'],ay:['e','ih'],ee:['i'],ea:['i'],ie:['i'],ei:['e','ih'],ey:['e','ih'],oo:['u'],ou:['a','u'],ow:['o','u'],oa:['o'],oi:['o','ih'],oy:['o','ih'],au:['o'],aw:['o'],eu:['u'],ew:['u'],ue:['u'],ui:['u'],
   eau:['o'],eye:['a','ih'],aye:['e','ih'],iou:['uh'],ia:['i','a'],io:['i','o'],iu:['i','u'],ua:['u','a'],uo:['u','o'],eo:['i','o'],ae:['e'],oe:['o'],ye:['a','ih'],ya:['a']};
+/* letter pairs that look like a digraph but are two syllables in the cases voxDigTake() lists; the vowel table above is still used when they ARE one syllable */
 const VOX_V3=new Set(['eau','eye','aye','iou']);
 /* consonants: c = class (stop fric aff asp nas liq gli), v = voiced; bf/bg burst freq/gain; ff/fg frication centre/gain; F = formant locus; pl = place */
 const VOX_PH={p:{c:'stop',v:0,bf:900,bg:.55,pl:'l'},b:{c:'stop',v:1,bf:800,bg:.4,pl:'l'},t:{c:'stop',v:0,bf:4300,bg:.6,pl:'a'},d:{c:'stop',v:1,bf:3600,bg:.45,pl:'a'},k:{c:'stop',v:0,bf:2100,bg:.6,pl:'v'},g:{c:'stop',v:1,bf:1900,bg:.45,pl:'v'},
@@ -41,23 +42,38 @@ const VOX_PREF=/^(a|be|de|re|ex|dis|to|en|em|mis|ob|un|in|im)$/;
 const VOX_CON={p:{s0:1.6,s1:-3.2,acc:2.0,nuc:3.4,nucEnd:-4.2},c:{s0:1.6,s1:-0.2,acc:2.0,nuc:2.4,nucEnd:0.8},s:{s0:1.6,s1:-1.2,acc:2.0,nuc:2.6,nucEnd:-1.0},q:{s0:0.6,s1:-1.4,acc:1.8,nuc:2.0,nucEnd:4.5},
   x:{s0:3.0,s1:-1.5,acc:3.0,nuc:4.8,nucEnd:-3.5},ell:{s0:1.2,s1:-2.6,acc:1.6,nuc:2.2,nucEnd:-2.5},d:{s0:1.4,s1:0.2,acc:2.0,nuc:2.4,nucEnd:0.5}};
 const VOX_PAUSE={c:.20,s:.27,p:.38,q:.40,x:.36,ell:.52,d:.20};
-/* speaking styles. rate/st (semitones)/range (pitch movement)/gain (level trim)/tts* (speechSynthesis shaping)/lp (cutoff multiplier)/rev (reverb send)/voiced (share of the voiced source) */
+/* speaking styles. rate/st (semitones)/range (pitch movement)/tts* (speechSynthesis shaping)/lp (cutoff multiplier)/rev (reverb send)/voiced (share of the voiced source); the LEVEL of every style is in VOX_LVL below */
 const VOX_STY={
-  normal:{rate:1,st:0,range:1,gain:1,ttsRate:1,ttsPitch:1,ttsVol:1,lp:1,voiced:1,asp:1},
-  radio:{rate:1.05,st:0,range:.9,gain:1.15,ttsRate:1.06,ttsPitch:.96,ttsVol:.9,lp:1,voiced:1,asp:1,band:[380,3200],drive:.9,crackle:1},
-  whisper:{rate:.88,st:-1,range:.6,gain:1.0,ttsRate:.88,ttsPitch:1,ttsVol:.35,lp:.8,voiced:.06,asp:2.2},
-  shout:{rate:1.07,st:2,range:1.35,gain:1.35,ttsRate:1.1,ttsPitch:1.15,ttsVol:1,lp:1.5,voiced:1,asp:1,hs:5,drive:.5},
-  narration:{rate:.86,st:-1,range:.7,gain:1.0,ttsRate:.88,ttsPitch:.92,ttsVol:1,lp:.8,voiced:1,asp:1,rev:{room:'hall',amt:.14},warm:1},
-  thought:{rate:.92,st:0,range:.65,gain:1.1,ttsRate:.9,ttsPitch:.95,ttsVol:.5,lp:.7,voiced:.55,asp:1.2,rev:{room:'air',amt:.32}}};
+  normal:{rate:1,st:0,range:1,ttsRate:1,ttsPitch:1,ttsVol:1,lp:1,voiced:1,asp:1},
+  radio:{rate:1.05,st:0,range:.9,ttsRate:1.06,ttsPitch:.96,ttsVol:.9,lp:1,voiced:1,asp:1,band:[380,3200],drive:.9,crackle:1},
+  whisper:{rate:.88,st:-1,range:.6,ttsRate:.88,ttsPitch:1,ttsVol:.35,lp:.8,voiced:.06,asp:2.2},
+  shout:{rate:1.07,st:2,range:1.35,ttsRate:1.1,ttsPitch:1.15,ttsVol:1,lp:1.5,voiced:1,asp:1,hs:5,drive:.5},
+  narration:{rate:.86,st:-1,range:.7,ttsRate:.88,ttsPitch:.92,ttsVol:1,lp:.8,voiced:1,asp:1,rev:{room:'hall',amt:.14},warm:1},
+  thought:{rate:.92,st:0,range:.65,ttsRate:.9,ttsPitch:.95,ttsVol:.5,lp:.7,voiced:.55,asp:1.2,rev:{room:'air',amt:.32}}};
+/* LEVEL. Gain in dB (timbre x style) that puts the ACTIVE-WINDOW RMS of a rendered line on VOX_TARGET at f0 = VOX_F0, plus VOX_LVLK dB per octave of the speaker's f0 (a higher voice puts more harmonics into the
+   formants and measures louder at equal gain). Fitted by `python3 tests/audio/voice_gate.py --calibrate` on the 16 story characters x 6 styles x 3 sentences (renders at vol 0.25, so the soft limiter does not bend the fit);
+   targets: normal/radio/narration = the voice class target (-20 dBFS), whisper -6 dB, thought -4 dB, shout +3 dB. Edit only through the gate. */
+const VOX_TARGET={normal:-20,radio:-20,whisper:-26,shout:-17,narration:-20,thought:-24};
+/*LVL:BEGIN*/
+const VOX_LVLK=2.88;
+const VOX_LVL={
+bright:{normal:-1.5,radio:-10.6,whisper:0.2,shout:-5.2,narration:-1.1,thought:-0.4},
+hollow:{normal:1.9,radio:-8.3,whisper:5.8,shout:-2.5,narration:1.5,thought:3.1},
+metal:{normal:-2.2,radio:-8.1,whisper:6.6,shout:-2.2,narration:-1.7,thought:-1.3},
+rough:{normal:-8.8,radio:-12.6,whisper:-11.2,shout:-7.6,narration:-8.6,thought:-8.8},
+smooth:{normal:-2.7,radio:-10.4,whisper:3.9,shout:-6.2,narration:-3.3,thought:-1.3},
+soft:{normal:-1.1,radio:-6.8,whisper:-0.7,shout:-5.1,narration:-2.4,thought:-0.2}};
+/*LVL:END*/
+function voxLvl(timbre,style,f0){const t=VOX_LVL[timbre]||VOX_LVL.smooth;return Math.pow(10,((t[style]!==undefined?t[style]:0)-VOX_LVLK*Math.log2(Math.max(20,f0)/VOX_F0))/20);}
 /* timbres: harm = glottal spectrum key, lp = lowpass, breath = aspiration floor, Q/G = formant resonance / gain, att = voicing attack, vib = vibrato depth factor, jit = jitter (cents), sub = sub-harmonic level,
-   drv = waveshaper drive, rm = ring-mod depth, pk = [Hz,Q,dB] peaking filter, hs = high-shelf dB, trim = level trim (calibrated by tests/audio/voice_gate.py), rng = pitch-range factor */
+   drv = waveshaper drive, rm = ring-mod depth, pk = [Hz,Q,dB] peaking filter, hs = high-shelf dB, rng = pitch-range factor */
 const VOX_TIM={
-  smooth:{harm:'s',lp:4300,breath:.025,Q:[5,7,9],G:[1,.7,.4],att:.016,vib:1,jit:0,sub:0,drv:0,rm:0,trim:1,rng:1},
-  soft:{harm:'o',lp:2500,breath:.06,Q:[4,6,8],G:[1,.55,.22],att:.028,vib:1.2,jit:0,sub:0,drv:0,rm:0,trim:1,rng:.9},
-  bright:{harm:'b',lp:7500,breath:.03,Q:[6,8,10],G:[.85,.9,.75],att:.009,vib:.6,jit:0,sub:0,drv:0,rm:0,hs:5,trim:1,rng:1.15},
-  rough:{harm:'r',lp:3800,breath:.09,Q:[5,7,9],G:[1,.8,.5],att:.011,vib:.25,jit:34,sub:.4,drv:.28,rm:0,trim:1,rng:1.1},
-  hollow:{harm:'h',lp:3200,breath:.04,Q:[10,13,15],G:[1,.5,.3],att:.02,vib:.8,jit:0,sub:0,drv:0,rm:0,pk:[1150,3,-8],trim:1,rng:.85},
-  metal:{harm:'m',lp:5200,breath:.01,Q:[6,8,10],G:[1,.8,.55],att:.01,vib:0,jit:0,sub:0,drv:.15,rm:1,trim:1,rng:.3}};
+  smooth:{harm:'s',lp:4300,breath:.025,Q:[5,7,9],G:[1,.7,.4],att:.016,vib:1,jit:0,sub:0,drv:0,rm:0,rng:1},
+  soft:{harm:'o',lp:2500,breath:.06,Q:[4,6,8],G:[1,.55,.22],att:.028,vib:1.2,jit:0,sub:0,drv:0,rm:0,rng:.9},
+  bright:{harm:'b',lp:7500,breath:.03,Q:[6,8,10],G:[.85,.9,.75],att:.009,vib:.6,jit:0,sub:0,drv:0,rm:0,hs:5,rng:1.15},
+  rough:{harm:'r',lp:3800,breath:.09,Q:[5,7,9],G:[1,.8,.5],att:.011,vib:.25,jit:34,sub:.4,drv:.28,rm:0,rng:1.1},
+  hollow:{harm:'h',lp:3200,breath:.04,Q:[10,13,15],G:[1,.5,.3],att:.02,vib:.8,jit:0,sub:0,drv:0,rm:0,pk:[1150,3,-8],rng:.85},
+  metal:{harm:'m',lp:5200,breath:.01,Q:[6,8,10],G:[1,.8,.55],att:.01,vib:0,jit:0,sub:0,drv:.15,rm:1,rng:.3}};
 const VOX_HARM=(function(){const mk=(tilt,odd)=>{const h=[];for(let n=1;n<=48;n++)h.push(odd&&n%2===0?0:Math.pow(n,-tilt));return h;};
   return{s:mk(1.5),o:mk(2.1),b:mk(1.0),r:mk(1.25),h:mk(1.4,true),m:mk(1.0)};})();
 const VOX_STYLES=Object.keys(VOX_STY);
@@ -93,8 +109,30 @@ function voxIsV(w,i){
   return c==='y'&&i>0;
 }
 const DIGW={0:['z','i'],1:['w','uh'],2:['t','u'],3:['th','i'],4:['f','o'],5:['f','a'],6:['s','ih'],7:['s','e'],8:['e'],9:['n','a']};
+/* is the vowel pair w[a..a+2) ONE syllable? (ia: two except -tial -cian -sian -xian; io: two except -ion; eo: two except people and -geon -eon after dg/rg; oe: one only word-finally, before s/d; oi ei ui: two before -ng: doing, being) */
+function voxDigOne(w,a){
+  const d=w.substr(a,2),pv=a?w[a-1]:'',nx=w.substr(a+2,2);
+  if(d==='ia')return 'tcsx'.includes(pv)&&pv!=='';
+  if(d==='io')return nx==='n'||nx==='ns'||nx.charAt(0)==='n';
+  if(d==='eo')return pv==='p'||/(dg|rg|ng|ch|sh)eon$/.test(w)&&a>=2;
+  if(d==='oe')return a+2===w.length||(a+3===w.length&&(w[a+2]==='s'||w[a+2]==='d'));
+  if((d==='oi'||d==='ei'||d==='ui')&&nx==='ng')return false;
+  if(d==='ua'||d==='uo'||d==='iu')return false;
+  return true;
+}
+/* syllable counts the letter rules get wrong, as hyphenated pieces (voxSylWord syllabifies each piece) */
+const VOX_EXC={reactor:'re-ac-tor',react:'re-act',reaction:'re-ac-tion',reactive:'re-ac-tive',reactivate:'re-ac-ti-vate',idea:'i-de-a',area:'a-re-a',create:'cre-ate',creation:'cre-a-tion',creator:'cre-a-tor',
+  quiet:'qui-et',science:'sci-ence',poem:'po-em',poet:'po-et',violent:'vi-o-lent',violence:'vi-o-lence',
+  hundred:'hun-dred',hundreds:'hun-dreds',sacred:'sa-cred',kindred:'kin-dred',hatred:'ha-tred',naked:'na-ked',wicked:'wick-ed',wretched:'wretch-ed',ragged:'rag-ged',rugged:'rug-ged',jagged:'jag-ged',crooked:'crook-ed',
+  beloved:'be-lov-ed',blessed:'bless-ed',cursed:'curs-ed',learned:'learn-ed',aged:'a-ged',being:'be-ing',heavier:'hea-vi-er',easier:'ea-si-er',happier:'hap-pi-er',
+  everything:'ev-ry-thing',every:'ev-ry',gideon:'gid-e-on',teodor:'te-o-dor',lion:'li-on',lions:'li-ons',ruin:'ru-in',ruins:'ru-ins',fuel:'fu-el',cruel:'cru-el',duel:'du-el',diet:'di-et',client:'cli-ent',fiery:'fi-er-y',variety:'va-ri-e-ty',society:'so-ci-e-ty',anxiety:'anx-i-e-ty',theodore:'the-o-dore',orion:'o-ri-on',neon:'ne-on',leon:'le-on',napoleon:'na-po-le-on'};
 /* one lowercase a-z word -> [{on:[tokens],nu:'ea',co:[tokens],long:bool,vw:null|[vowels],txt:'first syllable letters'}] */
 function voxSylWord(word){
+  const w0=String(word).toLowerCase().replace(/[^a-z]/g,''),ex=VOX_EXC[w0];
+  if(ex&&ex.indexOf('-')>0){const S=[];for(const part of ex.split('-')){const q=voxSylWord1(part);for(const sy of q)S.push(sy);}const t0=S[0].txt;for(const sy of S)sy.txt=t0;return S;}
+  return voxSylWord1(w0);
+}
+function voxSylWord1(word){
   const w=String(word).toLowerCase().replace(/[^a-z]/g,''),n=w.length,g=[];
   if(!n)return[];
   for(let i=0;i<n;){
@@ -102,7 +140,7 @@ function voxSylWord(word){
     let j=i;while(j<n&&voxIsV(w,j))j++;
     for(let a=i;a<j;){
       const rest=j-a;let take=1;
-      if(rest>=3&&VOX_V3.has(w.substr(a,3)))take=3;else if(rest>=2&&VOX_DIG[w.substr(a,2)])take=2;
+      if(rest>=3&&VOX_V3.has(w.substr(a,3)))take=3;else if(rest>=2&&VOX_DIG[w.substr(a,2)]&&voxDigOne(w,a))take=2;
       g.push([a,a+take]);a+=take;
     }
     i=j;
@@ -115,7 +153,13 @@ function voxSylWord(word){
       const pc=w[s0-1];
       if(L[1]===n){if(!(pc==='l'&&s0>=2&&!voxIsV(w,s0-2))){g.pop();magic=true;}}
       else if(L[1]===n-1&&w[n-1]==='d'){if(pc!=='t'&&pc!=='d')g.pop();}
-      else if(L[1]===n-1&&w[n-1]==='s'){if(!'sxzc'.includes(pc)&&!(pc==='h'&&'sc'.includes(w[s0-2]||''))&&pc!=='g')g.pop();}
+      else if(L[1]===n-1&&w[n-1]==='s'){if(!'sxzc'.includes(pc)&&!(pc==='h'&&'sc'.includes(w[s0-2]||''))&&pc!=='g'&&!(pc==='l'&&s0>=2&&!voxIsV(w,s0-2)))g.pop();}
+    }
+    /* VCe + ly|ful|less|ment|ness: that e is silent too (safely, careful, homeless, movement, likeness); some+X: something, someone, somewhat */
+    for(let k=g.length-2;k>=1;k--){
+      const a=g[k][0],b=g[k][1];
+      if(b-a===1&&w[a]==='e'&&a>=2&&!voxIsV(w,a-1)&&voxIsV(w,a-2)&&/^(ly|ful|fully|less|lessly|ment|ments|ness|nesses)$/.test(w.slice(b))){g.splice(k,1);break;}
+      if(a===3&&w.slice(0,4)==='some'&&n>4){g.splice(k,1);break;}
     }
   }
   const S=[];
@@ -133,6 +177,7 @@ function voxSylWord(word){
   }
   const last=S[S.length-1],tail=voxPhon(w.slice(g[g.length-1][1]),false,'');
   last.co=tail.length>2?tail.slice(0,2):tail;
+  if(/(sm|thm)$/.test(w)&&last.co.length&&last.co[last.co.length-1]==='m'){last.co.pop();S.push({on:[],nu:'',co:['m'],long:false,vw:['ax'],txt:last.txt});}   // prism, chasm, rhythm, -ism: syllabic m
   if(magic){const ce=w.slice(g[g.length-1][1],n-1);if(ce.length===1||/^(th|sh|ch)$/.test(ce))last.long=true;}
   return S;
 }
@@ -198,7 +243,7 @@ function voiceProfile(charId){
   const pitch=num('pitch',1),rate=num('rate',1),formant=num('formant',.5),stDelta=(voxU(h,1)*2-1)*1.4;
   const P={id,found:!!R.ch,name:R.ch?(R.ch.name||id):id,timbre:tim,pitch,formant,rate:rate*(1+(voxU(h,3)*2-1)*.05),ttsPitch:num('ttsPitch',1),ttsRate:num('ttsRate',1),
     f0:VOX_F0*pitch*Math.pow(2,stDelta/12),tract:(0.82+0.4*formant)*(1+(voxU(h,2)*2-1)*.045),habit:0.85+0.3*voxU(h,4),range:TM.rng,
-    vibHz:4.8+1.2*voxU(h,5),vibCents:(10+14*voxU(h,6))*TM.vib,jit:TM.jit,Q:TM.Q,G:TM.G,lp:TM.lp,breath:TM.breath,att:TM.att,sub:TM.sub,drv:TM.drv,rm:TM.rm,harm:TM.harm,trim:TM.trim,seed:h};
+    vibHz:4.8+1.2*voxU(h,5),vibCents:(10+14*voxU(h,6))*TM.vib,jit:TM.jit,Q:TM.Q,G:TM.G,lp:TM.lp,breath:TM.breath,att:TM.att,sub:TM.sub,drv:TM.drv,rm:TM.rm,harm:TM.harm,seed:h};
   P.rmF=P.f0*0.62;
   return P;
 }
@@ -353,8 +398,8 @@ function voxBuild(A,T0,plan,P,style,vol){
   if(P.rm>0){n=KIT.ring(A,T0,{f:P.rmF,depth:.9*P.rm,type:'sine'},T1,n);}
   const drv=Math.max(P.drv,SY.drive||0);if(drv>0){const w=x.createWaveShaper();w.curve=voxDriveCurve(drv);w.oversample='2x';lnk(w);}
   if(SY.band){flt('highpass',SY.band[0],.8);flt('highpass',SY.band[0],.8);flt('lowpass',SY.band[1],.8);flt('lowpass',SY.band[1],.8);}
-  const gm=G(vol*P.trim*SY.gain);lnk(gm);
-  gm.gain.setValueAtTime(vol*P.trim*SY.gain,Math.max(T0,T1-0.05));gm.gain.linearRampToValueAtTime(0,T1);
+  const lv=vol*voxLvl(P.timbre,style,P.f0),gm=G(lv);lnk(gm);
+  gm.gain.setValueAtTime(lv,Math.max(T0,T1-0.05));gm.gain.linearRampToValueAtTime(0,T1);
   const lim=x.createWaveShaper();lim.curve=voxLimCurve();lnk(lim);
   let rg=null;if(SY.rev){rg=G(SY.rev.amt);lim.connect(rg);rg.connect(KIT.rev(A,SY.rev.room));}
   lim.connect(A.out);
@@ -473,12 +518,12 @@ function speakLevel(){
 }
 
 /* ------------------------------------------------------------------ barks */
-const VOX_BK={};let voxBarkLast=0;
+const VOX_BARKS={};let voxBarkLast=0;
 function bark(charId,key,opt){
   opt=opt||{};
   const S=typeof STORY!=='undefined'?STORY:null,list=S&&S.barks&&S.barks[charId]&&S.barks[charId][key];
   if(!Array.isArray(list)||!list.length)return null;
-  const now=performance.now(),st=VOX_BK[charId+'|'+key]||(VOX_BK[charId+'|'+key]={bag:[],last:-1,r:mulberry32(KIT.hash(charId+'|'+key+'|bark')),at:0});
+  const now=performance.now(),st=VOX_BARKS[charId+'|'+key]||(VOX_BARKS[charId+'|'+key]={bag:[],last:-1,r:mulberry32(KIT.hash(charId+'|'+key+'|bark')),at:0});
   if(muted||VOXCUR||now-voxBarkLast<(opt.globalGap===undefined?1500:opt.globalGap)||now-st.at<(opt.cooldown===undefined?5000:opt.cooldown))return null;
   if(!st.bag.length){   // shuffled bag: every line once before any repeats, and never the same line twice in a row
     const b=list.map((x,i)=>i);for(let i=b.length-1;i>0;i--){const j=Math.floor(st.r()*(i+1));const q=b[i];b[i]=b[j];b[j]=q;}

@@ -13,13 +13,14 @@ const MUSIC={INST:{}};     // MUSIC.INST[name]=function(n)->layers[] (synth inst
 const MUSE=(function(){
 'use strict';
 const INST=MUSIC.INST;
-const LOOK=0.6,TICKMS=100,SCENEMS=250,BUDGET=20;
+const LOOK=0.6,TICKMS=100,SCENEMS=250,BUDGET=24;   // BUDGET: estimated simultaneous source nodes of ONE cue (live hard cap: AUD.capMusic = 24)
 const cl=(v,a,b)=>v<a?a:(v>b?b:v);
 const mixv=(a,b,t)=>a+(b-a)*t;
 const isNum=v=>typeof v==='number'&&isFinite(v);
 const sstep=(x,a,b)=>{if(!(b>a))return x>=a?1:0;const t=cl((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 const WARN=[];function warn(m){if(WARN.length<300)WARN.push(m);}
 const EMPTY={};
+const LAST={id:'',dropped:0,peakEst:0,byStem:{}};   // diagnostics of the latest offline render (MUSIC.last())
 const STAT={scheduled:0,dropped:0,late:0,errors:0,lastError:'',peakNodes:0,fallbacks:0,started:0,ticks:0};
 
 /* ------------------------------------------------------------------ theory: pitch classes, scales, chords */
@@ -91,8 +92,8 @@ function compMel(str){
     const m=TOKRE.exec(toks[i]);
     if(!m){bad++;ev.push(null);continue;}
     const w=m[7]?Math.max(1,parseInt(m[7],10)):1;
-    if(m[1]==='-'){if(last)last.len++;ev.push(null);last=last;continue;}
-    if(m[1]){ev.push(null);last=null;continue;}
+    if(m[1]==='-'){if(last)last.len+=w;for(let k=0;k<w;k++)ev.push(null);continue;}   // '-' / '-:n' tie: extends the previous note by n steps
+    if(m[1]){for(let k=0;k<w;k++)ev.push(null);last=null;continue;}                  // '.' / '.:n' rest of n steps
     let oct=0;for(let k=0;k<m[5].length;k++)oct+=m[5][k]===','?-1:1;
     const v=m[6]==='!'?1:m[6]==='~'?0.5:0.8;
     let e;
@@ -111,8 +112,8 @@ const DEFSTEM={
   bass:{inst:'bass_saw',reg:'C2',ref:'chord',gain:0.8,rev:0.05,prio:1},
   arp:{inst:'pluck',reg:'C4',ref:'chord',gain:0.4,gate:0.8,rev:0.22,dly:0.2,prio:0.4},
   lead:{inst:'brass',reg:'C4',ref:'scale',gain:0.6,rev:0.25,dly:0.1,prio:0.9},
-  drums:{inst:'',kind:'lanes',gain:0.8,rev:0.08,prio:0.95},
-  perc:{inst:'',kind:'lanes',gain:0.6,rev:0.12,prio:0.6},
+  drums:{inst:'',kind:'lanes',reg:'C2',gain:0.8,rev:0.08,prio:0.95},
+  perc:{inst:'',kind:'lanes',reg:'C2',gain:0.6,rev:0.12,prio:0.6},
   choir:{inst:'choir_aah',reg:'C3',ref:'chord',gain:0.4,rev:0.4,prio:0.6,voices:3},
   _:{inst:'pluck',reg:'C4',ref:'chord',gain:0.5,rev:0.2,prio:0.5}
 };
@@ -207,6 +208,8 @@ function norm(id){
       S.meter=Array.isArray(r.meter)?[r.meter[0]|0||4,r.meter[1]|0||4]:N.meter;
       S.spb=Math.max(1,Math.round(S.meter[0]*N.grid/S.meter[1]));S.q=S.meter[0]*4/S.meter[1];   // steps per bar, quarter notes per bar
       S.tempoMul=r.tempoMul||1;
+      S.key=r.key||N.key;S.tonic=r.key?pcOf(r.key):N.tonic;if(S.tonic<0){N.w('section '+S.name+': bad key "'+r.key+'"');S.tonic=N.tonic;S.key=N.key;}
+      S.mode=r.mode||N.mode;S.scale=(r.mode||r.scale)?scaleFor(r.mode||N.mode,r.scale):N.scale;   // a section may modulate / change mode (stems with ref:'scale', timpani tuning and motifs follow)
       const sw=(m)=>N.w('section '+S.name+': '+m);
       let cl0=parseChordList(r.chords,S.bars,S.spb,sw);
       if(!cl0){if(prevChords&&prevChords.fits===S.bars*S.spb)cl0=prevChords;else{sw('no chords: the tonic triad is used');const t=N.scale,rt=(N.tonic+0)%12,tri=[0,t[2%t.length]-t[0],t[4%t.length]-t[0]];
@@ -219,7 +222,7 @@ function norm(id){
         if(!N.stems[sn]){N.stems[sn]=normStem(sn,sdef[sn],N);N.order.push(sn);}
         const ents=normPlay(pl[sn],{w:m=>N.w('section '+S.name+' stem '+sn+': '+m)});
         for(const e of ents){
-          const chk=(c,what)=>{if(c.len>0&&c.len%S.spb!==0&&S.spb%c.len!==0)N.w('section '+S.name+' stem '+sn+': '+what+' of '+c.len+' steps does not fit a bar of '+S.spb+' steps');};
+          const chk=(c,what)=>{if(c.len>0&&c.len%S.spb!==0&&S.spb%c.len!==0)N.w('section '+S.name+' stem '+sn+': '+what+' of '+c.len+' steps does not fit a bar of '+S.spb+' steps');else if(c.len>S.spb&&(S.bars*S.spb)%c.len!==0)N.w('section '+S.name+' stem '+sn+': '+what+' of '+c.len+' steps does not divide the section ('+S.bars*S.spb+' steps)');else if(c.len>S.bars*S.spb)N.w('section '+S.name+' stem '+sn+': '+what+' of '+c.len+' steps is longer than the section');};
           for(const c of e.pats)chk(c,'pattern');if(e.lanes)for(const l of e.lanes)for(const c of l.pats)chk(c,'lane "'+l.name+'"');
           const uses=e.inst||S.inst[sn]||N.stems[sn].inst;
           if(!e.lanes&&!e.sustain&&!e.pats.length)N.w('section '+S.name+' stem '+sn+': empty entry');
@@ -247,7 +250,7 @@ function norm(id){
 function infoOf(id){
   const N=norm(id);if(!N||!N.ok)return null;
   return{id,tempo:N.tempo,bpm:N.tempo,tempoEra:N.tempoEra,beats:N.meter[0],meter:N.meter.slice(),key:N.key,mode:N.mode,loop:N.loop,sting:N.sting,len:N.len,loopLen:N.loopLen,bars:N.bars,
-    sections:N.sections.map(s=>({name:s.name,bars:s.bars,meter:s.meter.slice(),seconds:s.bars*s.q*60/N.tempo/s.tempoMul})),stems:N.order.slice(),warnings:N.warn.slice()};
+    sections:N.sections.map(s=>({name:s.name,bars:s.bars,meter:s.meter.slice(),key:s.key,mode:s.mode,seconds:s.bars*s.q*60/N.tempo/s.tempoMul})),stems:N.order.slice(),warnings:N.warn.slice()};
 }
 
 /* ------------------------------------------------------------------ instruments
@@ -262,10 +265,10 @@ const BP=(f0,q,f1,t)=>{const o={type:'bp',f0,q:q||1};if(f1)o.f1=f1;if(t)o.t=t;re
 const pr=(n,k,d)=>n.pr&&n.pr[k]!==undefined?n.pr[k]:d;
 Object.assign(INST,{
   /* --- pads, strings, choir */
-  pad_strings:n=>{const R=1.0,a=0.55;return[O('sawtooth',n.f,{unison:{n:2,spread:16,pan:0.7},dur:n.dur+R,env:{a,d:0.5,s:0.8,r:R},filter:LP(800,2100,a+0.4,0.7),gain:0.36})];},
-  pad_warm:n=>{const R=1.1,a=0.7;return[O('triangle',n.f,{unison:{n:2,spread:10,pan:0.5},dur:n.dur+R,env:{a,d:0.6,s:0.85,r:R},filter:LP(1500,0,0,0.6),gain:0.5}),O('sine',n.f*2,{dur:n.dur+R,env:{a,d:0.6,s:0.7,r:R},gain:0.12})];},
-  pad_dark:n=>{const R=1.2,a=0.9;return[O('sawtooth',n.f,{unison:{n:2,spread:20,pan:0.6},dur:n.dur+R,env:{a,d:0.8,s:0.85,r:R},filter:LP(380,900,a+0.6,0.9),gain:0.42})];},
-  pad_air:n=>{const R=1.6,a=1.1;return[O('triangle',n.f,{unison:{n:2,spread:22,pan:0.95},dur:n.dur+R,env:{a,d:0.9,s:0.8,r:R},filter:[HP(160),LP(3400,0,0,0.6)],gain:0.46}),O('sine',n.f*2.003,{dur:n.dur+R,env:{a:a+0.3,d:0.9,s:0.5,r:R},gain:0.07})];},
+  pad_strings:n=>{const R=0.9,a=0.55;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.5,s:0.8,r:R},filter:LP(800,2100,a+0.4,0.7),gain:0.45})];},
+  pad_warm:n=>{const R=0.9,a=0.7;return[{k:'osc',harm:[1,0.3,0.16,0.07],f:n.f,dur:n.dur+R,env:{a,d:0.6,s:0.85,r:R},filter:LP(1800,0,0,0.6),gain:0.55}];},
+  pad_dark:n=>{const R=1.0,a=0.9;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.8,s:0.85,r:R},filter:LP(380,900,a+0.6,0.9),gain:0.5})];},
+  pad_air:n=>{const R=1.3,a=1.1;return[{k:'osc',harm:[1,0.12,0.2,0.05],f:n.f,dur:n.dur+R,env:{a,d:0.9,s:0.8,r:R},filter:[HP(160),LP(3400,0,0,0.6)],gain:0.55}];},
   strings:n=>{const R=0.35,a=0.09;return[O('sawtooth',n.f,{unison:{n:2,spread:14,pan:0.6},dur:n.dur+R,env:{a,d:0.2,s:0.75,r:R},filter:LP(1200+1400*n.vel,0,0,0.7),vib:{f:5.2,cents:9},gain:0.4})];},
   choir_aah:n=>{const R=0.9,a=0.5;return[{k:'formant',src:'sawtooth',f:n.f,vowel:pr(n,'vowel','a'),to:pr(n,'to','o'),morph:n.dur,dur:n.dur+R,env:{a,d:0.4,s:0.8,r:R},gain:0.55}];},
   choir_ooh:n=>{const R=0.9,a=0.6;return[{k:'formant',src:'sawtooth',f:n.f,vowel:'o',to:'u',morph:n.dur,dur:n.dur+R,env:{a,d:0.4,s:0.8,r:R},gain:0.55}];},
@@ -273,7 +276,7 @@ Object.assign(INST,{
   /* --- brass, winds, leads */
   brass:n=>{const a=0.045,R=0.16,v=n.vel;return[O('sawtooth',n.f,{unison:{n:2,spread:9,pan:0.3},dur:n.dur+R,env:{a,d:0.14,s:0.7,r:R},filter:LP(500+500*v,1400+3200*v,a+0.1,1.2),drive:0.2,gain:0.5})];},
   horn:n=>{const a=0.07,R=0.2;return[O('sawtooth',n.f,{unison:{n:2,spread:6,pan:0.2},dur:n.dur+R,env:{a,d:0.2,s:0.7,r:R},filter:LP(450+300*n.vel,1100+1200*n.vel,a+0.12,0.9),gain:0.5})];},
-  brass_stab:n=>{const R=0.1,v=n.vel;return[O('sawtooth',n.f,{unison:{n:2,spread:12,pan:0.4},dur:Math.min(n.dur,0.35)+R,env:{a:0.012,d:Math.min(n.dur,0.35),s:0},filter:LP(700+600*v,2600+2600*v,0.07,1.3),drive:0.3,gain:0.5})];},
+  brass_stab:n=>{const R=0.1,v=n.vel,d=Math.min(n.dur,0.35);return[O('sawtooth',n.f,{detune:6,dur:d+R,env:{a:0.012,d:d,s:0},filter:LP(700+600*v,2600+2600*v,0.07,1.3),drive:0.3,gain:0.62})];},
   flute:n=>{const R=0.15;return[O('sine',n.f,{dur:n.dur+R,env:{a:0.06,d:0.1,s:0.85,r:R},vib:{f:5.4,cents:14},gain:0.55}),NZ('pink',{dur:n.dur+R,env:{a:0.05,d:0.1,s:0.5,r:R},filter:BP(n.f*2,3),gain:0.08})];},
   lead_saw:n=>{const R=0.12;return[O('sawtooth',n.f,{unison:{n:2,spread:12,pan:0.4},dur:n.dur+R,env:{a:0.012,d:0.2,s:0.7,r:R},filter:LP(900+2200*n.vel,0,0,1.2),gain:0.45})];},
   lead_square:n=>{const R=0.1;return[O('square',n.f,{dur:n.dur+R,env:{a:0.01,d:0.15,s:0.65,r:R},filter:LP(1400+1800*n.vel,0,0,0.9),gain:0.34})];},
@@ -281,10 +284,10 @@ Object.assign(INST,{
   lead_bell:n=>{const rg=pr(n,'ring',1.4);return[FMo(n.f,3.5,{from:1.8,to:0.04,t:rg},{dur:rg+0.3,env:{a:0.004,d:rg},gain:0.5}),O('sine',n.f*2.001,{dur:0.5,env:{a:0.003,d:0.45},gain:0.09})];},
   /* --- plucks, bells, mallets */
   pluck:n=>[{k:'pluck',f:n.f,t60:pr(n,'t60',0.55),damp:pr(n,'damp',0.45),bright:pr(n,'bright',0.6),dur:0.7,gain:0.9}],
-  harp:n=>[{k:'pluck',f:n.f,t60:1.3,damp:0.3,bright:0.75,dur:1.4,gain:0.85}],
+  harp:n=>[{k:'pluck',f:n.f,t60:1.1,damp:0.3,bright:0.75,dur:1.15,gain:0.85}],
   pluck_sq:n=>[O('square',n.f,{dur:Math.min(0.35,n.dur+0.08),env:{a:0.003,d:Math.min(0.35,n.dur+0.05)},filter:LP(2600*(0.5+n.vel*0.7),500,0.2,1.4),gain:0.4})],
-  bell:n=>{const rg=pr(n,'ring',1.3);return[FMo(n.f,pr(n,'ratio',3.5),{from:pr(n,'idx',2.6),to:0.05,t:rg*0.8},{dur:rg+0.2,env:{a:0.003,d:rg},gain:0.55}),O('sine',n.f*2.005,{dur:0.45,env:{a:0.002,d:0.4},gain:0.08})];},
-  glass:n=>{const rg=pr(n,'ring',1.8);return[FMo(n.f,2.0,{from:1.1,to:0.02,t:rg*0.9},{dur:rg+0.2,env:{a:0.005,d:rg},gain:0.55}),{k:'pluck',mode:'modal',f:n.f*2,ratios:[1,2.76,5.4],t60:0.6,tilt:0.35,damp:1.5,dur:0.7,gain:0.12}];},
+  bell:n=>{const rg=pr(n,'ring',1.0);return[FMo(n.f,pr(n,'ratio',3.5),{from:pr(n,'idx',2.6),to:0.05,t:rg*0.8},{dur:rg+0.1,env:{a:0.003,d:rg},gain:0.55})];},
+  glass:n=>{const rg=pr(n,'ring',1.4);return[FMo(n.f,2.0,{from:1.1,to:0.02,t:rg*0.9},{dur:rg+0.1,env:{a:0.005,d:rg},gain:0.55}),{k:'pluck',mode:'modal',f:n.f*2,ratios:[1,2.76],t60:0.4,tilt:0.35,damp:1.5,dur:0.45,gain:0.1}];},
   marimba:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,3.93,9.5],t60:0.55,tilt:0.35,damp:2.5,dur:0.7,gain:0.7}],
   kalimba:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,5.4,11.3],t60:0.9,tilt:0.3,damp:3,dur:1.0,gain:0.6}],
   /* --- basses */
@@ -293,7 +296,7 @@ Object.assign(INST,{
   bass_dist:n=>{const R=0.07,d=Math.max(n.dur,0.08);return[O('sawtooth',n.f,{dur:d+R,env:{a:0.005,d:0.18,s:0.55,r:R},filter:LP(380+420*n.vel,0,0,1.1),drive:0.85,gain:0.42}),O('sine',n.f*0.5,{dur:d+R,env:{a:0.006,d:0.2,s:0.8,r:R},gain:0.5})];},
   bass_pulse:n=>{const R=0.05,d=Math.max(0.06,Math.min(n.dur,0.2));return[O('square',n.f,{dur:d+R,env:{a:0.004,d:d,s:0.3,r:R},filter:LP(500+700*n.vel,160,0.2,1.2),gain:0.4}),O('sine',n.f,{dur:d+R,env:{a:0.004,d:d,s:0.5,r:R},gain:0.4})];},
   /* --- metallic hits */
-  stab_metal:n=>{const d=Math.min(0.3,n.dur+0.1);return[{k:'pluck',mode:'modal',f:n.f,ratios:[1,2.756,5.404,8.933],t60:d,tilt:0.55,damp:1.2,dur:d+0.05,gain:0.5,drive:0.35},NZ('white',{dur:0.04,env:{d:0.035},filter:HP(3500),gain:0.18})];},
+  stab_metal:n=>{const d=Math.min(0.3,n.dur+0.1);return[FMo(n.f,2.756,{from:3.6,to:0.25,t:d},{dur:d+0.05,env:{a:0.003,d:d},drive:0.35,gain:0.55}),NZ('white',{dur:0.04,env:{d:0.035},filter:HP(3500),gain:0.18})];},
   anvil:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,2.4,4.1,6.3],t60:0.55,tilt:0.6,damp:1.4,dur:0.6,gain:0.45},NZ('white',{dur:0.03,env:{d:0.025},filter:HP(2500),gain:0.2})],
   clang:n=>[FMo(n.f||330,1.414,{from:5,to:0.5,t:0.4},{dur:0.5,env:{a:0.002,d:0.45},gain:0.4,rm:{f:(n.f||330)*1.61,depth:0.7}}),NZ('white',{dur:0.03,env:{d:0.025},filter:HP(3000),gain:0.2})],
   /* --- drums */
@@ -308,7 +311,7 @@ Object.assign(INST,{
   hat:n=>[NZ('white',{dur:0.06,env:{a:0.002,d:0.05},filter:HP(7200),gain:0.4})],
   hat_o:n=>[NZ('white',{dur:0.26,env:{a:0.002,d:0.24},filter:HP(6500),gain:0.35})],
   shaker:n=>[NZ('white',{dur:0.09,env:{a:0.012,d:0.07},filter:[HP(5000),BP(8000,0.8)],gain:0.35})],
-  ride:n=>[FMo(420,2.7,{from:4,to:1.2,t:0.6},{dur:0.8,env:{a:0.002,d:0.7},filter:HP(2500),gain:0.18}),NZ('white',{dur:0.6,env:{a:0.002,d:0.5},filter:HP(7000),gain:0.14})],
+  ride:n=>[FMo(420,2.7,{from:4,to:1.2,t:0.4},{dur:0.5,env:{a:0.002,d:0.45},filter:HP(2500),gain:0.2}),NZ('white',{dur:0.3,env:{a:0.002,d:0.25},filter:HP(7000),gain:0.14})],
   crash:n=>[NZ('white',{dur:1.8,env:{a:0.003,d:1.6},filter:[HP(3000),BP(7000,0.5)],gain:0.55}),FMo(380,2.3,{from:5,to:1,t:1.2},{dur:1.4,env:{a:0.003,d:1.2},filter:HP(2000),gain:0.12})],
   tamb:n=>[NZ('white',{dur:0.09,env:{a:0.002,d:0.08},filter:BP(6500,2.2),gain:0.4}),FMo(5200,1.3,{from:2,to:0.3,t:0.08},{dur:0.1,env:{a:0.002,d:0.09},gain:0.12})],
   tom_hi:n=>tomFn(n,n.hzT(7,3),0.32),tom_mid:n=>tomFn(n,n.hzT(0,3),0.4),tom_lo:n=>tomFn(n,n.hzT(7,2),0.5),tom_r:n=>tomFn(n,n.hzT(0,2),0.55),
@@ -320,7 +323,7 @@ Object.assign(INST,{
   swell:n=>[NZ('pink',{dur:n.dur+0.3,env:{a:n.dur*0.8,d:n.dur*0.2+0.2},filter:LP(300,3500,n.dur),gain:0.5})]
 });
 function tomFn(n,f,d){return[O('sine',f,{pitch:{from:f*1.5,to:f,t:0.06},dur:d+0.1,env:{a:0.003,d:d},gain:0.9}),NZ('pink',{dur:0.06,env:{a:0.002,d:0.05},filter:LP(1800),gain:0.35})];}
-function timpFn(n,f){return[O('sine',f,{pitch:{from:f*1.18,to:f,t:0.1},dur:1.1,env:{a:0.004,d:1.0},gain:0.9}),O('sine',f*1.5,{pitch:{from:f*1.7,to:f*1.5,t:0.1},dur:0.4,env:{a:0.004,d:0.35},gain:0.28}),NZ('pink',{dur:0.07,env:{a:0.003,d:0.06},filter:LP(700),gain:0.5})];}
+function timpFn(n,f){return[O('sine',f,{pitch:{from:f*1.18,to:f,t:0.1},dur:0.85,env:{a:0.004,d:0.8},gain:0.9}),O('sine',f*1.5,{pitch:{from:f*1.7,to:f*1.5,t:0.1},dur:0.32,env:{a:0.004,d:0.28},gain:0.28}),NZ('pink',{dur:0.07,env:{a:0.003,d:0.06},filter:LP(700),gain:0.5})];}
 function estLayer(L){
   const k=L.k||'osc';let n=1;
   if(k==='osc'){n=L.unison?Math.max(1,L.unison.n|0):1;if(L.vib)n++;}else if(k==='fm')n=2;else if(k==='pluck'&&L.mode==='modal')n=L.n||(L.ratios?L.ratios.length:5);else if(k==='formant'&&L.vib)n=2;
@@ -352,11 +355,11 @@ function smoothScene(dt){
 /* ------------------------------------------------------------------ player: one cue being scheduled onto a graph (live handle or offline context) */
 let SERIAL=0;
 const into=(A,node)=>{A.out=node;return A.out;};   // live: the node itself; offline: a unity leaf (bit-exact mixing, see 80_audio.js leaf())
-function keyTone(P){const k=P.N.tonic;return(semi,oct)=>hzOf(12*(oct+1)+k+semi);}
+function keyTone(P){return(semi,oct)=>hzOf(12*(oct+1)+P.S.tonic+semi);}
 function mkPlayer(A,N,o){
   const x=A.ctx,live=!A.off,P={id:N.id,N,A,x,live,serial:++SERIAL,sec:o.sec||0,bar:0,step:0,secStep:0,loops:0,t0:o.t0,nextTime:o.t0,nextBarT:o.t0,barT:o.t0,bpm:0,bpmT:0,sd:0.1,
     evq:[],rel:[],act:[],ended:false,done:false,killT:0,endT:0,fading:false,stem:{},stemOrder:[],vol:o.vol===undefined?1:o.vol,sting:!!o.sting,nc:0,solo:o.solo||null,mute:o.mute||null,
-    scn:o.scn||null,sc:{int:SC.cur.int,night:SC.cur.night,era:SC.cur.era},S:null,dropped:0,rng:mulberry32((KIT.hash(N.id)^Math.imul(o.seed|0,0x9E3779B1)^(live?Math.imul(SERIAL,7919):0))>>>0),
+    scn:o.scn||null,sc:{int:SC.cur.int,night:SC.cur.night,era:SC.cur.era},S:null,dropped:0,peakEst:0,rng:mulberry32((KIT.hash(N.id)^Math.imul(o.seed|0,0x9E3779B1)^(live?Math.imul(SERIAL,7919):0))>>>0),
     nd:{f:0,midi:0,dur:0,vel:0,art:'',key:N.tonic,pr:EMPTY,rng:null,hzT:null,t:0},carry:0};
   P.nd.rng=P.rng;P.nd.hzT=keyTone(P);
   if(P.sec>=N.sections.length)P.sec=0;
@@ -388,6 +391,7 @@ function mkPlayer(A,N,o){
 }
 function sceneFor(P,t){
   if(P.scn)return P.scn(t,P.sc);
+  if(!P.live)return P.sc;   // offline with a fixed scene: the scene given to audioRender, never the live one
   const c=SC.cur;P.sc.int=c.int;P.sc.night=c.night;P.sc.era=c.era;return P.sc;
 }
 function stemLevel(P,sm,sc){
@@ -436,7 +440,7 @@ function insertEv(P,ev){const q=P.evq;let i=q.length;while(i>0&&q[i-1].t>ev.t)i-
 function queueMotif(P,m,sc){
   const fn=MOTIF[m.id];if(typeof fn!=='function'){if(!P.warned)P.warned={};if(!P.warned[m.id]){P.warned[m.id]=1;warn(P.id+': motif "'+m.id+'" is not registered');}return;}
   let res;
-  try{res=fn(m.key||P.N.key,m.mode||P.N.mode,{inst:m.inst||P.stem[m.stem].def.inst,oct:m.oct,vel:m.vel,bpm:P.bpm,tempo:P.bpm,beat:60/P.bpm,stem:m.stem,era:sc.era,night:sc.night,intensity:sc.int});}
+  try{res=fn(m.key||P.S.key,m.mode||P.S.mode,{inst:m.inst||P.stem[m.stem].def.inst,oct:m.oct,vel:m.vel,bpm:P.bpm,tempo:P.bpm,beat:60/P.bpm,stem:m.stem,era:sc.era,night:sc.night,intensity:sc.int});}
   catch(e){warn(P.id+': motif "'+m.id+'" threw '+(e&&e.message||e));return;}
   const notes=Array.isArray(res)?res:(res&&res.notes)||[];
   const inst=(res&&!Array.isArray(res)&&res.inst&&!m.inst)?res.inst:(m.inst||null);
@@ -452,15 +456,16 @@ function conc(P,t){let c=0;const a=P.act;for(let i=a.length-1;i>=0;i--){const e=
 function emit(P,sm,instName,midi,f,t,dur,vel,art,pan){
   const fn=INST[instName];
   if(!fn){if(!P.missing)P.missing={};if(!P.missing[instName]){P.missing[instName]=1;warn(P.id+': unknown instrument "'+instName+'"');}return;}
-  if(P.live&&t<P.x.currentTime-0.02){STAT.late++;return;}
-  const n=P.nd;n.f=f;n.midi=midi;n.dur=dur;n.vel=vel;n.art=art||'';n.pr=sm.def.p;n.t=t;
+  if(P.live){if(t<P.x.currentTime-0.02){STAT.late++;return;}}else if(t<0)t=0;   // humanised / flam hits before the start of an offline render land on 0
+  const n=P.nd;n.f=f;n.midi=midi;n.dur=dur;n.vel=vel;n.art=art||'';n.pr=sm.def.p;n.t=t;n.key=P.S.tonic;
   const L=fn(n);if(!L||!L.length)return;
-  let est=0,ld=0;
-  for(let i=0;i<L.length;i++){const l=L[i];est+=estLayer(l);const e=(l.delay||0)+(l.dur!==undefined?l.dur:dur);if(e>ld)ld=e;}
+  let est=0,ld=0,st=0;   // est: source nodes of the whole note; st: the ones that start with it (later layers are accounted when they begin)
+  for(let i=0;i<L.length;i++){const l=L[i],ne=estLayer(l),dl=l.delay||0;est+=ne;if(dl<0.03)st+=ne;const e=dl+(l.dur!==undefined?l.dur:dur);if(e>ld)ld=e;}
   const lim=BUDGET*(0.55+0.45*sm.def.prio);
-  if(conc(P,t)+est>lim){P.dropped++;STAT.dropped++;return;}
-  if(P.live){const used=AUD.activeNodesMusic;if(used+est>AUD.capMusic){P.dropped++;STAT.dropped++;return;}if(used+est>STAT.peakNodes)STAT.peakNodes=used+est;}
-  P.act.push({s:t,e:t+ld,n:est});
+  const cc=conc(P,t);if(cc+st>lim){P.dropped++;STAT.dropped++;sm.dropped=(sm.dropped||0)+1;return;}
+  if(cc+st>P.peakEst)P.peakEst=cc+st;
+  if(P.live){const used=AUD.activeNodesMusic;if(used+est>AUD.capMusic){P.dropped++;STAT.dropped++;sm.dropped=(sm.dropped||0)+1;return;}if(used+est>STAT.peakNodes)STAT.peakNodes=used+est;}
+  for(let i=0;i<L.length;i++){const l=L[i],dl=l.delay||0,ne=estLayer(l),e=dl+(l.dur!==undefined?l.dur:dur);P.act.push({s:t+dl,e:t+e,n:ne});sm.nodeSec=(sm.nodeSec||0)+ne*e;}
   const A=P.A,x=P.x,sc=P.sc;
   let nb;if(pan&&Math.abs(pan)>0.01){nb=x.createStereoPanner();nb.pan.value=cl(pan,-1,1);}else nb=x.createGain();
   const p=A.p;p.pitch=1;p.fmul=1-0.4*sc.night;p.variant=0;p.pan=0;
@@ -506,7 +511,7 @@ function stepAt(P,t){
       }
       let m;
       if(ev.t==='b'){m=atOrAbove(ch.bass!==null?ch.bass:ch.root,d.reg);}
-      else if((e.ref||d.ref)==='scale'){const tb=atOrAbove(P.N.tonic,d.reg),sl=P.N.scale,i=ev.d-1,o=Math.floor(i/sl.length),kk=((i%sl.length)+sl.length)%sl.length;m=tb+sl[kk]+12*o+ev.acc;}
+      else if((e.ref||d.ref)==='scale'){const tb=atOrAbove(S.tonic,d.reg),sl=S.scale,i=ev.d-1,o=Math.floor(i/sl.length),kk=((i%sl.length)+sl.length)%sl.length;m=tb+sl[kk]+12*o+ev.acc;}
       else{const rb=atOrAbove(ch.root,d.reg),iv=ch.iv,i=ev.d-1,o=Math.floor(i/iv.length),kk=i%iv.length;m=rb+iv[kk]+12*o+ev.acc;}
       m+=12*(ev.oct+e.oct)+nsh;
       emit(P,sm,inst,m,hzOf(m),ts,dur,vel,'',pan);
@@ -715,6 +720,7 @@ function renderCue(spec,seconds,sr){
     applyLevels(P,P.sc,0,true);
     run(P,dur+0.5);
     A.out=A.dest;
+    LAST.id=N.id;LAST.dropped=P.dropped;LAST.peakEst=P.peakEst;LAST.byStem={};LAST.avgNodes={};for(const sm of P.stemOrder){LAST.byStem[sm.name]=sm.dropped||0;LAST.avgNodes[sm.name]=+((sm.nodeSec||0)/dur).toFixed(2);}
   },{master:true});
 }
 function renderMotif(spec,seconds,sr){
@@ -759,7 +765,7 @@ function musicRestore(s){
 function musicRegister(id,def){MUSIC_DATA[id]=def;delete NCACHE[id];const N=norm(id);return{ok:!!(N&&N.ok),warnings:N?N.warn.slice():['not an object']};}
 function musicCheck(id){const N=norm(id);if(!N)return['no data for '+id];return N.warn.slice();}
 Object.assign(MUSIC,{play:musicPlay,stop:musicStop,scene:musicScene,stinger:musicStinger,duck:musicDuck,mood:musicMood,state:musicState,restore:musicRestore,register:musicRegister,check:musicCheck,info:infoOf,
-  norm,warnings:()=>WARN.slice(),scenes:()=>({target:Object.assign({},SC.t),cur:Object.assign({},SC.cur)}),
+  norm,last:()=>JSON.parse(JSON.stringify(LAST)),warnings:()=>WARN.slice(),scenes:()=>({target:Object.assign({},SC.t),cur:Object.assign({},SC.cur)}),
   stats:()=>Object.assign({},STAT,{players:LIVE.players.map(p=>({id:p.id,cue:p.cueId,sec:p.sec,bar:p.bar,bpm:+p.bpm.toFixed(2),fading:p.fading,sting:p.sting,dropped:p.dropped,levels:Object.fromEntries(p.stemOrder.map(s=>[s.name,+s.target.toFixed(3)]))})),
     manual:LIVE.manual,held:LIVE.held,cue:LIVE.cue,scene:Object.assign({},SC.t),cur:Object.assign({},SC.cur),warnings:WARN.length}),
   deg:(key,mode,deg,oct,acc)=>degMidi(pcOf(key),scaleFor(mode),deg,oct===undefined?4:oct,acc),scale:scaleFor,chord:parseChord,voicing:voicingOf,midi:midiOf,hz:n=>hzOf(midiOf(n)),pc:pcOf,SCALES,CHORDS:CQ,
