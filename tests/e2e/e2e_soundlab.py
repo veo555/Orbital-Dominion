@@ -237,6 +237,10 @@ def chk_meters(pg, trigger=True, mute=False):
     # nothing else may be playing: stop the cue, speech and the engine's fallback score, let the tail die out
     pg.evaluate("()=>{__RTS.musicStop(0);__EV('speakStop')();__RTS.AUD.legacyScore(false);__RTS.AUD.reset(true);}")
     if mute: pg.evaluate("()=>{if(!__RTS.AUD.stats().muted)__RTS.AUD.mute();}")
+    # STALE-TEST FIX: musicStop() fades the running cue but lets one-shot STINGERS (sting_*) ring out by design, and the preceding cue check has just pressed every cue button including all
+    # the stingers - at rest means "no music player left", so wait for them (a sting is a few seconds long) instead of a fixed 1.5 s; the meter ballistics then need ~1.5 s to reach -inf.
+    try: pg.wait_for_function("()=>__RTS.MUSIC.stats().players.length===0&&__RTS.AUD.stats().activeNodesMusic===0", timeout=25000)
+    except Exception: pass   # still ringing: the 'rests' assertion below then fails and says so
     pg.wait_for_timeout(1500); rest = []
     for _ in range(3): rest.append(pg.evaluate("()=>SL.meters()")); pg.wait_for_timeout(100)
     still = rest[0] == rest[1] == rest[2]

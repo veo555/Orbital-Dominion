@@ -110,15 +110,25 @@ function instFree(i){
 }
 const trk=(A,n)=>{if(!A.off){const i=A.inst;if(i&&i.v)i.x.push(n);}};   // remember a tail node of this instance so it is disconnected when the instance ends
 function srcEnded(){
-  const i=this._i;this.onended=null;this._i=null;try{this.disconnect();}catch(e){}
+  const i=this._i;if(!i)return;this.onended=null;this._i=null;try{this.disconnect();}catch(e){}
   if(i.m)S.nodesM--;else S.nodes--;
   if(--i.n===0)instFree(i);
+}
+/* A source whose output was cut from the graph before it started (music killPlayer() disconnects a cue's gains while notes in its look-ahead are still scheduled) is never pulled by the
+   renderer, so it never fires `ended` and would stay in the node budget for ever. Every live source is remembered with its stop time; sweepNodes() (throttled, called from stats / the
+   cap check) retires the ones that are more than 0.75 s past their stop time. */
+const LIVEN=[];let sweepT=0;
+function sweepNodes(now,force){
+  if(!AC||!LIVEN.length||AC.state!=='running'||(!force&&now-sweepT<400))return;sweepT=now;
+  const lim=AC.currentTime-0.75;let w=0;
+  for(let k=0;k<LIVEN.length;k++){const s=LIVEN[k];if(!s._i)continue;if(s._t1<lim){srcEnded.call(s);continue;}LIVEN[w++]=s;}
+  LIVEN.length=w;
 }
 /* start+stop a source node and (live) account for it; every source of every voice goes through here */
 function go(A,s,t0,t1,off){
   if(off===undefined)s.start(t0);else s.start(t0,off);
   s.stop(t1);
-  if(!A.off){const i=A.inst;s.onended=srcEnded;s._i=i;i.n++;if(i.m)S.nodesM++;else{S.nodes++;if(S.nodes>AUD.peakNodes)AUD.peakNodes=S.nodes;}}
+  if(!A.off){const i=A.inst;s.onended=srcEnded;s._i=i;s._t1=t1;LIVEN.push(s);i.n++;if(i.m)S.nodesM++;else{S.nodes++;if(S.nodes>AUD.peakNodes)AUD.peakNodes=S.nodes;}}
 }
 const cn=(a,b)=>{a.connect(b);return b;};
 function noiseBuf(A,color){
@@ -399,8 +409,8 @@ function logEv(name,v,x,y,r){
 }
 function logReset(){logHead=0;logCount=0;}
 Object.defineProperty(AUD,'log',{get(){const o=[];for(let i=0;i<logCount;i++)o.push(Object.assign({},RING[(logHead-logCount+i+LOGN*2)%LOGN]));return o;}});
-Object.defineProperty(AUD,'activeNodes',{get(){return S.nodes;}});
-Object.defineProperty(AUD,'activeNodesMusic',{get(){return S.nodesM;}});
+Object.defineProperty(AUD,'activeNodes',{get(){sweepNodes(performance.now());return S.nodes;}});
+Object.defineProperty(AUD,'activeNodesMusic',{get(){sweepNodes(performance.now());return S.nodesM;}});
 
 /* ------------------------------------------------------------------ graph, volumes, ducking, lifecycle */
 function softClip(){const n=2049,c=new Float32Array(n),k=0.62;for(let i=0;i<n;i++){const x=i/(n-1)*2-1,a=Math.abs(x),y=a<=k?a:k+(0.97-k)*Math.tanh((a-k)/(0.97-k));c[i]=x<0?-y:y;}return c;}
@@ -460,6 +470,7 @@ function audioMeter(){
   return{peak:pk,rms:Math.sqrt(sq/S.anBuf.length)};
 }
 function audioStats(){
+  sweepNodes(performance.now(),true);
   const b={},dk={};for(let i=0;i<S.buses.length;i++){b[BUSES[i]]=S.buses[i].inn.gain.value;dk[BUSES[i]]=S.buses[i].dk.gain.value;}
   return{state:AC?AC.state:'none',sampleRate:AC?AC.sampleRate:0,currentTime:AC?AC.currentTime:0,muted,activeNodes:S.nodes,activeNodesMusic:S.nodesM,peakNodes:AUD.peakNodes,cap:AUD.cap,capMusic:AUD.capMusic,
     masterGain:S.master?S.master.gain.value:null,buses:b,ducks:dk,voices:VOICES.size,renderers:Object.keys(RENDERERS),legacyScore:legacyOn,lastError:AUD.lastError,counters:Object.assign({},C)};
@@ -513,6 +524,7 @@ function play(v,x,y){
   const now=performance.now();
   if(v.gap>0&&now-v.last<v.gap){v.pend++;C.merged++;return'merge';}
   if(v.poly>0&&v.live>=v.poly){C.poly++;return'poly';}
+  sweepNodes(now);
   if(v.bus===5){if(S.nodesM+v.est>AUD.capMusic){C.capped++;return'cap';}}
   else if(S.nodes+v.est>AUD.cap*LIMF[v.prio]){C.capped++;return'cap';}
   const n=now-v.last<600?v.pend:0;v.pend=0;v.last=now;

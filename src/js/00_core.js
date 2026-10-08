@@ -7,7 +7,7 @@ const TAU=Math.PI*2,MAXSUP=120;
 let TOPBAR=44,BOTTOM=198; // heights of the HUD bars in CSS px; measureHud() (60_render.js) keeps them equal to the real DOM
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v),lerp=(a,b,t)=>a+(b-a)*t,hyp=Math.hypot;
 const $=id=>document.getElementById(id);
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function mulberry32(a){const f=function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};f.rngState=()=>a|0;return f;}   // rngState: 46_save.js stores the generator by its state
 function makeNoise(rng){
   const N=128,g=new Float32Array(N*N);for(let i=0;i<g.length;i++)g[i]=rng();
   const sm=t=>t*t*(3-2*t);

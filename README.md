@@ -12,6 +12,17 @@ offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) f
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
 
+## 0a. What changed in 3.3 (8 Oct 2026): first measurements, save/resume, field manual
+
+| Area | Change | Evidence (headless Chromium / Node on Linux; nothing heard, no real phone) |
+|---|---|---|
+| **Resume** | The running match (skirmish or campaign mission) is autosaved every 30 s, when the app goes to the background and when you pause; the main menu then offers **Continue**. Erased when the match ends. New sim-side module `46_save.js` (reference-preserving snapshot of the whole game state), UI in `78_resume.js` | `node tests/sim/save.js`: snapshot, restore, N ticks gives the same state hash as without the round trip (skirmish, AI-vs-AI, three campaign missions), with three controls that must fail when the snapshot is tampered · `tests/e2e/e2e_resume.py` (reload, Continue, same time/units/buildings, terrain rebuilt, game over erases the slot, corrupt slot rejected) |
+| **Field manual** | Mission 1 shows the next two undone basics (train Haulers, build a Generator, build a Garrison) under its objectives (Settings > Hints turns it off; hidden in the compact phone layout, where the radio strip carries the teaching) | `tests/e2e/e2e_campaign.py` still passes |
+| **Balance** | All nine missions were played 24 times each by the built-in AI as a stand-in player; the four missions it cannot judge got walkthrough bots. Three data fixes came out of it (m06 Meridian turret ring 4 to 3, m09 win now needs the Foci destroyed, two branch triggers in m04 marked optional) | `tests/sim/campaign_balance.js --full`, `tests/sim/campaign_walkthrough.js`; table in `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` section 1.3 |
+| **Gate** | `tests/run_all.sh` now also runs the save, campaign, resume, cinematic and portrait checks. A pre-existing flaky assertion (perks cosmetic) was made deterministic by pinning `Math.random` | `bash tests/run_all.sh` |
+
+---
+
 ## 0. What changed in 3.2 (8 Oct 2026): story, campaign, cinematics, sound
 
 The game now has a single-player campaign, *The Lantern Tithe*: nine missions in three acts, films between them, and a

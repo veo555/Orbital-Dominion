@@ -64,6 +64,8 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `73_swarm_ui.js` | Swarm panel: tabs `ov` (Overseer), `ro` (Roster), `mk` (Market), `lg` (Ledger); command box; role assignment; world overlays (agent badges) | no |
 | `74_touch.js` | Pointer-Events touch layer: gestures, minimap, long-press help, touch dock, placement bar (`docs/TOUCH_SPEC.md`) | no |
 | `75_platform.js` | Lifecycle (auto-pause, wake-lock, Back), fullscreen, install helpers, service-worker registration | no |
+| `46_save.js` | Snapshot / restore of the whole match state (reference-preserving graph; statics by name; seeded generators by state) — headless, tested by `tests/sim/save.js` | **yes** (sim-side) |
+| `78_resume.js` | Autosave slot in localStorage, main-menu Continue button, `resumeGame()` (via `startGame({resume})`) | no |
 | `77_support.js` | Optional payments UI + entitlement logic (`docs/MONETIZATION.md`) | no |
 | `80_audio.js` | WebAudio SFX + music + speech | no |
 | `90_main.js` | Input binding (mouse/keyboard), main loop, boot, `window.__RTS` test export | no |

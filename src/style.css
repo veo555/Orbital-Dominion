@@ -672,6 +672,7 @@ html.cr-on #toast{top:calc(var(--tH) + var(--crH,64px) + 22px)}
 #objectives .cobt{margin:2px 0 0;font-size:12px;color:var(--txt);font-weight:650}   /* a <p>: the compact one-line tracker keys on the first <div> being the first objective */
 #objectives .cobt small{color:var(--dim);font-weight:400;margin-left:4px}
 #objectives .ob.done,#objectives .ob.fail{color:var(--dim)}
+#objectives .fm{margin-top:7px;padding-top:5px;border-top:1px solid var(--line)}#objectives .fm>b{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc2);margin-bottom:2px}
 #objectives .ob.done::before{content:"✔";color:var(--ok)}
 #objectives .ob.fail::before{content:"✕";color:var(--bad)}
 #objectives .ob.bonus::before{content:"★";color:var(--cry)}
@@ -717,6 +718,7 @@ html.compact.cr-on #toast{top:calc(var(--tH) + var(--crH,54px) + 46px)}
 html.compact #objectives.camp{width:auto}
 html.compact .cpause{margin:-6px 0 8px;padding:5px 10px}html.compact .cpause .cps{margin:0}html.compact .cpause .ol li:not(:first-child){display:none}
 html.compact #objectives .cobt{display:none}
+html.compact #objectives .fm{display:none}
 html.compact #objectives.camp .ob:not(:first-of-type){display:none}
 html.compact.portrait .mgrid{grid-template-columns:1fr}
 html.compact.portrait #campBrief .card.camp,html.compact.portrait #campDebrief .card.camp{align-self:center;max-height:100%}

@@ -693,6 +693,7 @@ html.cr-on #toast{top:calc(var(--tH) + var(--crH,64px) + 22px)}
 #objectives .cobt{margin:2px 0 0;font-size:12px;color:var(--txt);font-weight:650}   /* a <p>: the compact one-line tracker keys on the first <div> being the first objective */
 #objectives .cobt small{color:var(--dim);font-weight:400;margin-left:4px}
 #objectives .ob.done,#objectives .ob.fail{color:var(--dim)}
+#objectives .fm{margin-top:7px;padding-top:5px;border-top:1px solid var(--line)}#objectives .fm>b{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc2);margin-bottom:2px}
 #objectives .ob.done::before{content:"✔";color:var(--ok)}
 #objectives .ob.fail::before{content:"✕";color:var(--bad)}
 #objectives .ob.bonus::before{content:"★";color:var(--cry)}
@@ -738,6 +739,7 @@ html.compact.cr-on #toast{top:calc(var(--tH) + var(--crH,54px) + 46px)}
 html.compact #objectives.camp{width:auto}
 html.compact .cpause{margin:-6px 0 8px;padding:5px 10px}html.compact .cpause .cps{margin:0}html.compact .cpause .ol li:not(:first-child){display:none}
 html.compact #objectives .cobt{display:none}
+html.compact #objectives .fm{display:none}
 html.compact #objectives.camp .ob:not(:first-of-type){display:none}
 html.compact.portrait .mgrid{grid-template-columns:1fr}
 html.compact.portrait #campBrief .card.camp,html.compact.portrait #campDebrief .card.camp{align-self:center;max-height:100%}
@@ -855,7 +857,7 @@ html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
       <h3>Difficulty</h3>
       <div class="diffrow" id="diffRow"></div>
     </div>
-    <div class="mfoot"><div class="row actions"><button class="btn big camp hidden" id="bCamp">Campaign</button><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button><button class="btn hidden" id="bExtras">Extras</button></div>
+    <div class="mfoot"><div class="row actions"><button class="btn big hidden" id="bContinue">Continue</button><button class="btn big camp hidden" id="bCamp">Campaign</button><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button><button class="btn hidden" id="bExtras">Extras</button></div>
       <div class="row links"><button class="btn link hidden" id="bInstall">⬇ Install app</button><button class="btn link hidden" id="bFull">⛶ Fullscreen</button><button class="btn link hidden" id="bShare">↗ Share</button><button class="btn link hidden" id="bSupport">♥ Support</button></div></div>
   </div>
 </div>
@@ -999,7 +1001,7 @@ html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
 
 <script>
 (function(){
-const BUILD={"variant": "standalone", "id": "0302610532", "version": "3.1.0"};
+const BUILD={"variant": "standalone", "id": "03872494ea", "version": "3.1.0"};
 const SUPPORT_CFG={"enabled":false,"_help":"Optional 'support the game' payments through Stripe. OFF by default. See docs/MONETIZATION.md. Everything here is PUBLIC (it ships in the page): never put a Stripe secret key in this file.","title":"Support Orbital Dominion","blurb":"Orbital Dominion is free to play. If you enjoy it you can chip in, which pays for development. Payments are handled by Stripe on its own page; the game never sees your card details. Supporting unlocks cosmetic extras only: no gameplay advantage, and in-game currency is never sold.","tiers":[{"id":"coffee","label":"Coffee","amount":"$3","paymentLink":""},{"id":"backer","label":"Backer","amount":"$9","paymentLink":""},{"id":"founder","label":"Founder","amount":"$25","paymentLink":""}],"checkoutEndpoint":"","verifyEndpoint":"","entitlementEndpoint":"","perks":["Supporter badge on the title screen","Three extra interface colour themes"]};
 'use strict';
 /* =========================================================================
@@ -1010,7 +1012,7 @@ const TAU=Math.PI*2,MAXSUP=120;
 let TOPBAR=44,BOTTOM=198; // heights of the HUD bars in CSS px; measureHud() (60_render.js) keeps them equal to the real DOM
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v),lerp=(a,b,t)=>a+(b-a)*t,hyp=Math.hypot;
 const $=id=>document.getElementById(id);
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function mulberry32(a){const f=function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};f.rngState=()=>a|0;return f;}   // rngState: 46_save.js stores the generator by its state
 function makeNoise(rng){
   const N=128,g=new Float32Array(N*N);for(let i=0;i<g.length;i++)g[i]=rng();
   const sm=t=>t*t*(3-2*t);
@@ -8876,9 +8878,9 @@ STORY.missions.push(
    {id:"m04_t10",once:true,when:["after","tallowHit",7],do:[["radio","m04_r10"]]},
    {id:"m04_t11",once:true,when:["obj","o_burn","done"],do:[["radio","m04_r11"]]},
    {id:"m04_t12",once:true,when:["era","me",">=",3],do:[["radio","m04_r12"],["mood","tension"]]},
-   {id:"m04_t13",once:true,when:["era","enemy",">=",3],do:[["radio","m04_r13"]]},
+   {id:"m04_t13",once:true,optional:true,when:["era","enemy",">=",3],do:[["radio","m04_r13"]]},
    {id:"m04_t14",once:true,when:["all",["time",">=",780],["era","enemy","<",3]],do:[["spawn","enemy","rifleman",5,"edge:N",{order:"attack"}],["spawn","enemy","rocketeer",2,"edge:N",{order:"attack"}],["spawn","enemy","juggernaut",1,"edge:E",{order:"attack"}],["spawn","enemy","rifleman",3,"edge:E",{order:"attack"}],["radio","m04_r14"]]},
-   {id:"m04_t15",once:true,when:["count","unit","me","hauler","<",6],do:[["radio","m04_r15"]]}
+   {id:"m04_t15",once:true,optional:true,when:["count","unit","me","hauler","<",6],do:[["radio","m04_r15"]]}
  ],
  win:["all",["obj","o_era","done"],["obj","o_burn","done"]],
  lose:["hubs","me","==",0],
@@ -8949,7 +8951,7 @@ STORY.missions.push(
    foe:{ai:true,
      start:{c:600,e:200,era:2,buildings:[
        {type:"hub",tx:38,ty:50},{type:"hub",tx:46,ty:34},
-       {type:"turret",tx:38,ty:43},{type:"turret",tx:49,ty:43},{type:"turret",tx:43,ty:38},{type:"turret",tx:43,ty:49}]},
+       {type:"turret",tx:49,ty:43},{type:"turret",tx:43,ty:38},{type:"turret",tx:43,ty:49}]},
      mods:{waveMult:0.5,intervalMult:1.5,firstWave:99999,hero:true,air:false}},
    swarm:"off",daylight:"night"},
  objectives:[
@@ -9120,12 +9122,12 @@ STORY.missions.push(
    {id:"m09_t16",once:true,optional:true,when:["after","holdAt",3],do:[["radio","m09_r11"]]},
    {id:"m09_t17",once:true,optional:true,when:["after","holdAt",15],do:[["spawn","enemy","raptor",5,[50,44],{order:"idle"}]]},
    {id:"m09_t18",once:true,optional:true,when:["after","holdAt",35],do:[["spawn","enemy","rifleman",6,[50,40],{order:"idle"}]]},
-   {id:"m09_t19",once:true,optional:true,when:["after","holdAt",60],do:[["flag","holdDone",true],["flag","closing",true],["radio","m09_r12"],["strike",44,44,4,9999,3,null,"enemy"],["mood","dread"]]},
+   {id:"m09_t19",once:true,optional:true,when:["all",["after","holdAt",60],["count","building","enemy","exchange","==",0]],do:[["flag","holdDone",true],["flag","closing",true],["radio","m09_r12"],["strike",44,44,4,9999,3,null,"enemy"],["mood","dread"]]},
    {id:"m09_t20",once:true,optional:true,when:["time",">=",1380],do:[["radio","m09_r13"]]},
    {id:"m09_t21",once:true,optional:true,when:["all",["time",">=",1440],["count","building","enemy","exchange",">=",1]],do:[["strike",15,74,12,900,6,null,"enemy"]]},
    {id:"m09_t22",once:true,optional:true,when:["time",">=",720],do:[["spawn","enemy","reaver",5,"edge:E",{order:"attack"}],["radio","m09_r15"]]}
  ],
- win:["all",["flag","closing"],["hero","dead"]],
+ win:["all",["flag","closing"],["hero","dead"],["count","building","enemy","exchange","==",0]],
  lose:["hubs","me","==",0],
  noDefaultWin:true,
  stars:{par:1080},
@@ -9961,6 +9963,87 @@ function campaignCanPlay(save,missionId,story){
 }
 function campaignSaveRead(store){try{const raw=(store||localStorage).getItem(CAMP_SAVEKEY);return raw?campaignSaveSanitize(JSON.parse(raw)):emptyCampaignSave();}catch(e){return emptyCampaignSave();}}
 function campaignSaveWrite(save,store){try{(store||localStorage).setItem(CAMP_SAVEKEY,JSON.stringify(campaignSaveSanitize(save)));return true;}catch(e){return false;}}
+
+/* =========================================================================
+   46_SAVE — snapshot / restore of a running match (SIM-SIDE: no DOM, no canvas, no wall clock).
+   gameSnapshot()  -> string   the whole of G as a reference-preserving graph (cycles and shared objects survive), JSON text
+   gameRestore(s)  -> G|null   rebuilds it, makes it the live G and returns it (null when the text is not a valid snapshot of this version)
+   What is NOT saved: render caches (terrainCv, mmBg, tInfo: buildTerrain() makes them again), the Overseer's open proposals (G.sw.props hold
+   closures; they are re-proposed within seconds). Objects that are shared static data (UDEF/BDEF/FACTIONS/... entries) are saved by name, not by value,
+   so `u.def===UDEF[u.type]` still holds after a restore. The two seeded generators (mulberry32 closures) are saved by state.
+   Contract (tests/sim/save.js): snapshot -> restore -> N more ticks gives the same state hash as N more ticks without the round trip.
+   ========================================================================= */
+const SAVE_V=1;
+const SAVE_SKIP={terrainCv:1,mmBg:1,tInfo:1};
+let SAVE_STAT=null;                                                    // Map object -> JSON path of the static table it lives in (built once)
+function saveRoots(){return{UDEF,BDEF,FACTIONS,DIFF,SKILLS,TECH,TAX,CAMP_TYPES,CADI,ROLES,GEAR,ERAS,TAGNAME,NEUTRAL_COL,JOB_NAMES,PAY};}
+function saveStatics(){
+  if(SAVE_STAT)return SAVE_STAT;
+  SAVE_STAT=new Map();const R=saveRoots();
+  (function walk(o,path,d){if(!o||typeof o!=='object'||d>3||SAVE_STAT.has(o))return;SAVE_STAT.set(o,path);for(const k of Object.keys(o))walk(o[k],path.concat([k]),d+1);})(R,[],0);
+  SAVE_STAT.delete(R);return SAVE_STAT;
+}
+function saveStaticAt(path){let o=saveRoots();for(const k of path){if(o==null)return undefined;o=o[k];}return o;}
+const B64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+function b64enc(u8){let s='';const n=u8.length;for(let i=0;i<n;i+=3){const a=u8[i],b=i+1<n?u8[i+1]:0,c=i+2<n?u8[i+2]:0;s+=B64[a>>2]+B64[(a&3)<<4|b>>4]+(i+1<n?B64[(b&15)<<2|c>>6]:'=')+(i+2<n?B64[c&63]:'=');}return s;}
+function b64dec(s){
+  const n=s.length,pad=s.endsWith('==')?2:s.endsWith('=')?1:0,out=new Uint8Array(n/4*3-pad),L={};for(let i=0;i<64;i++)L[B64[i]]=i;
+  let o=0;for(let i=0;i<n;i+=4){const a=L[s[i]],b=L[s[i+1]],c=L[s[i+2]]||0,d=L[s[i+3]]||0;
+    if(o<out.length)out[o++]=a<<2|b>>4;if(o<out.length)out[o++]=(b&15)<<4|c>>2;if(o<out.length)out[o++]=(c&3)<<6|d;}
+  return out;
+}
+const SAVE_TA={Uint8Array,Int8Array,Uint16Array,Int16Array,Uint32Array,Int32Array,Float32Array,Float64Array};
+function gameSnapshot(){
+  if(!G)return null;
+  const ids=new Map(),nodes=[],stat=saveStatics();
+  function enc(v){
+    if(v===null||typeof v==='boolean'||typeof v==='string')return v;
+    if(typeof v==='number')return isFinite(v)?v:{n:String(v)};
+    if(v===undefined)return{u:1};
+    if(typeof v==='function'){if(v.rngState)return{g:v.rngState()};throw new Error('snapshot: function in state');}
+    let i=ids.get(v);if(i!==undefined)return{r:i};
+    const sp=stat.get(v);if(sp)return{s:sp};
+    if(typeof v.getContext==='function')throw new Error('snapshot: canvas in state');
+    i=nodes.length;ids.set(v,i);nodes.push(null);
+    let nd;
+    if(Array.isArray(v))nd={a:v.map(enc)};
+    else if(ArrayBuffer.isView(v))nd={t:v.constructor.name,b:b64enc(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))};
+    else if(v instanceof Set)nd={set:[...v].map(enc)};
+    else if(v instanceof Map)nd={map:[...v].map(([k,x])=>[enc(k),enc(x)])};
+    else{const o={};for(const k of Object.keys(v)){if(v===G&&SAVE_SKIP[k])continue;if(typeof v[k]==='function'&&!v[k].rngState)continue;o[k]=enc(v[k]);}nd={o};}
+    nodes[i]=nd;return{r:i};
+  }
+  const props=G.sw&&G.sw.props;if(G.sw)G.sw.props=[];
+  let root;try{root=enc(G);}finally{if(G.sw)G.sw.props=props;}
+  return JSON.stringify({v:SAVE_V,root,nodes});
+}
+function gameRestore(text){
+  let S;try{S=JSON.parse(text);}catch(e){return null;}
+  if(!S||S.v!==SAVE_V||!Array.isArray(S.nodes)||!S.root)return null;
+  const N=S.nodes,objs=new Array(N.length);
+  function dec(x){
+    if(x===null||typeof x!=='object')return x;
+    if(x.r!==undefined)return objs[x.r];
+    if(x.s!==undefined)return saveStaticAt(x.s);
+    if(x.g!==undefined)return mulberry32(x.g);
+    if(x.n!==undefined)return +x.n;
+    if(x.u)return undefined;
+    throw new Error('bad ref');
+  }
+  try{
+    for(let i=0;i<N.length;i++){const n=N[i];                          // pass 1: allocate every container (so cycles resolve)
+      if(n.a)objs[i]=new Array(n.a.length);else if(n.t){const u=b64dec(n.b),C=SAVE_TA[n.t];if(!C)throw new Error('bad typed array');objs[i]=new C(u.buffer,0,u.length/C.BYTES_PER_ELEMENT);}
+      else if(n.set)objs[i]=new Set();else if(n.map)objs[i]=new Map();else objs[i]={};}
+    for(let i=0;i<N.length;i++){const n=N[i],o=objs[i];                // pass 2: fill
+      if(n.a)for(let k=0;k<n.a.length;k++)o[k]=dec(n.a[k]);
+      else if(n.set)for(const e of n.set)o.add(dec(e));
+      else if(n.map)for(const[k,v]of n.map)o.set(dec(k),dec(v));
+      else if(n.o)for(const k of Object.keys(n.o))o[k]=dec(n.o[k]);}
+    const g=dec(S.root);if(!g||typeof g!=='object'||g.units===undefined||g.buildings===undefined)return null;
+    for(const k of Object.keys(SAVE_SKIP))g[k]=null;
+    G=g;return G;
+  }catch(e){return null;}
+}
 
 /* =========================================================================
    ART (1/3) — drawing helpers and cached unit sprites
@@ -18573,7 +18656,7 @@ function onStepEnd(){
   if(ui.pings.length&&G.time-ui.pings[0].t>ui.pings[0].dur)ui.pings.shift();
   if(G.time-ui.lastInc>=1){ui.lastInc=G.time;const T=G.teams[0];ui.inc.push({t:G.time,c:T.minedC+T.taxEarn+T.tradeEarn,e:T.minedE});if(ui.inc.length>40)ui.inc.shift();}
 }
-function onGameOver(res){platMatchStop();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});say(res==='victory'?'Victory':'Defeat');}
+function onGameOver(res){platMatchStop();if(typeof resumeClear==='function')resumeClear();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});say(res==='victory'?'Victory':'Defeat');}
 function incomeRates(){
   const a=ui.inc;if(a.length<3)return{c:0,e:0};const f=a[0],l=a[a.length-1],dt=Math.max(1,l.t-f.t);
   return{c:(l.c-f.c)/dt*60,e:(l.e-f.e)/dt*60};
@@ -19167,6 +19250,7 @@ function syncMenu(){
   for(const el of $('diffRow').children)el.classList.toggle('sel',el.dataset.d===SET.diff);
   setAccent(FACTIONS[SET.faction].col);
   if(typeof campSyncMenu==='function')campSyncMenu();
+  if(typeof resumeSync==='function')resumeSync();
   $('setMusic').value=SET.music*100;$('setSfx').value=SET.sfx*100;$('setVoice').value=SET.voiceVol*100;
   for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).checked=!!SET[k];
   $('set_quality').value=SET.quality;
@@ -20004,6 +20088,7 @@ function matchActive(){return !!(G&&ui.running&&!ui.demo&&!G.over);}
 function suspendAudio(){try{if(AC&&AC.state==='running')AC.suspend();}catch(e){}}
 function autoPause(){
   if(matchActive()&&!G.paused){G.paused=true;showOverlay('pauseMenu');setTxt('bMenuT','▶');}
+  if(matchActive()&&typeof resumeWrite==='function')resumeWrite();
   suspendAudio();releaseWake();
 }
 async function acquireWake(){
@@ -20312,6 +20397,11 @@ function campRenderObjectives(){
   const par=C.m&&C.m.stars&&+C.m.stars.par>0?+C.m.stars.par:0;
   let h='<b>Objectives</b><p class="cobt">'+cuEsc(C.m&&C.m.title||'')+(par?'<small>par '+fmtTime(par)+'</small>':'')+'</p>';
   for(const o of L.slice(0,7))h+='<div class="ob'+(o.kind!=='primary'?' bonus':'')+(o.state==='done'?' done':o.state==='failed'?' fail':'')+'">'+(o.kind!=='primary'?'<span class="bt">'+(o.kind==='hidden'?'Secret':'Bonus')+'</span>':'')+cuEsc(o.text)+'</div>';
+  /* first-mission field manual: the next undone basics from the skirmish hint list (Settings > Hints turns it off); the later hints stay out of the way */
+  if(SET.hints&&cuMissions().indexOf(C.m)===0&&typeof OBJECTIVES!=='undefined'){
+    const todo=OBJECTIVES.slice(0,3).filter(o=>{try{return !o.d();}catch(e){return false;}}).slice(0,2);
+    if(todo.length)h+='<div class="fm"><b>Field manual</b>'+todo.map(o=>'<div class="ob dim">'+cuEsc(ui.touchMode&&o.tt?o.tt:o.t)+'</div>').join('')+'</div>';
+  }
   if(host.dataset.h!==h){host.innerHTML=h;host.dataset.h=h;}
 }
 /* pause menu: mission title + objectives, and campaign wording on the buttons */
@@ -20628,6 +20718,33 @@ function supInit(){
 }
 
 /* =========================================================================
+   78_RESUME — autosave of the running match and the main-menu "Continue" button (UI side of 46_save.js).
+   One slot (skirmish or campaign mission). Written every RESUME_EVERY seconds of real time while a match runs, whenever the app is sent to the
+   background (autoPause) and never during a blocking cinematic; erased when the match ends. localStorage only: nothing leaves the device.
+   ========================================================================= */
+const RESUMEKEY='orbital_dominion_v3_resume',RESUME_EVERY=30;
+const RS={t:0,metaOK:false};
+function resumeMeta(){try{const m=JSON.parse(localStorage.getItem(RESUMEKEY+'_meta')||'null');return m&&m.v===1&&typeof m.camp!=='undefined'?m:null;}catch(e){return null;}}
+function resumeWrite(){
+  if(!G||!ui.running||ui.demo||G.over||(G.camp&&(G.camp.hold||CU.cineBusy)))return false;
+  try{
+    const snap=gameSnapshot();if(!snap)return false;
+    const meta={v:1,at:Date.now(),camp:G.camp&&G.camp.m?G.camp.m.id:null,title:G.camp&&G.camp.m?(G.camp.m.title||G.camp.m.id):'Skirmish',time:Math.round(G.time),diff:G.diff,faction:G.teams[0].faction};
+    localStorage.setItem(RESUMEKEY,snap);localStorage.setItem(RESUMEKEY+'_meta',JSON.stringify(meta));RS.t=0;return true;
+  }catch(e){try{localStorage.removeItem(RESUMEKEY);localStorage.removeItem(RESUMEKEY+'_meta');}catch(_){}return false;}   // quota or serialisation failure: no half-written slot
+}
+function resumeClear(){try{localStorage.removeItem(RESUMEKEY);localStorage.removeItem(RESUMEKEY+'_meta');}catch(e){}resumeSync();}
+function resumeTick(dt){if(G.paused)return;RS.t+=dt;if(RS.t>=RESUME_EVERY)resumeWrite();}
+function resumeSync(){
+  const b=$('bContinue');if(!b)return;const m=resumeMeta();b.classList.toggle('hidden',!m);
+  if(m)b.textContent='Continue — '+(m.camp?m.title:'Skirmish')+' · '+fmtTime(m.time);
+}
+function resumeGame(){
+  const m=resumeMeta();let text=null;try{text=localStorage.getItem(RESUMEKEY);}catch(e){}
+  if(!m||!text||!startGame({resume:text,campaignId:m.camp})){toast('That saved match could not be loaded.','bad');resumeClear();}
+}
+
+/* =========================================================================
    AUDIO ENGINE — context abstraction (live + offline), bus graph, synth kit, voice DSL, registry, dispatcher,
    polyphony governance (the announcer say() and the character voices live in 84_voice.js). Contract: docs/AUDIO_SPEC.md §1–2 and §8 (engine reference).
    Everything private lives inside AUDIO (a closure) so this file cannot collide with other modules' names.
@@ -20739,15 +20856,25 @@ function instFree(i){
 }
 const trk=(A,n)=>{if(!A.off){const i=A.inst;if(i&&i.v)i.x.push(n);}};   // remember a tail node of this instance so it is disconnected when the instance ends
 function srcEnded(){
-  const i=this._i;this.onended=null;this._i=null;try{this.disconnect();}catch(e){}
+  const i=this._i;if(!i)return;this.onended=null;this._i=null;try{this.disconnect();}catch(e){}
   if(i.m)S.nodesM--;else S.nodes--;
   if(--i.n===0)instFree(i);
+}
+/* A source whose output was cut from the graph before it started (music killPlayer() disconnects a cue's gains while notes in its look-ahead are still scheduled) is never pulled by the
+   renderer, so it never fires `ended` and would stay in the node budget for ever. Every live source is remembered with its stop time; sweepNodes() (throttled, called from stats / the
+   cap check) retires the ones that are more than 0.75 s past their stop time. */
+const LIVEN=[];let sweepT=0;
+function sweepNodes(now,force){
+  if(!AC||!LIVEN.length||AC.state!=='running'||(!force&&now-sweepT<400))return;sweepT=now;
+  const lim=AC.currentTime-0.75;let w=0;
+  for(let k=0;k<LIVEN.length;k++){const s=LIVEN[k];if(!s._i)continue;if(s._t1<lim){srcEnded.call(s);continue;}LIVEN[w++]=s;}
+  LIVEN.length=w;
 }
 /* start+stop a source node and (live) account for it; every source of every voice goes through here */
 function go(A,s,t0,t1,off){
   if(off===undefined)s.start(t0);else s.start(t0,off);
   s.stop(t1);
-  if(!A.off){const i=A.inst;s.onended=srcEnded;s._i=i;i.n++;if(i.m)S.nodesM++;else{S.nodes++;if(S.nodes>AUD.peakNodes)AUD.peakNodes=S.nodes;}}
+  if(!A.off){const i=A.inst;s.onended=srcEnded;s._i=i;s._t1=t1;LIVEN.push(s);i.n++;if(i.m)S.nodesM++;else{S.nodes++;if(S.nodes>AUD.peakNodes)AUD.peakNodes=S.nodes;}}
 }
 const cn=(a,b)=>{a.connect(b);return b;};
 function noiseBuf(A,color){
@@ -21028,8 +21155,8 @@ function logEv(name,v,x,y,r){
 }
 function logReset(){logHead=0;logCount=0;}
 Object.defineProperty(AUD,'log',{get(){const o=[];for(let i=0;i<logCount;i++)o.push(Object.assign({},RING[(logHead-logCount+i+LOGN*2)%LOGN]));return o;}});
-Object.defineProperty(AUD,'activeNodes',{get(){return S.nodes;}});
-Object.defineProperty(AUD,'activeNodesMusic',{get(){return S.nodesM;}});
+Object.defineProperty(AUD,'activeNodes',{get(){sweepNodes(performance.now());return S.nodes;}});
+Object.defineProperty(AUD,'activeNodesMusic',{get(){sweepNodes(performance.now());return S.nodesM;}});
 
 /* ------------------------------------------------------------------ graph, volumes, ducking, lifecycle */
 function softClip(){const n=2049,c=new Float32Array(n),k=0.62;for(let i=0;i<n;i++){const x=i/(n-1)*2-1,a=Math.abs(x),y=a<=k?a:k+(0.97-k)*Math.tanh((a-k)/(0.97-k));c[i]=x<0?-y:y;}return c;}
@@ -21089,6 +21216,7 @@ function audioMeter(){
   return{peak:pk,rms:Math.sqrt(sq/S.anBuf.length)};
 }
 function audioStats(){
+  sweepNodes(performance.now(),true);
   const b={},dk={};for(let i=0;i<S.buses.length;i++){b[BUSES[i]]=S.buses[i].inn.gain.value;dk[BUSES[i]]=S.buses[i].dk.gain.value;}
   return{state:AC?AC.state:'none',sampleRate:AC?AC.sampleRate:0,currentTime:AC?AC.currentTime:0,muted,activeNodes:S.nodes,activeNodesMusic:S.nodesM,peakNodes:AUD.peakNodes,cap:AUD.cap,capMusic:AUD.capMusic,
     masterGain:S.master?S.master.gain.value:null,buses:b,ducks:dk,voices:VOICES.size,renderers:Object.keys(RENDERERS),legacyScore:legacyOn,lastError:AUD.lastError,counters:Object.assign({},C)};
@@ -21142,6 +21270,7 @@ function play(v,x,y){
   const now=performance.now();
   if(v.gap>0&&now-v.last<v.gap){v.pend++;C.merged++;return'merge';}
   if(v.poly>0&&v.live>=v.poly){C.poly++;return'poly';}
+  sweepNodes(now);
   if(v.bus===5){if(S.nodesM+v.est>AUD.capMusic){C.capped++;return'cap';}}
   else if(S.nodes+v.est>AUD.cap*LIMF[v.prio]){C.capped++;return'cap';}
   const n=now-v.last<600?v.pend:0;v.pend=0;v.last=now;
@@ -25046,9 +25175,15 @@ function resetUI(){
 }
 /* startGame() = a skirmish from the main-menu settings; startGame({campaign:mission,diff}) = a campaign mission (seed, factions, setup come from the mission data) */
 function startGame(opts){
-  opts=opts||{};const camp=opts.campaign||null;
+  opts=opts||{};let camp=opts.campaign||null;
   stopSpeech();
-  if(camp)newGame({campaign:camp,diff:opts.diff||SET.diff});
+  const resumed=!!opts.resume;
+  if(resumed){                                                                        // 78_resume.js: continue a saved match
+    if(!gameRestore(opts.resume))return false;
+    if(opts.campaignId)camp=cuMissions().find(x=>x.id===opts.campaignId)||null;
+    G.paused=true;
+  }
+  else if(camp)newGame({campaign:camp,diff:opts.diff||SET.diff});
   else newGame({diff:SET.diff,faction:SET.faction,enemy:SET.enemy,seed:ui.seedOverride!=null?ui.seedOverride:undefined});
   ui.demo=false;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateVision();updateFog(1,true);
   if(typeof campMatchStart==='function')campMatchStart(camp);
@@ -25056,11 +25191,13 @@ function startGame(opts){
   setSel([hub]);
   hideOverlays();$('hud').classList.remove('hidden');overlayStack=[];measureHud();centerOn(hub.x,hub.y);
   setAccent(FACTIONS[G.teams[0].faction].col);
-  setTxt('bSpeedT','1×');G.speed=1;
+  setTxt('bSpeedT',G.speed+'×');if(!resumed)G.speed=1;
   platMatchStart();
+  if(resumed){showOverlay('pauseMenu');setTxt('bMenuT','▶');platPauseChanged(true);toast('Match restored — press ▶ to continue.','good');return true;}
   if(camp){const o=typeof campObjectives==='function'?campObjectives().find(x=>x.kind==='primary'):null;toast((camp.title||'Mission')+(o?' — '+o.text:''),'good');}
   else toast(ui.touchMode?'Tap your Hub to train Haulers, then expand — destroy all enemy structures to win.':'Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');
   say('Mission started');
+  return true;
 }
 function stopSpeech(){try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch(e){}}
 function startDemo(){
@@ -25074,7 +25211,7 @@ function toMenu(){stopSpeech();platMatchStop();if(typeof campMatchStop==='functi
 function togglePause(){
   if(!G||G.over||ui.demo)return;G.paused=!G.paused;
   if(G.paused){showOverlay('pauseMenu');}else{hideOverlays();overlayStack=[];}
-  setTxt('bMenuT',G.paused?'▶':'☰');platPauseChanged(G.paused);
+  setTxt('bMenuT',G.paused?'▶':'☰');platPauseChanged(G.paused);if(G.paused&&typeof resumeWrite==='function')resumeWrite();
 }
 function setSpeed(dir,cycle){
   if(ui.demo)return;const L=[1,1.5,2,3];let i=L.indexOf(G.speed);if(i<0)i=0;i=cycle?(i+1)%L.length:clamp(i+dir,0,L.length-1);G.speed=L[i];setTxt('bSpeedT',G.speed+'×');toast('Game speed '+G.speed+'×','good');
@@ -25207,7 +25344,7 @@ function bindInput(){
   $('enemyRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SET.enemy=b.dataset.e;saveSettings();syncMenu();});
   $('diffRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SET.diff=b.dataset.d;saveSettings();syncMenu();});
   $('seedIn').addEventListener('input',e=>{const v=e.target.value.trim();ui.seedOverride=v===''?null:(isNaN(+v)?[...v].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7):+v);});
-  $('bStart').onclick=()=>{audioInit();startGame();};
+  $('bStart').onclick=()=>{audioInit();startGame();};$('bContinue').onclick=()=>{audioInit();resumeGame();};
   $('bHelp').onclick=()=>{audioInit();openSub('helpMenu');};$('bSet').onclick=()=>{audioInit();openSub('setMenu');};
   $('bHelpX').onclick=closeSub;$('bSetX').onclick=()=>{saveSettings();closeSub();};
   $('bResume').onclick=togglePause;$('bPHelp').onclick=()=>openSub('helpMenu');$('bPSet').onclick=()=>openSub('setMenu');
@@ -25279,7 +25416,7 @@ function frameBody(dt,t){
   updateFog(dt,ui.fogForce);ui.fogForce=false;
   terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
   render(t,dt);drawMinimap();fpsOverlay(dt);
-  if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof campUiTick==='function')campUiTick(dt);
+  if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof resumeTick==='function')resumeTick(dt);if(typeof campUiTick==='function')campUiTick(dt);
     if(ui.endRes&&performance.now()>ui.endAt)showEnd();}
 }
 

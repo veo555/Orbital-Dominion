@@ -24,6 +24,7 @@ function matchActive(){return !!(G&&ui.running&&!ui.demo&&!G.over);}
 function suspendAudio(){try{if(AC&&AC.state==='running')AC.suspend();}catch(e){}}
 function autoPause(){
   if(matchActive()&&!G.paused){G.paused=true;showOverlay('pauseMenu');setTxt('bMenuT','▶');}
+  if(matchActive()&&typeof resumeWrite==='function')resumeWrite();
   suspendAudio();releaseWake();
 }
 async function acquireWake(){

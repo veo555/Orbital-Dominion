@@ -66,6 +66,28 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
   spot-checked. The intro film starts and runs for 2 s with no painter errors recorded.
 * **Content**: 32 films and 9 missions exist and validate. The generated screenplay (`docs/story/SCRIPT.md`) is produced by `tools/story_to_md.js`.
 
+### 1.3 Added in 3.3: campaign balance measured, save/resume (headless only; read with §3)
+
+Every mission was played 24 times (`node tests/sim/campaign_balance.js <id> --full`, built-in AI on the player side at the mission difficulty, a different seeded random stream per run, 2-3 worker processes). The AI is a stand-in for a human: it knows nothing of scripted objectives, so these are sanity bounds, not difficulty.
+
+| Mission | AI win rate (95 % CI) | Median win time (par) | Reading |
+|---|---|---|---|
+| m01 Lamp Night | 96 % (80-99) | 720 s (780) | survive-until-dawn: ends at the clock; the scripted final strike finds nobody in its circle in AI runs (it is a threat to a human who stands there) |
+| m02 The Waking Fund | 58 % (39-76) | 852 s (1200) | inside the 55-85 % design band |
+| m03 The Axis | 100 % (86-100) | 441 s (900) | easy for the AI |
+| m04 Ember Census | 100 % (86-100) | 728 s (900) | easy for the AI; two branch triggers (enemy Era III, hauler lost) are `optional` now |
+| m05 Glass Market | AI cannot play it (stealth route) | - | walkthrough bot wins 3/3 in about 70 s (par 900 is generous) |
+| m06 The Third Bell | AI loses 100 % (army walks into the turret ring) | - | with 4 turrets the bot lost; with 3 the bot wins 3/3 (726 s, the clock). **Changed: one turret removed** |
+| m07 The Choir Spire | 100 % (86-100) | 437 s (900) | easy for the AI |
+| m08 Patience | AI cannot play it (escort) | - | walkthrough bot wins 3/3 in 51 s |
+| m09 The Closing | AI cannot play it (ends with the hero's death) | - | stock AI breaks garrison and Foci; hero walkthrough wins 1/3 (the AI loses the Hub in the rest). **Changed: the win now needs the Foci destroyed** (before, the closing could fire with them standing) |
+
+What this does and does not say: the missions are completable (the scripted objectives fire, no crashes, no stalls, deterministic); several are easy for a plain skirmish AI. How hard they are for a person is **unmeasured**. A win rate of 24 runs has a standard error of about 0.10.
+
+* **Save/resume**: the whole match is serialised (`46_save.js`). Tested: restoring a snapshot and running N more ticks gives the same state hash as running on without the round trip (skirmish, AI-vs-AI, campaign missions m01-m03), and tampering with the snapshot changes the outcome (so the comparison can fail). Browser: autosave on backgrounding, Continue after reload, terrain rebuilt, slot erased at game over, corrupt slot rejected. **Not verified**: iOS Safari / WebView storage limits (a snapshot is about 300 KB of localStorage), restoring after a version upgrade (a snapshot of another version is refused, not migrated), restoring a match saved inside a blocking cinematic (autosave is skipped there).
+* **Audio e2e gates were run for the first time** (`e2e_audio_engine.py`, `e2e_audio_wiring.py`, `e2e_soundlab.py`, now part of `tests/run_all.sh`; all pass). They found one real bug, fixed in `80_audio.js`: music notes still scheduled when a cue was stopped were cut from the graph, never fired `ended`, and permanently used up the node budget; a sweep now retires them. The other failures were stale tests (written before the unit/music modules registered at load; they now run those contracts on an engine-only page and assert the new invariants on the full page) and one negative control that did not depend on the caster. The objective DSP gates in `tests/audio/*.py` (loudness, spectra) were still not run. Nothing has been heard by a person.
+* **Pre-existing flaky assertion fixed**: "perks are cosmetic" compared two matches that were not seeded for `Math.random` (about 30 sim calls still use it, BACKLOG B-20); it failed on a build older than 3.2 as well. It now pins `Math.random`.
+
 ## 2. Defects found and fixed in the final round (regression ideas)
 1. Overseer stalled unit production while "saving" for a build that was short only of *ether*, with 500+ crystals
    floating → saving now triggers only when crystals are the bottleneck (`ovBuildings`, era branch).
@@ -89,14 +111,14 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
   interruption behaviour is unknown.
 * **No human playtest**: balance, difficulty curve, clarity of the swarm UI, and fun are unmeasured.
 * No accessibility audit (colour contrast, colour-blindness, text scaling, reduced motion).
-* No long-session soak (30–60 min), no memory-leak profiling, no save/load (does not exist).
+* No long-session soak (30–60 min), no memory-leak profiling, no soak of save/resume across long sessions.
 * No security review — but the attack surface is currently nil (no network, no storage except settings).
 
 * **Nothing has been heard.** Music, voices and effects have not been listened to by a person. Loudness, balance and taste are unmeasured by ear.
-* **The campaign has not been played by a human and has not been balanced.** The mission simulator (`tools/mission_sim.js`, using the built-in AI as a stand-in) exists but was not run in this pass; mission difficulty is unknown.
+* **The campaign has not been played by a human and has not been balanced.** Mission difficulty for a person is unknown; the AI stand-in was run (§1.3).
 * **Films are real-time procedural canvas**, not video files. Their smoothness and subtitle legibility were not checked on real phones. WebM export was not tested on iOS Safari.
 * **Speech depends on the device.** Voices differ across Android WebViews, iOS and desktop. The synthesized fallback voice was checked only as a signal, not for intelligibility.
-* **The new screens were not screenshot-reviewed on phones** in this pass (campaign select, briefing, debrief, Sound Lab).
+* **Phone screens were reviewed only as Chromium emulation screenshots** (campaign select, briefing, match with radio strip at 844x390 and 412x915; geometry is asserted by `e2e_campaign.py`); debrief and Sound Lab rely on those assertions.
 * **Writing quality** comes from automated authoring passes checked by the validator (structure, references, timing). No editor has read the script.
 
 

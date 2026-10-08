@@ -224,6 +224,11 @@ function campRenderObjectives(){
   const par=C.m&&C.m.stars&&+C.m.stars.par>0?+C.m.stars.par:0;
   let h='<b>Objectives</b><p class="cobt">'+cuEsc(C.m&&C.m.title||'')+(par?'<small>par '+fmtTime(par)+'</small>':'')+'</p>';
   for(const o of L.slice(0,7))h+='<div class="ob'+(o.kind!=='primary'?' bonus':'')+(o.state==='done'?' done':o.state==='failed'?' fail':'')+'">'+(o.kind!=='primary'?'<span class="bt">'+(o.kind==='hidden'?'Secret':'Bonus')+'</span>':'')+cuEsc(o.text)+'</div>';
+  /* first-mission field manual: the next undone basics from the skirmish hint list (Settings > Hints turns it off); the later hints stay out of the way */
+  if(SET.hints&&cuMissions().indexOf(C.m)===0&&typeof OBJECTIVES!=='undefined'){
+    const todo=OBJECTIVES.slice(0,3).filter(o=>{try{return !o.d();}catch(e){return false;}}).slice(0,2);
+    if(todo.length)h+='<div class="fm"><b>Field manual</b>'+todo.map(o=>'<div class="ob dim">'+cuEsc(ui.touchMode&&o.tt?o.tt:o.t)+'</div>').join('')+'</div>';
+  }
   if(host.dataset.h!==h){host.innerHTML=h;host.dataset.h=h;}
 }
 /* pause menu: mission title + objectives, and campaign wording on the buttons */

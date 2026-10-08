@@ -145,7 +145,10 @@ def sec_flow(b):
     ok(m['diff'] == 'normal' and m['f'] == [mm['faction'], mm['enemy']], 'difficulty comes from the save, factions from the mission setup')
     ok(m['err'] == [], 'the runtime logged no data errors for the mission')
     obj = text(pg, '#objectives')
-    ok('Destroy all enemy structures' in obj and 'Train 6 riflemen' in obj and 'Train Haulers' not in obj, 'campaign objectives replace the tutorial hints in the tracker')
+    obj_main = pg.evaluate("()=>[...document.querySelectorAll('#objectives > .ob')].map(e=>e.textContent).join(' | ')")
+    fm = pg.evaluate("()=>[...document.querySelectorAll('#objectives .fm .ob')].map(e=>e.textContent)")
+    ok('Destroy all enemy structures' in obj_main and 'Train 6 riflemen' in obj_main and 'Train Haulers' not in obj_main, 'campaign objectives replace the tutorial hints in the objective list')
+    ok(any('Train Haulers' in t for t in fm) and len(fm) <= 2 and 'Field manual' in obj, f'mission 1 adds a Field manual block (at most 2 basics) {fm}')
     ok(pg.evaluate("()=>document.getElementById('objectives').classList.contains('camp')"), 'the tracker is in campaign mode')
     # scripted radio line at mission time 5 s
     ok(not vis(pg, 'campRadio'), 'no radio line before the trigger fires')

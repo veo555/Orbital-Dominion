@@ -38,9 +38,9 @@ STORY.missions.push(
    {id:"m04_t10",once:true,when:["after","tallowHit",7],do:[["radio","m04_r10"]]},
    {id:"m04_t11",once:true,when:["obj","o_burn","done"],do:[["radio","m04_r11"]]},
    {id:"m04_t12",once:true,when:["era","me",">=",3],do:[["radio","m04_r12"],["mood","tension"]]},
-   {id:"m04_t13",once:true,when:["era","enemy",">=",3],do:[["radio","m04_r13"]]},
+   {id:"m04_t13",once:true,optional:true,when:["era","enemy",">=",3],do:[["radio","m04_r13"]]},
    {id:"m04_t14",once:true,when:["all",["time",">=",780],["era","enemy","<",3]],do:[["spawn","enemy","rifleman",5,"edge:N",{order:"attack"}],["spawn","enemy","rocketeer",2,"edge:N",{order:"attack"}],["spawn","enemy","juggernaut",1,"edge:E",{order:"attack"}],["spawn","enemy","rifleman",3,"edge:E",{order:"attack"}],["radio","m04_r14"]]},
-   {id:"m04_t15",once:true,when:["count","unit","me","hauler","<",6],do:[["radio","m04_r15"]]}
+   {id:"m04_t15",once:true,optional:true,when:["count","unit","me","hauler","<",6],do:[["radio","m04_r15"]]}
  ],
  win:["all",["obj","o_era","done"],["obj","o_burn","done"]],
  lose:["hubs","me","==",0],
@@ -111,7 +111,7 @@ STORY.missions.push(
    foe:{ai:true,
      start:{c:600,e:200,era:2,buildings:[
        {type:"hub",tx:38,ty:50},{type:"hub",tx:46,ty:34},
-       {type:"turret",tx:38,ty:43},{type:"turret",tx:49,ty:43},{type:"turret",tx:43,ty:38},{type:"turret",tx:43,ty:49}]},
+       {type:"turret",tx:49,ty:43},{type:"turret",tx:43,ty:38},{type:"turret",tx:43,ty:49}]},
      mods:{waveMult:0.5,intervalMult:1.5,firstWave:99999,hero:true,air:false}},
    swarm:"off",daylight:"night"},
  objectives:[

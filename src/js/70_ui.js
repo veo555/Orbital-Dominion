@@ -14,7 +14,7 @@ function onStepEnd(){
   if(ui.pings.length&&G.time-ui.pings[0].t>ui.pings[0].dur)ui.pings.shift();
   if(G.time-ui.lastInc>=1){ui.lastInc=G.time;const T=G.teams[0];ui.inc.push({t:G.time,c:T.minedC+T.taxEarn+T.tradeEarn,e:T.minedE});if(ui.inc.length>40)ui.inc.shift();}
 }
-function onGameOver(res){platMatchStop();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});say(res==='victory'?'Victory':'Defeat');}
+function onGameOver(res){platMatchStop();if(typeof resumeClear==='function')resumeClear();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});say(res==='victory'?'Victory':'Defeat');}
 function incomeRates(){
   const a=ui.inc;if(a.length<3)return{c:0,e:0};const f=a[0],l=a[a.length-1],dt=Math.max(1,l.t-f.t);
   return{c:(l.c-f.c)/dt*60,e:(l.e-f.e)/dt*60};

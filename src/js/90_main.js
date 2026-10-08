@@ -9,9 +9,15 @@ function resetUI(){
 }
 /* startGame() = a skirmish from the main-menu settings; startGame({campaign:mission,diff}) = a campaign mission (seed, factions, setup come from the mission data) */
 function startGame(opts){
-  opts=opts||{};const camp=opts.campaign||null;
+  opts=opts||{};let camp=opts.campaign||null;
   stopSpeech();
-  if(camp)newGame({campaign:camp,diff:opts.diff||SET.diff});
+  const resumed=!!opts.resume;
+  if(resumed){                                                                        // 78_resume.js: continue a saved match
+    if(!gameRestore(opts.resume))return false;
+    if(opts.campaignId)camp=cuMissions().find(x=>x.id===opts.campaignId)||null;
+    G.paused=true;
+  }
+  else if(camp)newGame({campaign:camp,diff:opts.diff||SET.diff});
   else newGame({diff:SET.diff,faction:SET.faction,enemy:SET.enemy,seed:ui.seedOverride!=null?ui.seedOverride:undefined});
   ui.demo=false;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateVision();updateFog(1,true);
   if(typeof campMatchStart==='function')campMatchStart(camp);
@@ -19,11 +25,13 @@ function startGame(opts){
   setSel([hub]);
   hideOverlays();$('hud').classList.remove('hidden');overlayStack=[];measureHud();centerOn(hub.x,hub.y);
   setAccent(FACTIONS[G.teams[0].faction].col);
-  setTxt('bSpeedT','1×');G.speed=1;
+  setTxt('bSpeedT',G.speed+'×');if(!resumed)G.speed=1;
   platMatchStart();
+  if(resumed){showOverlay('pauseMenu');setTxt('bMenuT','▶');platPauseChanged(true);toast('Match restored — press ▶ to continue.','good');return true;}
   if(camp){const o=typeof campObjectives==='function'?campObjectives().find(x=>x.kind==='primary'):null;toast((camp.title||'Mission')+(o?' — '+o.text:''),'good');}
   else toast(ui.touchMode?'Tap your Hub to train Haulers, then expand — destroy all enemy structures to win.':'Train Haulers (Q) and expand — destroy all enemy structures to win. Press H for help.','good');
   say('Mission started');
+  return true;
 }
 function stopSpeech(){try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch(e){}}
 function startDemo(){
@@ -37,7 +45,7 @@ function toMenu(){stopSpeech();platMatchStop();if(typeof campMatchStop==='functi
 function togglePause(){
   if(!G||G.over||ui.demo)return;G.paused=!G.paused;
   if(G.paused){showOverlay('pauseMenu');}else{hideOverlays();overlayStack=[];}
-  setTxt('bMenuT',G.paused?'▶':'☰');platPauseChanged(G.paused);
+  setTxt('bMenuT',G.paused?'▶':'☰');platPauseChanged(G.paused);if(G.paused&&typeof resumeWrite==='function')resumeWrite();
 }
 function setSpeed(dir,cycle){
   if(ui.demo)return;const L=[1,1.5,2,3];let i=L.indexOf(G.speed);if(i<0)i=0;i=cycle?(i+1)%L.length:clamp(i+dir,0,L.length-1);G.speed=L[i];setTxt('bSpeedT',G.speed+'×');toast('Game speed '+G.speed+'×','good');
@@ -170,7 +178,7 @@ function bindInput(){
   $('enemyRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SET.enemy=b.dataset.e;saveSettings();syncMenu();});
   $('diffRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SET.diff=b.dataset.d;saveSettings();syncMenu();});
   $('seedIn').addEventListener('input',e=>{const v=e.target.value.trim();ui.seedOverride=v===''?null:(isNaN(+v)?[...v].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7):+v);});
-  $('bStart').onclick=()=>{audioInit();startGame();};
+  $('bStart').onclick=()=>{audioInit();startGame();};$('bContinue').onclick=()=>{audioInit();resumeGame();};
   $('bHelp').onclick=()=>{audioInit();openSub('helpMenu');};$('bSet').onclick=()=>{audioInit();openSub('setMenu');};
   $('bHelpX').onclick=closeSub;$('bSetX').onclick=()=>{saveSettings();closeSub();};
   $('bResume').onclick=togglePause;$('bPHelp').onclick=()=>openSub('helpMenu');$('bPSet').onclick=()=>openSub('setMenu');
@@ -242,7 +250,7 @@ function frameBody(dt,t){
   updateFog(dt,ui.fogForce);ui.fogForce=false;
   terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
   render(t,dt);drawMinimap();fpsOverlay(dt);
-  if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof campUiTick==='function')campUiTick(dt);
+  if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof resumeTick==='function')resumeTick(dt);if(typeof campUiTick==='function')campUiTick(dt);
     if(ui.endRes&&performance.now()>ui.endAt)showEnd();}
 }
 

@@ -130,6 +130,8 @@ def run_page(b, html_text, label, track=False):
     S('globals', "()=>OW.globals()")
     S('musicScene', "()=>OW.musicScene()")
     for k in ('era', 'alarm', 'hero'):
+        # the music director allows one sting_alarm per 25 game seconds per match and the 'globals' scenario above already attacked the base: the alarm gets a fresh match
+        if k == 'alarm': fresh()
         S('sting.' + k, "(k)=>OW.stingers(k)", k)
     S('title', "()=>OW.title()")
     S('campaign', "(fx)=>OW.campaign(fx)", FX)
@@ -176,7 +178,8 @@ def judge(o):
     ids = ['barrage', 'orbital', 'shock', 'rampage', 'veil', 'sing']
     for s in o['skills'] if isinstance(o['skills'], list) else []:
         if 'error' in s: add('skill', 'skill', False, f"{s['id']}: {s['error']}"); continue
-        wired = any(l['name'] == 'skill:' + s['id'] for l in s['log']); own = any(l['voice'] == 'skill.' + s['id'] for l in s['log'])
+        # the CASTER must be passed as `who` (checking the name alone passed with the who-dropping control)
+        wired = any(l['name'] == 'skill:' + s['id'] and l.get('who') == s['hero'] for l in s['log']); own = any(l['voice'] == 'skill.' + s['id'] for l in s['log'])
         add('skill', 'skill', s['cast'] and wired, f"{s['id']}: " + ('did not cast' if not s['cast'] else 'sfx saw ' + ','.join(l['name'] for l in s['log']) if s['log'] else 'no sfx') + (' (expected sfx(\'skill:%s\',x,y,hero))' % s['id'] if s['cast'] and not wired else ''))
         if wired: add('resolve', 'skill.' + s['id'] + '.voice', own, f"skill:{s['id']} found no skill.{s['id']} voice")
     g = o['globals']

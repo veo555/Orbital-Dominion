@@ -80,7 +80,10 @@ OW.place=async function(){
 };
 OW.selectAck=async function(){
   const p=arena();if(!p)return{error:'no free arena'};
-  const u=R.addUnit('rifleman',0,p[0],p[1]);R.ui.demo=false;clear();R.setSel([u]);
+  const u=R.addUnit('rifleman',0,p[0],p[1]);R.ui.demo=false;clear();
+  // the select chirp belongs to the UI selection paths (clickSelect / boxSelect / group recall ... call selSfx(), which queues sfx('select',..,unit) one task later so the tap itself stays short),
+  // not to setSel(): drive the real click-select path and wait one task
+  R.clickSelect(u.x,u.y,false,performance.now(),false,u);await sleep(60);
   const sel=entryOf(l=>l.name==='select');clear();R.contextCommand(u.x+90,u.y+10,false);
   const ack=entryOf(l=>l.name==='ack');
   const w=R.addUnit('hauler',0,p[0]+40,p[1]);R.setSel([w]);clear();R.contextCommand(w.x+90,w.y+10,false);const ack2=entryOf(l=>l.name==='ack');
@@ -133,16 +136,19 @@ OW.musicScene=async function(){
   const p=arena();
   if(p){const a=R.addUnit('rifleman',0,p[0],p[1]),b=R.addBuilding('depot',1,Math.floor((p[0]+60)/T()),Math.floor(p[1]/T()),true);b.hp=b.maxhp=99999;EV('setOrder')(a,{t:'attack',target:b});
     for(let i=0;i<8;i++){tick(20);await sleep(120);}o.fight=last();o.fightT=g.time-g.fightT;cleanup(a,b);}
-  g.fightT=-999;await settle();await settle();o.afterFight=last();
+  // the director keeps the intensity at >= 0.5 for 20 game seconds after the base was attacked (G.alertT; the 'globals' scenario just did that), so calm the alert too
+  g.fightT=-999;g.alertT=-999;await settle();await settle();o.afterFight=last();
   g.time=180;tick(3);await settle();o.night=last();o.daylight=g.daylight;
-  g.time=0;tick(3);
+  g.time=0;R.ui.pings.length=0;tick(3);   // the clock was wound back: pings born at t=180 would have a negative age (and a negative arc radius in the renderer)
+  R.ui.pings.length=0;
   return o;
 };
 OW.stingers=async function(kind){
   const o={};clear();
   if(kind==='victory'||kind==='defeat'){R.endGame(kind);await sleep(500);}
   else if(kind==='era'){const g=G(),b=g.buildings.find(x=>x.team===0&&x.type==='hub'&&x.done);b.queue.length=0;g.teams[0].c=g.teams[0].e=9999;b.queue.push({k:'era',to:g.teams[0].era+1,t:0,total:1});b.queue[0].t=1;tick(3);await sleep(400);}
-  else if(kind==='alarm'){const g=G(),b=g.buildings.find(x=>x.team===0&&x.done),en=R.addUnit('rifleman',1,b.x+60,b.y);g.lastAlertT=-99;try{EV('damageEnt')(b,3,1,en);}catch(e){}await sleep(400);cleanup(en);}
+  else if(kind==='alarm'){const g=G(),b=g.buildings.find(x=>x.team===0&&x.done),en=R.addUnit('rifleman',1,b.x+60,b.y);// (the director rate-limits sting_alarm to one per 25 game seconds; the Python half starts a fresh match for this scenario because the 'globals' scenario already raised one)
+    g.lastAlertT=-99;try{EV('damageEnt')(b,3,1,en);}catch(e){}await sleep(500);cleanup(en);}
   else if(kind==='hero'){const g=G(),b=g.buildings.find(x=>x.team===0&&x.type==='forum'&&x.done)||g.buildings.find(x=>x.team===0&&x.done);g.teams[0].c=g.teams[0].e=9999;
     const q={k:'hero',t:0,total:1,revive:false};b.queue.push(q);g.teams[0].hero.reviving=true;q.t=1;tick(3);await sleep(400);}
   o.calls=wl('musicStinger','musicPlay').map(e=>({f:e.f,cue:e.a[0]}));
