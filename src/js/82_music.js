@@ -13,7 +13,8 @@ const MUSIC={INST:{}};     // MUSIC.INST[name]=function(n)->layers[] (synth inst
 const MUSE=(function(){
 'use strict';
 const INST=MUSIC.INST;
-const LOOK=0.6,TICKMS=100,SCENEMS=250,BUDGET=24;   // BUDGET: estimated simultaneous source nodes of ONE cue (live hard cap: AUD.capMusic = 24)
+const LOOK=0.6,MAKE=0.28,LEAD=0.23,TICKMS=100,SCENEMS=250,BUDGET=24;   // LOOK: the sequencer computes events this far ahead; MAKE: audio nodes are only created this far ahead (so nodes that exist = nodes about to sound, see AUD.capMusic);
+  // LEAD: mean creation lead assumed by the offline node model (= MAKE - TICKMS/2); BUDGET: cap of source nodes that exist at once (live hard cap: AUD.capMusic = 24)
 const cl=(v,a,b)=>v<a?a:(v>b?b:v);
 const mixv=(a,b,t)=>a+(b-a)*t;
 const isNum=v=>typeof v==='number'&&isFinite(v);
@@ -117,9 +118,9 @@ const DEFSTEM={
   choir:{inst:'choir_aah',reg:'C3',ref:'chord',gain:0.4,rev:0.4,prio:0.6,voices:3},
   _:{inst:'pluck',reg:'C4',ref:'chord',gain:0.5,rev:0.2,prio:0.5}
 };
-const SKEYS={p:1,lanes:1,era:1,int:1,night:1,oct:1,vel:1,inst:1,gate:1,ref:1,sustain:1};
+const SKEYS={p:1,lanes:1,era:1,int:1,night:1,oct:1,vel:1,inst:1,gate:1,ref:1,sustain:1,voices:1};
 function mkEntry(o,ctx){
-  const e={pats:[],lanes:null,sustain:false,era:o.era||null,int:o.int||null,night:o.night||null,oct:o.oct|0,vel:o.vel===undefined?1:o.vel,inst:o.inst||null,gate:o.gate===undefined?1:o.gate,ref:o.ref||null};
+  const e={pats:[],lanes:null,sustain:false,era:o.era||null,int:o.int||null,night:o.night||null,oct:o.oct|0,vel:o.vel===undefined?1:o.vel,inst:o.inst||null,gate:o.gate===undefined?1:o.gate,ref:o.ref||null,voices:o.voices|0};
   if(o.lanes){
     e.lanes=Object.keys(o.lanes).map(name=>{const ps=[].concat(o.lanes[name]).map(compLane);for(const p of ps)if(p.bad)ctx.w('lane "'+name+'" has '+p.bad+' unknown character(s)');return{name,pats:ps};});
   }else{
@@ -264,66 +265,66 @@ const HP=(f0,f1,t,q)=>{const o={type:'hp',f0};if(f1)o.f1=f1;if(t)o.t=t;if(q)o.q=
 const BP=(f0,q,f1,t)=>{const o={type:'bp',f0,q:q||1};if(f1)o.f1=f1;if(t)o.t=t;return o;};
 const pr=(n,k,d)=>n.pr&&n.pr[k]!==undefined?n.pr[k]:d;
 Object.assign(INST,{
-  /* --- pads, strings, choir */
-  pad_strings:n=>{const R=0.9,a=0.55;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.5,s:0.8,r:R},filter:LP(800,2100,a+0.4,0.7),gain:0.45})];},
-  pad_warm:n=>{const R=0.9,a=0.7;return[{k:'osc',harm:[1,0.3,0.16,0.07],f:n.f,dur:n.dur+R,env:{a,d:0.6,s:0.85,r:R},filter:LP(1800,0,0,0.6),gain:0.55}];},
-  pad_dark:n=>{const R=1.0,a=0.9;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.8,s:0.85,r:R},filter:LP(380,900,a+0.6,0.9),gain:0.5})];},
-  pad_air:n=>{const R=1.3,a=1.1;return[{k:'osc',harm:[1,0.12,0.2,0.05],f:n.f,dur:n.dur+R,env:{a,d:0.9,s:0.8,r:R},filter:[HP(160),LP(3400,0,0,0.6)],gain:0.55}];},
-  strings:n=>{const R=0.35,a=0.09;return[O('sawtooth',n.f,{unison:{n:2,spread:14,pan:0.6},dur:n.dur+R,env:{a,d:0.2,s:0.75,r:R},filter:LP(1200+1400*n.vel,0,0,0.7),vib:{f:5.2,cents:9},gain:0.4})];},
-  choir_aah:n=>{const R=0.9,a=0.5;return[{k:'formant',src:'sawtooth',f:n.f,vowel:pr(n,'vowel','a'),to:pr(n,'to','o'),morph:n.dur,dur:n.dur+R,env:{a,d:0.4,s:0.8,r:R},gain:0.55}];},
-  choir_ooh:n=>{const R=0.9,a=0.6;return[{k:'formant',src:'sawtooth',f:n.f,vowel:'o',to:'u',morph:n.dur,dur:n.dur+R,env:{a,d:0.4,s:0.8,r:R},gain:0.55}];},
+  /* --- pads, strings, choir. One source node per note unless stated: the cue has to fit AUD.capMusic = 24 nodes (the pad is the longest-lived layer, so it is the leanest) */
+  pad_strings:n=>{const R=0.5,a=0.5;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.5,s:0.8,r:R},filter:LP(800,2100,a+0.4,0.7),gain:0.45})];},
+  pad_warm:n=>{const R=0.5,a=0.55;return[{k:'osc',harm:[1,0.3,0.16,0.07],f:n.f,dur:n.dur+R,env:{a,d:0.6,s:0.85,r:R},filter:LP(1800,0,0,0.6),gain:0.55}];},
+  pad_dark:n=>{const R=0.55,a=0.7;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.8,s:0.85,r:R},filter:LP(380,900,a+0.6,0.9),gain:0.5})];},
+  pad_air:n=>{const R=0.7,a=0.9;return[{k:'osc',harm:[1,0.12,0.2,0.05],f:n.f,dur:n.dur+R,env:{a,d:0.9,s:0.8,r:R},filter:[HP(160),LP(3400,0,0,0.6)],gain:0.55}];},
+  strings:n=>{const R=0.35,a=0.09;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.2,s:0.75,r:R},filter:LP(1200+1400*n.vel,0,0,0.7),vib:{f:5.2,cents:9},gain:0.4})];},   // 2 nodes (carrier + vibrato LFO)
+  choir_aah:n=>{const R=0.6,a=0.5;return[{k:'formant',src:'sawtooth',f:n.f,vowel:pr(n,'vowel','a'),to:pr(n,'to','o'),morph:n.dur,dur:n.dur+R,env:{a,d:0.4,s:0.8,r:R},gain:0.55}];},
+  choir_ooh:n=>{const R=0.6,a=0.6;return[{k:'formant',src:'sawtooth',f:n.f,vowel:'o',to:'u',morph:n.dur,dur:n.dur+R,env:{a,d:0.4,s:0.8,r:R},gain:0.55}];},
   chant:n=>{const d=Math.max(0.12,Math.min(n.dur,0.4));return[{k:'formant',src:'sawtooth',f:n.f,vowel:pr(n,'vowel','o'),to:pr(n,'to','a'),morph:d,scale:pr(n,'scale',0.9),dur:d+0.1,env:{a:0.025,d:d,s:0},gain:0.8},NZ('white',{dur:0.07,env:{d:0.06},filter:BP(2200,1.2),gain:0.1})];},
-  /* --- brass, winds, leads */
-  brass:n=>{const a=0.045,R=0.16,v=n.vel;return[O('sawtooth',n.f,{unison:{n:2,spread:9,pan:0.3},dur:n.dur+R,env:{a,d:0.14,s:0.7,r:R},filter:LP(500+500*v,1400+3200*v,a+0.1,1.2),drive:0.2,gain:0.5})];},
-  horn:n=>{const a=0.07,R=0.2;return[O('sawtooth',n.f,{unison:{n:2,spread:6,pan:0.2},dur:n.dur+R,env:{a,d:0.2,s:0.7,r:R},filter:LP(450+300*n.vel,1100+1200*n.vel,a+0.12,0.9),gain:0.5})];},
+  /* --- brass, winds, leads (one detune-free sawtooth through a sweeping low-pass: the brass identity is the filter attack, not the unison) */
+  brass:n=>{const a=0.045,R=0.16,v=n.vel;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.14,s:0.7,r:R},filter:LP(500+500*v,1400+3200*v,a+0.1,1.2),drive:0.22,gain:0.55})];},
+  horn:n=>{const a=0.07,R=0.2;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a,d:0.2,s:0.7,r:R},filter:LP(450+300*n.vel,1100+1200*n.vel,a+0.12,0.9),gain:0.55})];},
   brass_stab:n=>{const R=0.1,v=n.vel,d=Math.min(n.dur,0.35);return[O('sawtooth',n.f,{detune:6,dur:d+R,env:{a:0.012,d:d,s:0},filter:LP(700+600*v,2600+2600*v,0.07,1.3),drive:0.3,gain:0.62})];},
-  flute:n=>{const R=0.15;return[O('sine',n.f,{dur:n.dur+R,env:{a:0.06,d:0.1,s:0.85,r:R},vib:{f:5.4,cents:14},gain:0.55}),NZ('pink',{dur:n.dur+R,env:{a:0.05,d:0.1,s:0.5,r:R},filter:BP(n.f*2,3),gain:0.08})];},
-  lead_saw:n=>{const R=0.12;return[O('sawtooth',n.f,{unison:{n:2,spread:12,pan:0.4},dur:n.dur+R,env:{a:0.012,d:0.2,s:0.7,r:R},filter:LP(900+2200*n.vel,0,0,1.2),gain:0.45})];},
+  flute:n=>{const R=0.15;return[{k:'osc',harm:[1,0.16,0.05],f:n.f,dur:n.dur+R,env:{a:0.06,d:0.1,s:0.85,r:R},vib:{f:5.4,cents:14},gain:0.55},NZ('pink',{dur:0.14,env:{a:0.03,d:0.1},filter:BP(n.f*2,3),gain:0.1})];},
+  lead_saw:n=>{const R=0.12;return[O('sawtooth',n.f,{detune:5,dur:n.dur+R,env:{a:0.012,d:0.2,s:0.7,r:R},filter:LP(900+2200*n.vel,0,0,1.2),gain:0.45})];},
   lead_square:n=>{const R=0.1;return[O('square',n.f,{dur:n.dur+R,env:{a:0.01,d:0.15,s:0.65,r:R},filter:LP(1400+1800*n.vel,0,0,0.9),gain:0.34})];},
-  lead_dist:n=>{const R=0.1;return[O('sawtooth',n.f,{unison:{n:2,spread:18,pan:0.5},dur:n.dur+R,env:{a:0.01,d:0.2,s:0.7,r:R},filter:LP(1100+1500*n.vel,0,0,1.4),drive:0.75,gain:0.4})];},
-  lead_bell:n=>{const rg=pr(n,'ring',1.4);return[FMo(n.f,3.5,{from:1.8,to:0.04,t:rg},{dur:rg+0.3,env:{a:0.004,d:rg},gain:0.5}),O('sine',n.f*2.001,{dur:0.5,env:{a:0.003,d:0.45},gain:0.09})];},
+  lead_dist:n=>{const R=0.1;return[O('sawtooth',n.f,{dur:n.dur+R,env:{a:0.01,d:0.2,s:0.7,r:R},filter:LP(1100+1500*n.vel,0,0,1.4),drive:0.75,gain:0.42})];},
+  lead_bell:n=>{const rg=pr(n,'ring',1.0);return[FMo(n.f,3.5,{from:1.8,to:0.04,t:rg},{dur:rg+0.2,env:{a:0.004,d:rg},gain:0.5})];},
   /* --- plucks, bells, mallets */
-  pluck:n=>[{k:'pluck',f:n.f,t60:pr(n,'t60',0.55),damp:pr(n,'damp',0.45),bright:pr(n,'bright',0.6),dur:0.7,gain:0.9}],
-  harp:n=>[{k:'pluck',f:n.f,t60:1.1,damp:0.3,bright:0.75,dur:1.15,gain:0.85}],
+  pluck:n=>[{k:'pluck',f:n.f,t60:pr(n,'t60',0.5),damp:pr(n,'damp',0.45),bright:pr(n,'bright',0.6),dur:0.6,gain:0.9}],
+  harp:n=>[{k:'pluck',f:n.f,t60:0.8,damp:0.3,bright:0.75,dur:0.8,gain:0.85}],
   pluck_sq:n=>[O('square',n.f,{dur:Math.min(0.35,n.dur+0.08),env:{a:0.003,d:Math.min(0.35,n.dur+0.05)},filter:LP(2600*(0.5+n.vel*0.7),500,0.2,1.4),gain:0.4})],
-  bell:n=>{const rg=pr(n,'ring',1.0);return[FMo(n.f,pr(n,'ratio',3.5),{from:pr(n,'idx',2.6),to:0.05,t:rg*0.8},{dur:rg+0.1,env:{a:0.003,d:rg},gain:0.55})];},
-  glass:n=>{const rg=pr(n,'ring',1.4);return[FMo(n.f,2.0,{from:1.1,to:0.02,t:rg*0.9},{dur:rg+0.1,env:{a:0.005,d:rg},gain:0.55}),{k:'pluck',mode:'modal',f:n.f*2,ratios:[1,2.76],t60:0.4,tilt:0.35,damp:1.5,dur:0.45,gain:0.1}];},
-  marimba:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,3.93,9.5],t60:0.55,tilt:0.35,damp:2.5,dur:0.7,gain:0.7}],
-  kalimba:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,5.4,11.3],t60:0.9,tilt:0.3,damp:3,dur:1.0,gain:0.6}],
+  bell:n=>{const rg=pr(n,'ring',0.8);return[FMo(n.f,pr(n,'ratio',3.5),{from:pr(n,'idx',2.6),to:0.05,t:rg*0.8},{dur:rg+0.1,env:{a:0.003,d:rg},gain:0.55})];},
+  glass:n=>{const rg=pr(n,'ring',1.1);return[FMo(n.f,2.0,{from:1.2,to:0.02,t:rg*0.9},{dur:rg+0.1,env:{a:0.005,d:rg},gain:0.6})];},
+  marimba:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,3.93],t60:0.55,tilt:0.35,damp:2.5,dur:0.7,gain:0.75}],
+  kalimba:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,5.4],t60:0.9,tilt:0.3,damp:3,dur:1.0,gain:0.65}],
   /* --- basses */
-  bass_saw:n=>{const R=0.1,d=Math.max(n.dur,0.1);return[O('sawtooth',n.f,{dur:d+R,env:{a:0.008,d:0.3,s:0.45,r:R},filter:LP(260+500*n.vel,0,0,1.0),gain:0.55}),O('sine',n.f,{dur:d+R,env:{a:0.008,d:0.3,s:0.7,r:R},gain:0.5})];},
-  bass_sub:n=>{const R=0.15,d=Math.max(n.dur,0.15);return[O('sine',n.f,{dur:d+R,env:{a:0.03,d:0.2,s:0.85,r:R},gain:0.8}),O('sine',n.f*2,{dur:d+R,env:{a:0.03,d:0.2,s:0.4,r:R},gain:0.12})];},
+  bass_saw:n=>{const R=0.1,d=Math.max(n.dur,0.1);return[{k:'osc',harm:[1,0.5,0.33,0.25,0.2,0.16,0.13,0.11],f:n.f,dur:d+R,env:{a:0.008,d:0.3,s:0.55,r:R},filter:LP(240+520*n.vel,0,0,1.0),gain:0.62}];},
+  bass_sub:n=>{const R=0.15,d=Math.max(n.dur,0.15);return[{k:'osc',harm:[1,0.14],f:n.f,dur:d+R,env:{a:0.03,d:0.2,s:0.85,r:R},gain:0.8}];},
   bass_dist:n=>{const R=0.07,d=Math.max(n.dur,0.08);return[O('sawtooth',n.f,{dur:d+R,env:{a:0.005,d:0.18,s:0.55,r:R},filter:LP(380+420*n.vel,0,0,1.1),drive:0.85,gain:0.42}),O('sine',n.f*0.5,{dur:d+R,env:{a:0.006,d:0.2,s:0.8,r:R},gain:0.5})];},
-  bass_pulse:n=>{const R=0.05,d=Math.max(0.06,Math.min(n.dur,0.2));return[O('square',n.f,{dur:d+R,env:{a:0.004,d:d,s:0.3,r:R},filter:LP(500+700*n.vel,160,0.2,1.2),gain:0.4}),O('sine',n.f,{dur:d+R,env:{a:0.004,d:d,s:0.5,r:R},gain:0.4})];},
+  bass_pulse:n=>{const R=0.05,d=Math.max(0.06,Math.min(n.dur,0.2));return[{k:'osc',harm:[1,0,0.33,0,0.2,0,0.14],f:n.f,dur:d+R,env:{a:0.004,d:d,s:0.3,r:R},filter:LP(500+700*n.vel,160,0.2,1.2),gain:0.55}];},
   /* --- metallic hits */
-  stab_metal:n=>{const d=Math.min(0.3,n.dur+0.1);return[FMo(n.f,2.756,{from:3.6,to:0.25,t:d},{dur:d+0.05,env:{a:0.003,d:d},drive:0.35,gain:0.55}),NZ('white',{dur:0.04,env:{d:0.035},filter:HP(3500),gain:0.18})];},
-  anvil:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,2.4,4.1,6.3],t60:0.55,tilt:0.6,damp:1.4,dur:0.6,gain:0.45},NZ('white',{dur:0.03,env:{d:0.025},filter:HP(2500),gain:0.2})],
-  clang:n=>[FMo(n.f||330,1.414,{from:5,to:0.5,t:0.4},{dur:0.5,env:{a:0.002,d:0.45},gain:0.4,rm:{f:(n.f||330)*1.61,depth:0.7}}),NZ('white',{dur:0.03,env:{d:0.025},filter:HP(3000),gain:0.2})],
-  /* --- drums */
-  kick:n=>[O('sine',50,{pitch:{from:pr(n,'f0',150),to:pr(n,'f1',46),t:0.11},dur:0.3,env:{a:0.002,d:0.26},gain:1.0}),NZ('white',{dur:0.025,env:{a:0.002,d:0.02},filter:HP(1800),gain:0.3})],
-  kick_deep:n=>[O('sine',44,{pitch:{from:120,to:38,t:0.16},dur:0.5,env:{a:0.002,d:0.45},gain:1.0}),NZ('brown',{dur:0.04,env:{a:0.002,d:0.035},filter:LP(900),gain:0.4})],
+  stab_metal:n=>{const d=Math.min(0.3,n.dur+0.1);return[FMo(n.f,2.756,{from:3.6,to:0.25,t:d},{dur:d+0.05,env:{a:0.003,d:d},drive:0.35,gain:0.6})];},
+  anvil:n=>[{k:'pluck',mode:'modal',f:n.f,ratios:[1,2.76,5.4],t60:0.5,tilt:0.6,damp:1.4,dur:0.55,gain:0.5}],
+  clang:n=>[FMo(n.f||330,1.414,{from:5,to:0.5,t:0.4},{dur:0.5,env:{a:0.002,d:0.45},gain:0.45,rm:{f:(n.f||330)*1.61,depth:0.7}})],
+  /* --- drums (percussion is synthesised hit by hit: the transient noise of kicks and toms is replaced by a drive on the pitch sweep, so most hits cost one node) */
+  kick:n=>[O('sine',50,{pitch:{from:pr(n,'f0',160),to:pr(n,'f1',46),t:0.1},dur:0.3,env:{a:0.002,d:0.26},drive:0.3,gain:1.0})],
+  kick_deep:n=>[O('sine',44,{pitch:{from:130,to:38,t:0.16},dur:0.5,env:{a:0.002,d:0.45},drive:0.25,gain:1.0})],
   kick_soft:n=>[O('sine',54,{pitch:{from:110,to:48,t:0.1},dur:0.3,env:{a:0.004,d:0.26},gain:0.9})],
   snare:n=>{
     if(n.art==='roll')return[NZ('white',{dur:n.dur+0.12,env:{a:0.04,d:n.dur,s:0.6,r:0.1},filter:[HP(900),BP(2300,0.7)],trem:{f:26,depth:0.85},gain:0.6})];
     return[NZ('white',{dur:0.2,env:{a:0.002,d:0.17},filter:[HP(850),BP(2300,0.7)],gain:0.8}),O('triangle',190,{pitch:{from:270,to:170,t:0.05},dur:0.12,env:{a:0.002,d:0.1},gain:0.5})];},
   snare_rim:n=>[O('square',420,{dur:0.05,env:{a:0.002,d:0.045},filter:BP(1700,1.4),gain:0.4}),NZ('white',{dur:0.06,env:{a:0.002,d:0.05},filter:HP(2500),gain:0.4})],
-  clap:n=>[NZ('white',{dur:0.22,env:{a:0.004,d:0.2},filter:BP(1500,1.0),gain:0.75}),NZ('white',{delay:0.012,dur:0.18,env:{a:0.003,d:0.15},filter:BP(1900,1.0),gain:0.5}),NZ('white',{delay:0.026,dur:0.2,env:{a:0.003,d:0.17},filter:BP(1700,1.1),gain:0.5})],
+  clap:n=>[NZ('white',{dur:0.22,env:{a:0.004,d:0.2},filter:BP(1500,1.0),gain:0.75}),NZ('white',{delay:0.014,dur:0.18,env:{a:0.003,d:0.15},filter:BP(1850,1.0),gain:0.6})],
   hat:n=>[NZ('white',{dur:0.06,env:{a:0.002,d:0.05},filter:HP(7200),gain:0.4})],
   hat_o:n=>[NZ('white',{dur:0.26,env:{a:0.002,d:0.24},filter:HP(6500),gain:0.35})],
   shaker:n=>[NZ('white',{dur:0.09,env:{a:0.012,d:0.07},filter:[HP(5000),BP(8000,0.8)],gain:0.35})],
-  ride:n=>[FMo(420,2.7,{from:4,to:1.2,t:0.4},{dur:0.5,env:{a:0.002,d:0.45},filter:HP(2500),gain:0.2}),NZ('white',{dur:0.3,env:{a:0.002,d:0.25},filter:HP(7000),gain:0.14})],
-  crash:n=>[NZ('white',{dur:1.8,env:{a:0.003,d:1.6},filter:[HP(3000),BP(7000,0.5)],gain:0.55}),FMo(380,2.3,{from:5,to:1,t:1.2},{dur:1.4,env:{a:0.003,d:1.2},filter:HP(2000),gain:0.12})],
-  tamb:n=>[NZ('white',{dur:0.09,env:{a:0.002,d:0.08},filter:BP(6500,2.2),gain:0.4}),FMo(5200,1.3,{from:2,to:0.3,t:0.08},{dur:0.1,env:{a:0.002,d:0.09},gain:0.12})],
+  ride:n=>[FMo(420,2.7,{from:4,to:1.2,t:0.4},{dur:0.5,env:{a:0.002,d:0.45},filter:HP(2500),gain:0.22})],
+  crash:n=>[NZ('white',{dur:1.6,env:{a:0.003,d:1.4},filter:[HP(3000),BP(7000,0.5)],gain:0.6})],
+  tamb:n=>[NZ('white',{dur:0.09,env:{a:0.002,d:0.08},filter:BP(6500,2.2),gain:0.45})],
   tom_hi:n=>tomFn(n,n.hzT(7,3),0.32),tom_mid:n=>tomFn(n,n.hzT(0,3),0.4),tom_lo:n=>tomFn(n,n.hzT(7,2),0.5),tom_r:n=>tomFn(n,n.hzT(0,2),0.55),
   timp1:n=>timpFn(n,n.hzT(0,2)),timp4:n=>timpFn(n,n.hzT(5,2)),timp5:n=>timpFn(n,n.hzT(7,1)),
-  taiko:n=>{const f=n.hzT(0,1);return[O('sine',f,{pitch:{from:f*1.8,to:f,t:0.07},dur:0.7,env:{a:0.003,d:0.6},gain:1.0}),NZ('pink',{dur:0.12,env:{a:0.002,d:0.1},filter:LP(1200),gain:0.55}),O('sine',f*2.02,{dur:0.3,env:{a:0.003,d:0.25},gain:0.2})];},
-  taiko_hi:n=>{const f=n.hzT(0,2);return[O('sine',f,{pitch:{from:f*1.7,to:f,t:0.05},dur:0.45,env:{a:0.003,d:0.4},gain:0.9}),NZ('pink',{dur:0.08,env:{a:0.002,d:0.07},filter:LP(2200),gain:0.5})];},
+  taiko:n=>{const f=n.hzT(0,1);return[{k:'osc',harm:[1,0.3,0.12],f,pitch:{from:f*1.8,to:f,t:0.07},dur:0.7,env:{a:0.003,d:0.6},gain:1.0},NZ('pink',{dur:0.1,env:{a:0.002,d:0.08},filter:LP(1200),gain:0.55})];},
+  taiko_hi:n=>{const f=n.hzT(0,2);return[{k:'osc',harm:[1,0.25],f,pitch:{from:f*1.7,to:f,t:0.05},dur:0.45,env:{a:0.003,d:0.4},gain:0.9},NZ('pink',{dur:0.07,env:{a:0.002,d:0.06},filter:LP(2200),gain:0.5})];},
   sub_hit:n=>[O('sine',n.hzT(0,1)*0.5,{pitch:{from:n.hzT(0,1),to:n.hzT(0,1)*0.5,t:0.25},dur:1.2,env:{a:0.004,d:1.1},gain:1.0}),NZ('brown',{dur:0.3,env:{a:0.004,d:0.28},filter:LP(300),gain:0.5})],
   riser:n=>[NZ('white',{dur:n.dur,env:{a:n.dur*0.9,d:n.dur*0.1+0.05},filter:BP(400,1.2,6000,n.dur),gain:0.5})],
   swell:n=>[NZ('pink',{dur:n.dur+0.3,env:{a:n.dur*0.8,d:n.dur*0.2+0.2},filter:LP(300,3500,n.dur),gain:0.5})]
 });
-function tomFn(n,f,d){return[O('sine',f,{pitch:{from:f*1.5,to:f,t:0.06},dur:d+0.1,env:{a:0.003,d:d},gain:0.9}),NZ('pink',{dur:0.06,env:{a:0.002,d:0.05},filter:LP(1800),gain:0.35})];}
-function timpFn(n,f){return[O('sine',f,{pitch:{from:f*1.18,to:f,t:0.1},dur:0.85,env:{a:0.004,d:0.8},gain:0.9}),O('sine',f*1.5,{pitch:{from:f*1.7,to:f*1.5,t:0.1},dur:0.32,env:{a:0.004,d:0.28},gain:0.28}),NZ('pink',{dur:0.07,env:{a:0.003,d:0.06},filter:LP(700),gain:0.5})];}
+function tomFn(n,f,d){return[O('sine',f,{pitch:{from:f*1.5,to:f,t:0.06},dur:d+0.1,env:{a:0.003,d:d},drive:0.2,gain:0.9})];}
+function timpFn(n,f){return[{k:'osc',harm:[1,0.32,0.12],f,pitch:{from:f*1.18,to:f,t:0.1},dur:0.85,env:{a:0.004,d:0.8},gain:0.95},NZ('pink',{dur:0.06,env:{a:0.003,d:0.05},filter:LP(700),gain:0.5})];}
 function estLayer(L){
   const k=L.k||'osc';let n=1;
   if(k==='osc'){n=L.unison?Math.max(1,L.unison.n|0):1;if(L.vib)n++;}else if(k==='fm')n=2;else if(k==='pluck'&&L.mode==='modal')n=L.n||(L.ratios?L.ratios.length:5);else if(k==='formant'&&L.vib)n=2;
@@ -358,7 +359,7 @@ const into=(A,node)=>{A.out=node;return A.out;};   // live: the node itself; off
 function keyTone(P){return(semi,oct)=>hzOf(12*(oct+1)+P.S.tonic+semi);}
 function mkPlayer(A,N,o){
   const x=A.ctx,live=!A.off,P={id:N.id,N,A,x,live,serial:++SERIAL,sec:o.sec||0,bar:0,step:0,secStep:0,loops:0,t0:o.t0,nextTime:o.t0,nextBarT:o.t0,barT:o.t0,bpm:0,bpmT:0,sd:0.1,
-    evq:[],rel:[],act:[],ended:false,done:false,killT:0,endT:0,fading:false,stem:{},stemOrder:[],vol:o.vol===undefined?1:o.vol,sting:!!o.sting,nc:0,solo:o.solo||null,mute:o.mute||null,
+    evq:[],rel:[],act:[],lead:LEAD,budget:o.budget>0?o.budget:BUDGET,peakSound:0,madeSum:0,madeN:0,madeHist:{},ended:false,done:false,killT:0,endT:0,fading:false,stem:{},stemOrder:[],vol:o.vol===undefined?1:o.vol,sting:!!o.sting,nc:0,solo:o.solo||null,mute:o.mute||null,
     scn:o.scn||null,sc:{int:SC.cur.int,night:SC.cur.night,era:SC.cur.era},S:null,dropped:0,peakEst:0,rng:mulberry32((KIT.hash(N.id)^Math.imul(o.seed|0,0x9E3779B1)^(live?Math.imul(SERIAL,7919):0))>>>0),
     nd:{f:0,midi:0,dur:0,vel:0,art:'',key:N.tonic,pr:EMPTY,rng:null,hzT:null,t:0},carry:0};
   P.nd.rng=P.rng;P.nd.hzT=keyTone(P);
@@ -451,9 +452,12 @@ function queueMotif(P,m,sc){
     insertEv(P,{t:t0+(+nt.b||0)*q/m.rate,stem:m.stem,inst,midi:mid+12*m.oct+m.transpose,dur:Math.max(0.05,(+nt.d||0.5)*q/m.rate*(m.gate||0.95)),vel:cl((nt.v===undefined?0.8:nt.v)*m.vel,0.05,1.2)});
   }
 }
-function conc(P,t){let c=0;const a=P.act;for(let i=a.length-1;i>=0;i--){const e=a[i];if(e.e<t-3){a.splice(i,1);continue;}if(e.s<=t&&e.e>t)c+=e.n;}return c;}
-/* build one note: instrument layers -> note bus -> stem */
-function emit(P,sm,instName,midi,f,t,dur,vel,art,pan){
+/* source nodes of this player that exist when a note starting at t is created: started on or before t and not yet ended (+ the creation lead: a node exists from MAKE seconds before it sounds until it ends) */
+function conc(P,t,lead){let c=0;const a=P.act,ld=lead===undefined?P.lead:lead;for(let i=a.length-1;i>=0;i--){const e=a[i];if(e.e<t-3){a.splice(i,1);continue;}if(e.s<=t&&e.e+ld>t)c+=e.n;}return c;}
+/* queue one note (the sequencer works LOOK s ahead; the audio nodes are only created MAKE s ahead, in flushQ) */
+function emit(P,sm,instName,midi,f,t,dur,vel,art,pan){insertEv(P,{t,sm,inst:instName,midi,f,dur,vel,art,pan});}
+/* build one note: instrument layers -> note bus -> stem. Admission is by priority against the number of source nodes that exist (cap AUD.capMusic = 24): a note that does not fit is dropped, lowest priority first */
+function build(P,sm,instName,midi,f,t,dur,vel,art,pan){
   const fn=INST[instName];
   if(!fn){if(!P.missing)P.missing={};if(!P.missing[instName]){P.missing[instName]=1;warn(P.id+': unknown instrument "'+instName+'"');}return;}
   if(P.live){if(t<P.x.currentTime-0.02){STAT.late++;return;}}else if(t<0)t=0;   // humanised / flam hits before the start of an offline render land on 0
@@ -461,8 +465,10 @@ function emit(P,sm,instName,midi,f,t,dur,vel,art,pan){
   const L=fn(n);if(!L||!L.length)return;
   let est=0,ld=0,st=0;   // est: source nodes of the whole note; st: the ones that start with it (later layers are accounted when they begin)
   for(let i=0;i<L.length;i++){const l=L[i],ne=estLayer(l),dl=l.delay||0;est+=ne;if(dl<0.03)st+=ne;const e=dl+(l.dur!==undefined?l.dur:dur);if(e>ld)ld=e;}
-  const lim=BUDGET*(0.55+0.45*sm.def.prio);
-  const cc=conc(P,t);if(cc+st>lim){P.dropped++;STAT.dropped++;sm.dropped=(sm.dropped||0)+1;return;}
+  const lim=P.budget*(0.55+0.45*sm.def.prio);
+  const cc=conc(P,t);
+  if(!P.live){const c0=conc(P,t,0)+st;if(c0>P.peakSound)P.peakSound=c0;P.madeSum+=cc+st;P.madeN++;const bk=Math.min(40,cc+st);P.madeHist[bk]=(P.madeHist[bk]||0)+1;}
+  if(cc+st>lim){P.dropped++;STAT.dropped++;sm.dropped=(sm.dropped||0)+1;return;}
   if(cc+st>P.peakEst)P.peakEst=cc+st;
   if(P.live){const used=AUD.activeNodesMusic;if(used+est>AUD.capMusic){P.dropped++;STAT.dropped++;sm.dropped=(sm.dropped||0)+1;return;}if(used+est>STAT.peakNodes)STAT.peakNodes=used+est;}
   for(let i=0;i<L.length;i++){const l=L[i],dl=l.delay||0,ne=estLayer(l),e=dl+(l.dur!==undefined?l.dur:dur);P.act.push({s:t+dl,e:t+e,n:ne});sm.nodeSec=(sm.nodeSec||0)+ne*e;}
@@ -505,7 +511,7 @@ function stepAt(P,t){
       const inst=instOf(P,sm,e),vel=ev.v*e.vel*(1+(P.rng()-0.5)*0.1),dur=Math.max(0.04,ev.len*P.sd*d.gate*e.gate),ts=tt+(P.rng()-0.5)*hu;
       const nsh=(d.nightOct&&sc.night>0.5)?12*d.nightOct:0,pan=d.spread?((P.nc++&1)?1:-1)*d.spread*(0.5+0.5*P.rng()):0;
       if(ev.t==='c'){
-        const vs=voicingOf(ch,d.reg,d.voices);
+        const vs=voicingOf(ch,d.reg,e.voices||d.voices);
         for(let j=0;j<vs.length;j++){const m=vs[j]+12*e.oct+nsh;emit(P,sm,inst,m,hzOf(m),ts+j*d.strum,dur,vel,'',pan);}
         continue;
       }
@@ -519,14 +525,14 @@ function stepAt(P,t){
   }
 }
 function chordHold(P,sm,e,ch,steps,t){
-  const d=sm.def,inst=instOf(P,sm,e),vs=voicingOf(ch,d.reg,d.voices),dur=steps*P.sd,nsh=(d.nightOct&&P.sc.night>0.5)?12*d.nightOct:0;
+  const d=sm.def,inst=instOf(P,sm,e),vs=voicingOf(ch,d.reg,e.voices||d.voices),dur=steps*P.sd,nsh=(d.nightOct&&P.sc.night>0.5)?12*d.nightOct:0;
   for(let j=0;j<vs.length;j++){const m=vs[j]+12*e.oct+nsh;emit(P,sm,inst,m,hzOf(m),t+j*d.strum,dur,e.vel*0.9,'',d.spread?((j&1)?1:-1)*d.spread*0.7:0);}
 }
 function flushQ(P,limit){
   const q=P.evq;
   while(q.length&&q[0].t<limit){
-    const ev=q.shift(),sm=P.stem[ev.stem];if(!sm||sm.target<0.012)continue;
-    const inst=ev.inst||sm.def.inst;emit(P,sm,inst,ev.midi,hzOf(ev.midi),ev.t,ev.dur,ev.vel,'',0);
+    const ev=q.shift(),sm=ev.sm||P.stem[ev.stem];if(!sm||sm.target<0.012)continue;
+    build(P,sm,ev.inst||sm.def.inst,ev.midi,ev.f!==undefined?ev.f:hzOf(ev.midi),ev.t,ev.dur,ev.vel,ev.art||'',ev.pan||0);
   }
 }
 function nextSection(P){
@@ -538,7 +544,7 @@ function nextSection(P){
   P.S=N.sections[P.sec];
 }
 /* schedule every step whose time is before `limit` */
-function run(P,limit){
+function run(P,limit,mk){
   let guard=0;
   while(!P.ended&&P.nextTime<limit&&guard++<6000){
     if(P.step===0)enterBar(P);
@@ -546,7 +552,7 @@ function run(P,limit){
     P.nextTime+=P.sd;P.step++;P.secStep++;
     if(P.step>=P.S.spb){P.step=0;P.bar++;if(P.bar>=P.S.bars)nextSection(P);}
   }
-  flushQ(P,P.ended?Infinity:limit);
+  flushQ(P,P.ended?Infinity:(P.live&&mk!==undefined?mk:limit));
 }
 
 /* ------------------------------------------------------------------ live: players, cross-fades, director */
@@ -634,7 +640,7 @@ function tickPlayers(now){
     if(!P.fading&&!P.ended&&!silent()){
       try{
         P.sc.int=SC.cur.int;
-        run(P,lim);
+        run(P,lim,now+MAKE);
       }catch(e){STAT.errors++;STAT.lastError=P.id+': '+(e&&e.message||e);}
     }else if(!P.fading&&!P.ended&&silent()){
       /* muted: keep the musical position moving without building nodes */
@@ -649,47 +655,51 @@ function tickPlayers(now){
   }
   const a=audioA('music');if(a)a.out=a.dest;
 }
+/* the cue the director wants: the menu / attract mode play `title` (resolveCue stands the faction theme in until that cue has data), a match plays the player's faction theme */
 function wantCue(inMatch){
-  if(!inMatch){const t=norm('title');if(t&&t.ok)return'title';return'theme_'+(SC.t.faction||(typeof SET!=='undefined'&&SET.faction)||'meridian');}
+  if(!inMatch)return'title';
   const f=SC.t.faction||(G.teams[0]&&G.teams[0].faction)||'meridian';return'theme_'+f;
 }
-const DIR={era:1,over:null,k:null};
-function director(now){
+/* Director: once per SCENEMS it turns the match state into a scene {faction,era,intensity,night} and publishes it through the public musicScene(); it also fires the stingers
+   (era up, victory / defeat, hero ready, base under attack). Read-only on G / ui. It runs even before the audio context exists (the scene is just numbers). */
+const DIR={era:1,over:null,k:null,hero:false,alert:-99,alarmT:-99};
+function director(){
   if(typeof G==='undefined'||typeof ui==='undefined')return;
   const k=matchKey();
   if(k!==DIR.k){
     DIR.k=k;LIVE.held=false;
     if(LIVE.manual&&LIVE.manualK!==k&&!(typeof cineActive==='function'&&cineActive())){LIVE.manual=false;}
-    DIR.era=k?(G.teams[0].era||1):1;DIR.over=null;
+    DIR.over=null;DIR.alarmT=-99;
+    if(k){const T0=G.teams[0];DIR.era=T0.era||1;DIR.hero=!!(T0.hero&&T0.hero.alive);DIR.alert=G.lastAlertT;}else DIR.era=1;
   }
-  if(LIVE.manual||LIVE.held||!liveOK()||AC.state!=='running')return;
-  const inMatch=!!k,T=SC.t;let it,night=0,era=2;
+  if(LIVE.manual||LIVE.held)return;
+  const inMatch=!!k,T=SC.t;let it,night=0,era=2,fac=T.faction;
   if(!inMatch){it=0.38;}
   else{
-    const T0=G.teams[0];era=cl(T0.era||1,1,3);night=cl(1-G.daylight,0,1);
+    const T0=G.teams[0];era=cl(T0.era||1,1,3);night=cl(1-G.daylight,0,1);fac=T0.faction||fac;
     const since=G.time-G.fightT,fightK=since<=2?1:since<14?1-(since-2)/12:0,base=0.16+0.1*cl(G.time/1200,0,1);
     it=Math.max(base,0.92*fightK);if(G.time-G.alertT<20)it=Math.max(it,0.5);
-    if(G.paused)it=Math.min(it,0.2);
-    if(era>DIR.era&&AC.state==='running'){const s=norm('sting_era');if(s&&s.ok)stinger('sting_era');}
+    if(era>DIR.era)musicStinger('sting_era');
     DIR.era=era;
-    if(G.over&&DIR.over!==G.over){DIR.over=G.over;const s=G.over==='victory'?'sting_victory':'sting_defeat',n=norm(s);if(n&&n.ok)stinger(s);}
-    if(G.paused&&!G.over)audioDuck('music',0.4,700);
+    if(G.over&&DIR.over!==G.over){DIR.over=G.over;musicStinger(G.over==='victory'?'sting_victory':'sting_defeat');}
+    const H=T0.hero;if(H){if(H.alive&&!DIR.hero)musicStinger('sting_hero');DIR.hero=!!H.alive;}
+    if(G.lastAlertT!==DIR.alert){DIR.alert=G.lastAlertT;if(!G.ais[0]&&G.time-DIR.alarmT>25){DIR.alarmT=G.time;musicStinger('sting_alarm');}}
+    if(G.paused&&!G.over)musicDuck(0.4,700);
   }
   if(T.mood){const m=MOODS[T.mood];if(m){if(T.mood==='calm')it=Math.min(it,m.i+0.1);else it=Math.max(it,m.i);if(m.n!==undefined)night=Math.max(night,m.n);}}
-  T.int=cl(it,0,1);T.night=night;T.era=era;
+  const sc={intensity:cl(it,0,1),night,era};if(fac)sc.faction=fac;
+  musicScene(sc);
   const want=wantCue(inMatch),cur=LIVE.main;
-  if(!cur||cur.fading||(cur.cueId!==want&&!cur.sting)){if(!LIVE.pending)play(want,{director:true,crossfade:true,at:'bar',fade:cur?2.2:1.2,keepScene:true});}
+  if(!cur||cur.fading||(cur.cueId!==want&&!cur.sting)){musicPlay(want,{director:true,crossfade:true,at:'bar',fade:cur?2.2:1.2,keepScene:true});}
 }
 function liveTick(){
   STAT.ticks++;
-  if(!liveOK()||AC.state==='closed')return;
   try{
-    const now=AC.currentTime,rt=typeof performance!=='undefined'?performance.now():0,dt=LIVE.last?Math.min(1,(rt-LIVE.last)/1000):0.1;LIVE.last=rt;
-    if(AC.state!=='running')return;
-    if(LIVE.pending){const p=LIVE.pending;LIVE.pending=null;play(p.id,p.o);}
+    const run_=liveOK()&&AC.state==='running',rt=typeof performance!=='undefined'?performance.now():0,dt=LIVE.last?Math.min(1,(rt-LIVE.last)/1000):0.1;LIVE.last=rt;
+    if(run_&&LIVE.pending){const p=LIVE.pending;LIVE.pending=null;play(p.id,p.o);}
     smoothScene(dt);
-    if(rt-LIVE.lastDirector>=SCENEMS){LIVE.lastDirector=rt;director(now);}
-    tickPlayers(now);
+    if(rt-LIVE.lastDirector>=SCENEMS){LIVE.lastDirector=rt;director();}
+    if(run_)tickPlayers(AC.currentTime);
   }catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);}
 }
 function ensureTimer(){if(!LIVE.tickT)LIVE.tickT=setInterval(liveTick,TICKMS);}
@@ -713,14 +723,14 @@ function renderCue(spec,seconds,sr){
   const sf=sceneFn(spec),dur=seconds>0?seconds:(N.loop?N.loopLen:N.loopLen)+(N.loop?3:N.tail+1);
   return audioOffline(dur,sr,(A,ctx)=>{
     A.s=(KIT.hash(N.id)^Math.imul(spec.seed|0,0x9E3779B1))|0;A.p.pitch=1;A.p.fmul=1;
-    const P=mkPlayer(A,N,{t0:0,sec:sec0,vol:spec.vol,seed:spec.seed|0,solo:spec.solo?[].concat(spec.solo):null,mute:spec.mute?[].concat(spec.mute):null,scn:sf.static?null:sf.fn});
+    const P=mkPlayer(A,N,{t0:0,sec:sec0,vol:spec.vol,seed:spec.seed|0,budget:spec.budget,solo:spec.solo?[].concat(spec.solo):null,mute:spec.mute?[].concat(spec.mute):null,scn:sf.static?null:sf.fn});
     P.once=!N.loop;
     if(sf.static){P.sc.int=sf.st.int;P.sc.night=sf.st.night;P.sc.era=sf.st.era;}
     else sf.fn(0,P.sc);
     applyLevels(P,P.sc,0,true);
     run(P,dur+0.5);
     A.out=A.dest;
-    LAST.id=N.id;LAST.dropped=P.dropped;LAST.peakEst=P.peakEst;LAST.byStem={};LAST.avgNodes={};for(const sm of P.stemOrder){LAST.byStem[sm.name]=sm.dropped||0;LAST.avgNodes[sm.name]=+((sm.nodeSec||0)/dur).toFixed(2);}
+    LAST.id=N.id;LAST.dropped=P.dropped;LAST.peakEst=P.peakEst;LAST.peakSound=P.peakSound;LAST.notes=P.madeN;LAST.meanMade=P.madeN?+(P.madeSum/P.madeN).toFixed(2):0;LAST.madeHist=P.madeHist;LAST.scheduled=STAT.scheduled;LAST.byStem={};LAST.avgNodes={};for(const sm of P.stemOrder){LAST.byStem[sm.name]=sm.dropped||0;LAST.avgNodes[sm.name]=+((sm.nodeSec||0)/dur).toFixed(2);}
   },{master:true});
 }
 function renderMotif(spec,seconds,sr){
@@ -748,31 +758,31 @@ function renderInst(spec,seconds,sr){
 }
 registerRenderer('cue',renderCue);registerRenderer('motif',renderMotif);registerRenderer('inst',renderInst);
 
-/* ------------------------------------------------------------------ public API */
-function musicPlay(cue,opts){try{ensureTimer();return play(String(cue),opts);}catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);return false;}}
-function musicStop(fade){try{stop(fade);}catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);}}
-function musicScene(sc){return setScene(sc);}
-function musicStinger(cue){try{return stinger(String(cue));}catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);return false;}}
-function musicDuck(amount,ms){try{audioDuck('music',cl(+amount||0,0,0.95),Math.max(0,+ms||600));}catch(e){}}
-function musicMood(m){return setScene({mood:m});}
-function musicState(){const P=LIVE.main;return{cue:LIVE.cue,section:P?P.sec:0,manual:LIVE.manual,held:LIVE.held,scene:Object.assign({},SC.t)};}
-function musicRestore(s){
+/* ------------------------------------------------------------------ public API (the plain `function musicX` declarations below the closure call these; each name is declared exactly once) */
+function apiPlay(cue,opts){try{ensureTimer();return play(String(cue),opts);}catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);return false;}}
+function apiStop(fade){try{stop(fade);}catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);}}
+function apiScene(sc){return setScene(sc);}
+function apiStinger(cue){try{return stinger(String(cue));}catch(e){STAT.errors++;STAT.lastError=String(e&&e.message||e);return false;}}
+function apiDuck(amount,ms){try{audioDuck('music',cl(+amount||0,0,0.95),Math.max(0,+ms||600));}catch(e){}}
+function apiMood(m){return setScene({mood:m});}
+function apiState(){const P=LIVE.main;return{cue:LIVE.cue,section:P?P.sec:0,manual:LIVE.manual,held:LIVE.held,scene:Object.assign({},SC.t)};}
+function apiRestore(s){
   LIVE.held=false;LIVE.manual=false;
   if(!s)return;
   Object.assign(SC.t,s.scene||{});
   if(s.manual&&s.cue)play(s.cue,{fade:0.8,crossfade:true,section:s.section,keepScene:true});
 }
-function musicRegister(id,def){MUSIC_DATA[id]=def;delete NCACHE[id];const N=norm(id);return{ok:!!(N&&N.ok),warnings:N?N.warn.slice():['not an object']};}
+function apiRegister(id,def){MUSIC_DATA[id]=def;delete NCACHE[id];const N=norm(id);return{ok:!!(N&&N.ok),warnings:N?N.warn.slice():['not an object']};}
 function musicCheck(id){const N=norm(id);if(!N)return['no data for '+id];return N.warn.slice();}
-Object.assign(MUSIC,{play:musicPlay,stop:musicStop,scene:musicScene,stinger:musicStinger,duck:musicDuck,mood:musicMood,state:musicState,restore:musicRestore,register:musicRegister,check:musicCheck,info:infoOf,
+Object.assign(MUSIC,{play:apiPlay,stop:apiStop,scene:apiScene,stinger:apiStinger,duck:apiDuck,mood:apiMood,state:apiState,restore:apiRestore,register:apiRegister,check:musicCheck,info:infoOf,
   norm,last:()=>JSON.parse(JSON.stringify(LAST)),warnings:()=>WARN.slice(),scenes:()=>({target:Object.assign({},SC.t),cur:Object.assign({},SC.cur)}),
-  stats:()=>Object.assign({},STAT,{players:LIVE.players.map(p=>({id:p.id,cue:p.cueId,sec:p.sec,bar:p.bar,bpm:+p.bpm.toFixed(2),fading:p.fading,sting:p.sting,dropped:p.dropped,levels:Object.fromEntries(p.stemOrder.map(s=>[s.name,+s.target.toFixed(3)]))})),
+  stats:()=>Object.assign({},STAT,{players:LIVE.players.map(p=>({id:p.id,cue:p.cueId,sec:p.sec,bar:p.bar,bpm:+p.bpm.toFixed(2),fading:p.fading,sting:p.sting,dropped:p.dropped,levels:Object.fromEntries(p.stemOrder.map(s=>[s.name,+s.target.toFixed(3)])),drops:Object.fromEntries(p.stemOrder.map(s=>[s.name,s.dropped||0]))})),
     manual:LIVE.manual,held:LIVE.held,cue:LIVE.cue,scene:Object.assign({},SC.t),cur:Object.assign({},SC.cur),warnings:WARN.length}),
   deg:(key,mode,deg,oct,acc)=>degMidi(pcOf(key),scaleFor(mode),deg,oct===undefined?4:oct,acc),scale:scaleFor,chord:parseChord,voicing:voicingOf,midi:midiOf,hz:n=>hzOf(midiOf(n)),pc:pcOf,SCALES,CHORDS:CQ,
   hzOf,compLane,compMel,tick:liveTick,budget:BUDGET,cap:()=>({budget:BUDGET,capMusic:AUD.capMusic}),lateInst:null});
 audioOnReady(()=>{ensureTimer();});
 ensureTimer();
-return{musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,musicState,musicRestore,musicRegister};
+return{musicPlay:apiPlay,musicStop:apiStop,musicScene:apiScene,musicStinger:apiStinger,musicDuck:apiDuck,musicMood:apiMood,musicState:apiState,musicRestore:apiRestore,musicRegister:apiRegister};
 })();
 function musicPlay(cue,opts){return MUSE.musicPlay(cue,opts);}
 function musicStop(fade){MUSE.musicStop(fade);}

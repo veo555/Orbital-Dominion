@@ -2,7 +2,8 @@
    VOICE — character speech, barks and the announcer. Contract: docs/AUDIO_SPEC.md §5.   (UI/audio module: no sim state is read or written.)
    Public globals: speak(charId,text,{style,volume,onEnd,queue,duck,bark}) -> {dur,syllables,style,blips,tts,voice,queued}   speakStop()   bark(charId,key,opt)
                    voiceProfile(charId) (what the Sound Lab shows)   speakLevel() (0..1 envelope of the line being spoken, for lip-sync)   say(txt) (the announcer)
-   Test hook (always present): AUD.voice = {speak,stop,bark,profile,say,level,words,syllables,count,plan,estimate,cur,queue,tts,tune}.
+   Speaker ids: a character id; 'narrator' = the character whose role is 'narrator'; a hero unit type ('hero_idris') = the character whose `hero` it is; anything else gets a default voice derived from its hash.
+   Test hook (always present): AUD.voice = {speak,stop,bark,profile,say,level,words,syllables,count,plan,estimate,styles,canon,cur,queue,tts,tune}.
    Offline: audioRender({speech:charId,text,style,vol,seed?},seconds,sr)  (registered renderer 'speech').
 
    Two layers, both started by speak():
@@ -125,11 +126,13 @@ const VOX_EXC={reactor:'re-ac-tor',react:'re-act',reaction:'re-ac-tion',reactive
   quiet:'qui-et',science:'sci-ence',poem:'po-em',poet:'po-et',violent:'vi-o-lent',violence:'vi-o-lence',
   hundred:'hun-dred',hundreds:'hun-dreds',sacred:'sa-cred',kindred:'kin-dred',hatred:'ha-tred',naked:'na-ked',wicked:'wick-ed',wretched:'wretch-ed',ragged:'rag-ged',rugged:'rug-ged',jagged:'jag-ged',crooked:'crook-ed',
   beloved:'be-lov-ed',blessed:'bless-ed',cursed:'curs-ed',learned:'learn-ed',aged:'a-ged',being:'be-ing',heavier:'hea-vi-er',easier:'ea-si-er',happier:'hap-pi-er',
+  aisle:'ile',aisles:'iles',isle:'ile',isles:'iles',   // respellings (no hyphen)
   everything:'ev-ry-thing',every:'ev-ry',gideon:'gid-e-on',teodor:'te-o-dor',lion:'li-on',lions:'li-ons',ruin:'ru-in',ruins:'ru-ins',fuel:'fu-el',cruel:'cru-el',duel:'du-el',diet:'di-et',client:'cli-ent',fiery:'fi-er-y',variety:'va-ri-e-ty',society:'so-ci-e-ty',anxiety:'anx-i-e-ty',theodore:'the-o-dore',orion:'o-ri-on',neon:'ne-on',leon:'le-on',napoleon:'na-po-le-on'};
 /* one lowercase a-z word -> [{on:[tokens],nu:'ea',co:[tokens],long:bool,vw:null|[vowels],txt:'first syllable letters'}] */
 function voxSylWord(word){
   const w0=String(word).toLowerCase().replace(/[^a-z]/g,''),ex=VOX_EXC[w0];
   if(ex&&ex.indexOf('-')>0){const S=[];for(const part of ex.split('-')){const q=voxSylWord1(part);for(const sy of q)S.push(sy);}const t0=S[0].txt;for(const sy of S)sy.txt=t0;return S;}
+  if(ex)return voxSylWord1(ex);   // no hyphen: a respelling that the letter rules handle (isle -> ile: one syllable, long i)
   return voxSylWord1(w0);
 }
 function voxSylWord1(word){
@@ -184,6 +187,7 @@ function voxSylWord1(word){
 /* text -> [{txt,syl,caps,em,pause}] ; pause = null | c s p q x ell d (class of the punctuation after the word) */
 function voxWords(text){
   let s=String(text==null?'':text);
+  s=s.replace(/\u00e9(?![A-Za-z\u00c0-\u024f])/g,'ay');   // a final e-acute is a syllable of its own (cafe, resume, fiance): stripping the accent below would lose it
   try{s=s.normalize('NFD').replace(/[̀-ͯ]/g,'');}catch(e){}
   s=s.replace(/[‘’ʼ]/g,"'").replace(/[“”]/g,'"').replace(/…/g,'... ').replace(/[—–]|\s-\s|--+/g,' — ').replace(/[*_~`#]/g,'');
   const out=[];
@@ -236,8 +240,19 @@ function voxRaw(id){
   const ch=typeof STORY!=='undefined'&&STORY&&STORY.characters?STORY.characters[id]:null;
   return{ch,v:(ch&&ch.voice)||null};
 }
+/* speaker ids that are not character ids: 'narrator' (a valid `who` literal, tools/validate_story.js) is the character whose role is 'narrator'; a hero unit type ('hero_idris') is the character whose
+   `hero` it is. Both resolve to that character's id, so the voice, the seed and the TTS voice are the character's own (a bark for a hero unit sounds like the hero's cinematic lines). */
+function voxCanon(id){
+  if(id==null||id==='')return '~';
+  id=String(id);
+  const C=typeof STORY!=='undefined'&&STORY&&STORY.characters;
+  if(!C||C[id])return id;
+  if(id==='narrator'){for(const k in C)if(C[k]&&C[k].role==='narrator')return k;}
+  else if(id.indexOf('hero_')===0){for(const k in C)if(C[k]&&C[k].hero===id)return k;}
+  return id;
+}
 function voiceProfile(charId){
-  const id=charId==null||charId===''?'~':String(charId),R=voxRaw(id),v=R.v||{},VK=typeof VOICE_KEYS!=='undefined'?VOICE_KEYS:null;
+  const id=voxCanon(charId),R=voxRaw(id),v=R.v||{},VK=typeof VOICE_KEYS!=='undefined'?VOICE_KEYS:null;
   const num=(k,d)=>{let x=typeof v[k]==='number'&&isFinite(v[k])?v[k]:d;if(VK&&VK[k])x=clamp(x,VK[k][0],VK[k][1]);return x;};
   const tim=VOX_TIM[v.timbre]?v.timbre:'smooth',TM=VOX_TIM[tim],h=KIT.hash(id+'#voice');
   const pitch=num('pitch',1),rate=num('rate',1),formant=num('formant',.5),stDelta=(voxU(h,1)*2-1)*1.4;
@@ -416,41 +431,48 @@ registerRenderer('speech',function(spec,seconds,sr){
 });
 
 /* ------------------------------------------------------------------ speechSynthesis (best effort) */
-const VOX_TTS={voices:[],hooked:false,assign:null,sig:'',extra:{}};
+const VOX_TTS={voices:[],hooked:false,assign:null,sig:'',st:null};
 const VOX_FEM=/female|woman|samantha|karen|zira|susan|victoria|moira|tessa|fiona|allison|\bava\b|serena|hazel|heather|catherine|kate\b|libby|sonia|\baria\b|jenny|emma|\bamy\b|joanna|salli|kimberly|\bivy\b|nicole|raveena|veena|zoe\b|ellen|helena|laura|linda|michelle|sara\b/i;
 const VOX_MAL=/\bmale\b|\bman\b|daniel|\balex\b|david|\bmark\b|george|\bfred\b|\btom\b|james|ralph|oliver|\bryan\b|\bguy\b|brian|matthew|joey|justin|russell|geraint|thomas|aaron|rishi|arthur|gordon|richard|\bsean\b|\bpaul\b|\bjohn\b/i;
-let voxAnn=null,voxSayLast=0;const voxSayMap={};
+let voxAnn=null,voxSayLast=-1e9;const voxSayMap={};   // -1e9: 'never' (0 would mean 'at page load': every first line in the first seconds of the page would be refused)
 function voxTtsOk(){return typeof speechSynthesis!=='undefined'&&!!speechSynthesis&&typeof SpeechSynthesisUtterance!=='undefined';}
-function voxTtsRefresh(){if(!voxTtsOk())return;let v=[];try{v=speechSynthesis.getVoices()||[];}catch(e){}VOX_TTS.voices=Array.prototype.slice.call(v);VOX_TTS.assign=null;voxAnn=null;}
+function voxTtsRefresh(){if(!voxTtsOk())return;let v=[];try{v=speechSynthesis.getVoices()||[];}catch(e){}VOX_TTS.voices=Array.prototype.slice.call(v);voxAnn=null;}   // the assignment is rebuilt only when the English voice list itself changed (voxTtsAssign compares signatures)
 function voxTtsInit(){
   if(!voxTtsOk())return;
   if(!VOX_TTS.hooked){VOX_TTS.hooked=true;try{speechSynthesis.addEventListener('voiceschanged',voxTtsRefresh);}catch(e){try{speechSynthesis.onvoiceschanged=voxTtsRefresh;}catch(e2){}}voxTtsRefresh();}
   else if(!VOX_TTS.voices.length)voxTtsRefresh();   // Chrome fills the list asynchronously: keep asking until it is not empty
 }
 const voxVid=v=>String(v.voiceURI||v.name||'');
+/* one character -> one voice of the pool: the hash of the id picks where the search starts, the LEAST-USED voice from there on is taken (so characters get different voices while there are enough of them,
+   and when a pool runs out the characters spread evenly over it instead of piling on one voice); ttsPitch is the gender hint (>= 1.12 prefers voices with a female name, <= 0.9 prefers male-named ones;
+   neither list known -> the whole pool) */
+function voxTtsWant(id){const tp=voiceProfile(id).ttsPitch;return tp>=1.12?'f':tp<=0.9?'m':'a';}
+function voxTtsPick(id,st){
+  const want=voxTtsWant(id),pl=want==='f'&&st.F.length?st.F:(want==='m'&&st.M.length?st.M:st.pool);
+  if(!pl.length)return null;
+  const s0=KIT.hash(id+'#tts')%pl.length;let best=0,bu=1e9;
+  for(let k=0;k<pl.length;k++){const i=(s0+k)%pl.length,u=st.used[voxVid(pl[i])]||0;if(u<bu){bu=u;best=i;}}
+  st.used[voxVid(pl[best])]=bu+1;return pl[best];
+}
+/* id -> voice for every character of STORY at the time the English voice list is first seen: characters with a gender hint first (heroes before the rest), flexible ones fill what is left, ties by id -
+   independent of play order. Rebuilt only when that list changes. A speaker that is not in the map (not a character, or added later) is picked on first use WITHOUT moving anybody else: a character never
+   changes voice in the middle of a session. */
 function voxTtsAssign(){
   voxTtsInit();
-  const vs=VOX_TTS.voices.filter(v=>v&&/^en([-_]|$)/i.test(v.lang||'')).sort((a,b)=>voxVid(a)<voxVid(b)?-1:1);
-  const ids=Object.keys(typeof STORY!=='undefined'&&STORY&&STORY.characters?STORY.characters:{});
-  for(const k in VOX_TTS.extra)if(ids.indexOf(k)<0)ids.push(k);
-  ids.sort();
-  const sig=vs.map(voxVid).join('|')+'#'+ids.join(',');
+  const vs=VOX_TTS.voices.filter(v=>v&&/^en([-_]|$)/i.test(v.lang||'')).sort((a,b)=>voxVid(a)<voxVid(b)?-1:1),sig=vs.map(voxVid).join('|');
   if(VOX_TTS.assign&&VOX_TTS.sig===sig)return VOX_TTS.assign;
   const loc=vs.filter(v=>v.localService),pool=loc.length?loc:vs;   // local voices first: network voices phone home, the game does not
-  const F=pool.filter(v=>VOX_FEM.test(v.name||'')),M=pool.filter(v=>!VOX_FEM.test(v.name||'')&&VOX_MAL.test(v.name||'')),used={},map={};
-  for(const id of ids){
-    const tp=voiceProfile(id).ttsPitch,want=tp>=1.12?'f':tp<=0.9?'m':'a',pl=want==='f'&&F.length?F:(want==='m'&&M.length?M:pool);
-    if(!pl.length){map[id]=null;continue;}
-    let i=KIT.hash(id+'#tts')%pl.length,k=0;
-    while(k<pl.length&&used[voxVid(pl[i])]){i=(i+1)%pl.length;k++;}
-    map[id]=pl[i];used[voxVid(pl[i])]=1;
-  }
-  VOX_TTS.assign=map;VOX_TTS.sig=sig;return map;
+  const st={pool,F:pool.filter(v=>VOX_FEM.test(v.name||'')),M:pool.filter(v=>!VOX_FEM.test(v.name||'')&&VOX_MAL.test(v.name||'')),used:{}},map={};
+  const C=typeof STORY!=='undefined'&&STORY&&STORY.characters?STORY.characters:{},rank=id=>(voxTtsWant(id)==='a'?2:0)+(C[id]&&C[id].role==='hero'?0:1);
+  const ids=Object.keys(C).sort((a,b)=>rank(a)-rank(b)||(a<b?-1:a>b?1:0));
+  for(const id of ids)map[id]=voxTtsPick(id,st);
+  VOX_TTS.assign=map;VOX_TTS.sig=sig;VOX_TTS.st=st;return map;
 }
 function voxTtsVoice(id){
   if(!voxTtsOk())return null;
-  let m=voxTtsAssign();
-  if(!(id in m)){VOX_TTS.extra[id]=1;m=voxTtsAssign();}
+  id=voxCanon(id);
+  const m=voxTtsAssign();
+  if(!(id in m))m[id]=voxTtsPick(id,VOX_TTS.st);
   return m[id]||null;
 }
 function voxTtsText(t){return String(t).replace(/[*_~`#]/g,'').replace(/\s*[—–]\s*/g,', ').replace(/\.{2,}|…/g,'.');}
@@ -466,7 +488,7 @@ function voxTtsStart(P,text,SY,vol,done){
 }
 
 /* ------------------------------------------------------------------ speak / stop / queue */
-let VOXCUR=null;const VOXQ=[];
+let VOXCUR=null;const VOXQ=[],VOX_QMAX=8;
 function voxCheck(cur){if(cur===VOXCUR&&cur.blipDone&&cur.ttsDone)voxFinish('end');}
 function voxFinish(reason){
   const cur=VOXCUR;if(!cur)return;
@@ -488,7 +510,7 @@ function speak(charId,text,opts){
   if(!txt||!plan.syl.length){if(typeof opts.onEnd==='function')setTimeout(()=>{try{opts.onEnd({dur:0,reason:'end',interrupted:false});}catch(e){}},0);res.dur=0;return res;}
   if(VOXCUR){
     if(opts.bark){res.skipped=true;return res;}
-    if(opts.queue){VOXQ.push({charId,text:txt,opts});res.queued=true;return res;}
+    if(opts.queue){if(VOXQ.length>=VOX_QMAX){res.skipped=true;return res;}VOXQ.push({charId,text:txt,opts});res.queued=true;return res;}   // a bounded queue: a flood of radio lines cannot pile up minutes of speech
     voxFinish('interrupt');
   }
   const C=AUD.counters,cur=VOXCUR={id:P.id,plan,style,opts,h:null,tts:null,t0:0,blipDone:false,ttsDone:true,dead:false,timer:0,guard:0,bark:!!opts.bark};
@@ -519,12 +541,13 @@ function speakLevel(){
 }
 
 /* ------------------------------------------------------------------ barks */
-const VOX_BARKS={};let voxBarkLast=0;
+const VOX_BARKS={};let voxBarkLast=-1e9;
 function bark(charId,key,opt){
   opt=opt||{};
-  const S=typeof STORY!=='undefined'?STORY:null,list=S&&S.barks&&S.barks[charId]&&S.barks[charId][key];
+  const S=typeof STORY!=='undefined'?STORY:null,B=S&&S.barks,cid=voxCanon(charId),bk=B&&(B[charId]||B[cid]),list=bk&&bk[key];   // barks are keyed by character id; a hero unit type or 'narrator' finds its character's
   if(!Array.isArray(list)||!list.length)return null;
-  const now=performance.now(),st=VOX_BARKS[charId+'|'+key]||(VOX_BARKS[charId+'|'+key]={bag:[],last:-1,r:mulberry32(KIT.hash(charId+'|'+key+'|bark')),at:0});
+  charId=cid;
+  const now=performance.now(),st=VOX_BARKS[charId+'|'+key]||(VOX_BARKS[charId+'|'+key]={bag:[],last:-1,r:mulberry32(KIT.hash(charId+'|'+key+'|bark')),at:-1e9});
   if(muted||VOXCUR||now-voxBarkLast<(opt.globalGap===undefined?1500:opt.globalGap)||now-st.at<(opt.cooldown===undefined?5000:opt.cooldown))return null;
   if(!st.bag.length){   // shuffled bag: every line once before any repeats, and never the same line twice in a row
     const b=list.map((x,i)=>i);for(let i=b.length-1;i>0;i--){const j=Math.floor(st.r()*(i+1));const q=b[i];b[i]=b[j];b[j]=q;}
@@ -551,6 +574,6 @@ function say(txt){
     audioDuck('music',0.4,400+txt.length*65);
   }catch(e){}
 }
-AUD.voice={speak,stop:speakStop,bark,profile:voiceProfile,say,level:speakLevel,words:voxWords,syllables:voxSylWord,count:voxCount,plan:voxPlan,estimate:voxEstimate,styles:VOX_STYLES,
+AUD.voice={speak,stop:speakStop,bark,profile:voiceProfile,say,level:speakLevel,words:voxWords,syllables:voxSylWord,count:voxCount,plan:voxPlan,estimate:voxEstimate,styles:VOX_STYLES,canon:voxCanon,
   cur:()=>VOXCUR,queue:()=>VOXQ.length,tts:{voice:voxTtsVoice,assign:voxTtsAssign,refresh:voxTtsRefresh,voices:()=>VOX_TTS.voices.slice()},
   tune:{F0:VOX_F0,TTSMIX:VOX_TTSMIX,TIM:VOX_TIM,STY:VOX_STY,CON:VOX_CON,PAUSE:VOX_PAUSE}};

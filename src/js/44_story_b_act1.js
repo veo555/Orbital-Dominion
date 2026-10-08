@@ -6,9 +6,15 @@
    Staging rules used throughout: speakers are busts facing each other (x ~.28 'r' vs ~.72 'l'); comms are mode 'hologram' with style 'radio';
    the Overseer is only ever a radio chip (status grammar NOUN VALUE. VERB NOUN.); Ostrander is a hologram on a locked camera with the gold ring prop behind her head;
    banners reading 9000 are a title card; the white in Idris's hair and the cat are said, never drawn.
-   Music turns: m01_win mystery on the Warlord's call, m02_brief mystery on the Price Lamp, i02 sting_reveal on 'seven' then dread on the Key,
-   i03 villain on the Reckoner's answer, sting_reveal on the keepers, tragedy in the Forum.
+   Music turns (cue changes only at scene starts, never mid-line; no `section` is used because the campaign cue data has no declared sections yet):
+   m01_win mystery on the Warlord's call; m02_brief mystery on the Price Lamp, tension again on the map; i02 sting_reveal on 'seven', dread on the Key;
+   m03_brief tension on the trust; i03 villain on Marr's price (+ stinger sfx), sting_reveal as the beam lands (siege base), then the ruined base for the keepers, tragedy in the Forum.
    Chronology note: i03 plays after M3 (Day 4); Lamp Night was Night 1, so Marr says 'Lamp Night's', not 'last night's'.
+   Map marks (bg k:'map') are frame coordinates of the world square drawn at 84% of the frame height, centred:
+   x = .5 + (tx-44)/88*(.84/2.39), y = .5 + (ty-44)/88*.84. Posts and hubs are the tiles in docs/story/BIBLE.md section 5; creep camps are 'danger'.
+   Pacing rules checked by script (tests are not enough): every line dur >= chars/19+.3, >= .4 s between lines, <= 3 lines per scene, a tail of about
+   .8 s after the last line of a scene (about .5 s only where the very next scene continues the same exchange), and one dialogue-free image at the head of m01_brief, m01_win, m03_brief.
+   Not verified: props, fx and the map/hall/base backgrounds were still placeholders when this was written, so only the portraits' composition was seen.
    ========================================================================= */
 Object.assign(STORY.cine,{
 
@@ -16,72 +22,71 @@ Object.assign(STORY.cine,{
   m01_brief:{
     id:"m01_brief",kind:"briefing",title:"Lamp Night",music:"tension",letterbox:true,seed:101,
     scenes:[
-      {id:"dusk",dur:13.2,
+      {id:"dusk",dur:14.2,
         bg:{k:"base",faction:"meridian",time:"dusk",state:"calm"},
         cam:{from:{x:0.4,y:0.82,z:1.9,r:0},to:{x:0.48,y:0.54,z:1,r:0},ease:"out"},
         actors:[
-          {id:"idris",char:"idris",at:[0.3,0.64],h:0.92,face:"r",expr:"determined",mode:"bust",t0:7.2,t1:13.2},
-          {id:"marr",char:"marr",at:[0.64,0.7],h:0.76,face:"l",expr:"neutral",mode:"bust",t0:7.4,t1:13.2,move:{to:[0.6,0.7],ease:"out"}}
+          {id:"idris",char:"idris",at:[0.3,0.64],h:0.92,face:"r",expr:"determined",mode:"bust",t0:8,t1:14.2},
+          {id:"marr",char:"marr",at:[0.64,0.7],h:0.76,face:"l",expr:"neutral",mode:"bust",t0:8.2,t1:14.2,move:{to:[0.6,0.7],ease:"out"}}
         ],
         props:[
-          {k:"crowd",t0:0,t1:13.2,faction:"meridian",at:[0.5,0.93],scale:3.2,z:-1,a:0.6},
-          {k:"beacon",t0:0,t1:13.2,at:[0.1,0.8],scale:0.2,col:"#ffcf80",z:-1},
-          {k:"beacon",t0:0,t1:13.2,at:[0.24,0.84],scale:0.24,col:"#ffcf80",z:-1},
-          {k:"beacon",t0:0,t1:13.2,at:[0.41,0.8],scale:0.2,col:"#ffcf80",z:-1},
-          {k:"beacon",t0:0,t1:13.2,at:[0.58,0.85],scale:0.24,col:"#ffcf80",z:-1},
-          {k:"beacon",t0:0,t1:13.2,at:[0.74,0.8],scale:0.2,col:"#ffcf80",z:-1},
-          {k:"beacon",t0:0,t1:13.2,at:[0.89,0.84],scale:0.24,col:"#ffcf80",z:-1}
+          {k:"crowd",t0:0,t1:14.2,faction:"meridian",at:[0.5,0.93],scale:3.2,z:-1,a:0.6},
+          {k:"beacon",t0:0,t1:14.2,at:[0.1,0.8],scale:0.2,col:"#ffcf80",z:-1},
+          {k:"beacon",t0:0.6,t1:14.2,at:[0.24,0.84],scale:0.24,col:"#ffcf80",z:-1},
+          {k:"beacon",t0:1.2,t1:14.2,at:[0.41,0.8],scale:0.2,col:"#ffcf80",z:-1},
+          {k:"beacon",t0:1.8,t1:14.2,at:[0.58,0.85],scale:0.24,col:"#ffcf80",z:-1},
+          {k:"beacon",t0:2.4,t1:14.2,at:[0.74,0.8],scale:0.2,col:"#ffcf80",z:-1},
+          {k:"beacon",t0:3,t1:14.2,at:[0.89,0.84],scale:0.24,col:"#ffcf80",z:-1}
         ],
         fx:[
-          {k:"dust",t0:0,t1:13.2,col:"#ffc880",a:0.55,n:0.9},
-          {k:"stars",t0:0,t1:13.2,a:0.3},
-          {k:"flare",t0:8.2,t1:9.6,x:0.3,y:0.8,col:"#e6c06a",a:0.5,r:0.5},
-          {k:"vignette",t0:0,t1:13.2,a:0.5}
+          {k:"dust",t0:0,t1:14.2,col:"#ffc880",a:0.55,n:0.9},
+          {k:"stars",t0:0,t1:14.2,a:0.3},
+          {k:"flare",t0:9.2,t1:10.6,x:0.3,y:0.74,col:"#e6c06a",a:0.5,r:0.4},
+          {k:"vignette",t0:0,t1:14.2,a:0.5}
         ],
         lines:[
-          {who:"narrator",text:"The elders say the war was fought across a continent.",t:0.8,dur:3.1,style:"narration"},
-          {who:"narrator",text:"I tell it on one field, because a story needs somewhere to stand.",t:4.3,dur:3.8,style:"narration"},
-          {who:"marr",text:"The Key answers to your hand alone, Marshal.",t:9.7,dur:2.7,style:"normal",expr:"neutral"}
+          {who:"narrator",text:"The elders say the war was fought across a continent.",t:1.8,dur:3.1,style:"narration"},
+          {who:"narrator",text:"I tell it on one field, because a story needs somewhere to stand.",t:5.3,dur:3.8,style:"narration"},
+          {who:"marr",text:"The Key answers to your hand alone, Marshal.",t:10.7,dur:2.7,style:"normal",expr:"neutral"}
         ],
         sfx:[
           {t:0.2,name:"wind"},
-          {t:8.4,name:"click"}
+          {t:9.4,name:"click"}
         ],
-        title:{text:"LAMP NIGHT",sub:"Brasswatch Heights, Year 31",t0:0.4,t1:4},
+        title:{text:"LAMP NIGHT",sub:"Brasswatch Heights, Year 31",t0:0.4,t1:4.4},
         trans:{in:"fade",out:"cut",len:0.8}
       },
-      {id:"rise",dur:10.6,
+      {id:"rise",dur:10.3,
         bg:{k:"battlefield",biome:"ash",time:"dusk",intensity:0.25,sides:["meridian","obsidian"]},
         cam:{from:{x:0.7,y:0.44,z:1,r:0},to:{x:0.74,y:0.41,z:1.22,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.33,0.66],h:0.9,face:"r",expr:"determined",mode:"bust",t0:0,t1:10.6},
-          {id:"marr",char:"marr",at:[0.53,0.72],h:0.72,face:"r",expr:"neutral",mode:"bust",t0:0,t1:10.6}
+          {id:"idris",char:"idris",at:[0.33,0.66],h:0.9,face:"r",expr:"determined",mode:"bust",t0:0,t1:10.3},
+          {id:"marr",char:"marr",at:[0.53,0.72],h:0.72,face:"r",expr:"neutral",mode:"bust",t0:0,t1:10.3}
         ],
         props:[
-          {k:"banner",t0:0,t1:10.6,faction:"obsidian",at:[0.62,0.5],scale:1.5,z:-1},
-          {k:"banner",t0:0,t1:10.6,faction:"obsidian",at:[0.74,0.44],scale:1.7,z:-1},
-          {k:"banner",t0:0,t1:10.6,faction:"obsidian",at:[0.86,0.5],scale:1.5,z:-1},
-          {k:"crowd",t0:0,t1:10.6,faction:"obsidian",at:[0.74,0.66],scale:3.4,z:-1,a:0.85},
-          {k:"unit",t0:0,t1:10.6,type:"reaver",faction:"obsidian",at:[0.6,0.62],scale:0.6},
-          {k:"unit",t0:0,t1:10.6,type:"reaver",faction:"obsidian",at:[0.8,0.67],scale:0.6}
+          {k:"banner",t0:0,t1:10.3,faction:"obsidian",at:[0.62,0.5],scale:1.5,z:-1},
+          {k:"banner",t0:0,t1:10.3,faction:"obsidian",at:[0.74,0.44],scale:1.7,z:-1},
+          {k:"banner",t0:0,t1:10.3,faction:"obsidian",at:[0.86,0.5],scale:1.5,z:-1},
+          {k:"crowd",t0:0,t1:10.3,faction:"obsidian",at:[0.74,0.66],scale:3.4,z:-1,a:0.85},
+          {k:"unit",t0:0,t1:10.3,type:"reaver",faction:"obsidian",at:[0.6,0.62],scale:0.6},
+          {k:"unit",t0:0,t1:10.3,type:"reaver",faction:"obsidian",at:[0.8,0.67],scale:0.6}
         ],
         fx:[
-          {k:"smoke",t0:0,t1:10.6,a:0.3},
-          {k:"embers",t0:0,t1:10.6,col:"#ff6a5a",a:0.4},
-          {k:"heat",t0:0,t1:10.6,a:0.25},
-          {k:"vignette",t0:0,t1:10.6,a:0.55}
+          {k:"smoke",t0:0,t1:10.3,a:0.3},
+          {k:"embers",t0:0,t1:10.3,col:"#ff6a5a",a:0.4},
+          {k:"heat",t0:0,t1:10.3,a:0.25},
+          {k:"vignette",t0:0,t1:10.3,a:0.55}
         ],
         lines:[
           {who:"marr",text:"Banners on the east rise. They read nine thousand.",t:1,dur:3,style:"normal",expr:"neutral"},
-          {who:"idris",text:"Nine thousand. They are counting something.",t:4.5,dur:2.6,style:"normal",expr:"determined"},
-          {who:"marr",text:"They do not say what for, Marshal.",t:7.6,dur:2.1,style:"normal",expr:"cold"}
+          {who:"idris",text:"Nine thousand. They are counting something.",t:4.4,dur:2.6,style:"normal",expr:"determined"},
+          {who:"marr",text:"They do not say what for, Marshal.",t:7.4,dur:2.1,style:"normal",expr:"cold"}
         ],
         sfx:[
           {t:0.3,name:"gong"},
           {t:0.5,name:"rumble"}
         ],
-        music:{cue:"tension",section:1},
-        title:{text:"9000",t0:2.2,t1:4.2}
+        title:{text:"9000",t0:2.2,t1:4.8}
       },
       {id:"oil",dur:8.5,
         bg:{k:"base",faction:"meridian",time:"dusk",state:"calm"},
@@ -108,7 +113,6 @@ Object.assign(STORY.cine,{
           {t:6.8,name:"chime"},
           {t:7.3,name:"chime"}
         ],
-        music:{cue:"tension",section:0},
         trans:{in:"cut",out:"fade",len:1}
       }
     ]
@@ -118,51 +122,52 @@ Object.assign(STORY.cine,{
   m01_win:{
     id:"m01_win",kind:"debrief",title:"Dawn on the Heights",music:"dawn",letterbox:true,seed:102,
     scenes:[
-      {id:"dawn",dur:8.5,
-        bg:{k:"base",faction:"meridian",time:"dawn",state:"calm"},
-        cam:{from:{x:0.56,y:0.5,z:1,r:0},to:{x:0.4,y:0.58,z:1.3,r:0},ease:"inout"},
+      {id:"dawn",dur:8.6,
+        bg:{k:"battlefield",biome:"ash",time:"dawn",intensity:0.15,sides:["meridian","obsidian"]},
+        cam:{from:{x:0.62,y:0.46,z:1,r:0},to:{x:0.46,y:0.52,z:1.24,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.28,0.64],h:0.92,face:"r",expr:"weary",mode:"bust",t0:0.8,t1:8.5},
-          {id:"marr",char:"marr",at:[0.72,0.68],h:0.78,face:"l",expr:"neutral",mode:"bust",t0:0.8,t1:8.5}
+          {id:"idris",char:"idris",at:[0.28,0.64],h:0.92,face:"r",expr:"weary",mode:"bust",t0:0.8,t1:8.6},
+          {id:"marr",char:"marr",at:[0.72,0.68],h:0.78,face:"l",expr:"neutral",mode:"bust",t0:1,t1:8.6}
         ],
         props:[
-          {k:"unit",t0:0,t1:3,type:"reaver",faction:"obsidian",from:[0.62,0.5],to:[1.08,0.47],scale:0.34,z:-1},
-          {k:"unit",t0:0.4,t1:3.2,type:"reaver",faction:"obsidian",from:[0.55,0.52],to:[1.04,0.49],scale:0.34,z:-1},
-          {k:"banner",t0:0.2,t1:3,faction:"obsidian",from:[0.58,0.46],to:[1.06,0.43],scale:0.5,z:-1},
-          {k:"beacon",t0:0,t1:8.5,at:[0.08,0.84],scale:0.24,col:"#a8793c",a:0.7,z:-1},
-          {k:"beacon",t0:0,t1:8.5,at:[0.5,0.86],scale:0.22,col:"#a8793c",a:0.6,z:-1}
+          {k:"unit",t0:0,t1:7,type:"reaver",faction:"obsidian",from:[0.58,0.5],to:[1.1,0.46],scale:0.34,z:-1},
+          {k:"unit",t0:0.5,t1:7.5,type:"reaver",faction:"obsidian",from:[0.5,0.52],to:[1.08,0.49],scale:0.34,z:-1},
+          {k:"banner",t0:0.2,t1:7,faction:"obsidian",from:[0.56,0.46],to:[1.08,0.43],scale:0.5,z:-1},
+          {k:"beacon",t0:0,t1:8.6,at:[0.08,0.84],scale:0.24,col:"#a8793c",a:0.7,z:-1},
+          {k:"beacon",t0:0,t1:8.6,at:[0.5,0.86],scale:0.22,col:"#a8793c",a:0.6,z:-1}
         ],
         fx:[
-          {k:"smoke",t0:0,t1:8.5,a:0.35},
-          {k:"dust",t0:0,t1:8.5,col:"#ffd9a0",a:0.4},
-          {k:"heat",t0:0,t1:8.5,a:0.2},
-          {k:"vignette",t0:0,t1:8.5,a:0.45}
+          {k:"flare",t0:0.2,t1:2.6,x:0.84,y:0.32,col:"#ffd9a0",a:0.5,r:0.6},
+          {k:"smoke",t0:0,t1:8.6,a:0.35},
+          {k:"dust",t0:0,t1:8.6,col:"#ffd9a0",a:0.4},
+          {k:"heat",t0:0,t1:8.6,a:0.2},
+          {k:"vignette",t0:0,t1:8.6,a:0.45}
         ],
         lines:[
-          {who:"marr",text:"There is silver in your hair, Marshal.",t:1.5,dur:2.3,style:"normal",expr:"neutral"},
-          {who:"idris",text:"It was always there.",t:4.3,dur:1.4,style:"normal",expr:"weary"},
-          {who:"marr",text:"Not this much, Marshal.",t:6.3,dur:1.6,style:"normal",expr:"cold"}
+          {who:"marr",text:"There is silver in your hair, Marshal.",t:2,dur:2.3,style:"normal",expr:"neutral"},
+          {who:"idris",text:"It was always there.",t:4.7,dur:1.4,style:"normal",expr:"weary"},
+          {who:"marr",text:"Not this much.",t:6.5,dur:1.3,style:"normal",expr:"cold"}
         ],
         sfx:[
           {t:0.2,name:"wind"},
           {t:0.5,name:"rumble"}
         ]
       },
-      {id:"whose",dur:5.4,
+      {id:"whose",dur:5.5,
         bg:{k:"base",faction:"meridian",time:"dawn",state:"calm"},
         cam:{from:{x:0.52,y:0.55,z:1.15,r:0},to:{x:0.48,y:0.55,z:1.24,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.28,0.64],h:0.92,face:"r",expr:"weary",mode:"bust",t0:0,t1:5.4},
-          {id:"mags",char:"mags",at:[0.72,0.64],h:0.82,face:"l",expr:"weary",mode:"bust",t0:0,t1:5.4}
+          {id:"idris",char:"idris",at:[0.28,0.64],h:0.92,face:"r",expr:"weary",mode:"bust",t0:0,t1:5.5},
+          {id:"mags",char:"mags",at:[0.72,0.64],h:0.82,face:"l",expr:"weary",mode:"bust",t0:0,t1:5.5}
         ],
         props:[
-          {k:"unit",t0:0,t1:5.4,type:"hauler",faction:"meridian",at:[0.88,0.82],scale:1.6,z:-1,a:0.9},
-          {k:"beacon",t0:0.2,t1:2,from:[0.72,0.84],to:[0.58,0.6],scale:0.42,col:"#ffcf80",ease:"out"},
-          {k:"beacon",t0:2,t1:5.4,at:[0.58,0.6],scale:0.42,col:"#ffcf80"}
+          {k:"unit",t0:0,t1:5.5,type:"hauler",faction:"meridian",at:[0.88,0.82],scale:1.6,z:-1,a:0.9},
+          {k:"beacon",t0:0.2,t1:2,from:[0.72,0.84],to:[0.5,0.62],scale:0.7,col:"#ffcf80",ease:"out"},
+          {k:"beacon",t0:2,t1:5.5,at:[0.5,0.62],scale:0.7,col:"#ffcf80"}
         ],
         fx:[
-          {k:"dust",t0:0,t1:5.4,col:"#ffd9a0",a:0.4,n:0.6},
-          {k:"vignette",t0:0,t1:5.4,a:0.45}
+          {k:"dust",t0:0,t1:5.5,col:"#ffd9a0",a:0.4,n:0.6},
+          {k:"vignette",t0:0,t1:5.5,a:0.45}
         ],
         lines:[
           {who:"idris",text:"Whose lamp?",t:0.3,dur:1.2,style:"normal",expr:"weary"},
@@ -171,44 +176,44 @@ Object.assign(STORY.cine,{
         ],
         sfx:[]
       },
-      {id:"cradle",dur:9.1,
+      {id:"cradle",dur:8.9,
         bg:{k:"base",faction:"meridian",time:"dawn",state:"calm"},
         cam:{from:{x:0.54,y:0.58,z:1.32,r:0},to:{x:0.56,y:0.58,z:1.46,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.2,0.68],h:0.8,face:"r",expr:"weary",mode:"bust",t0:0,t1:9.1},
-          {id:"mags",char:"mags",at:[0.66,0.62],h:0.98,face:"l",expr:"neutral",mode:"bust",t0:0,t1:9.1}
+          {id:"idris",char:"idris",at:[0.2,0.68],h:0.8,face:"r",expr:"weary",mode:"bust",t0:0,t1:8.9},
+          {id:"mags",char:"mags",at:[0.66,0.62],h:0.98,face:"l",expr:"neutral",mode:"bust",t0:0,t1:8.9}
         ],
         props:[
-          {k:"beacon",t0:0,t1:9.1,at:[0.46,0.7],scale:0.4,col:"#ffcf80"},
-          {k:"holo",t0:6.2,t1:9.1,shape:"map",at:[0.14,0.3],scale:0.7,col:"#b79cff",a:0.8,z:-1}
+          {k:"beacon",t0:0,t1:8.9,at:[0.44,0.68],scale:0.7,col:"#ffcf80"},
+          {k:"holo",t0:5.8,t1:8.9,shape:"map",at:[0.14,0.3],scale:0.7,col:"#b79cff",a:0.8,z:-1}
         ],
         fx:[
-          {k:"dust",t0:0,t1:9.1,col:"#ffd9a0",a:0.35,n:0.5},
-          {k:"scan",t0:6.2,t1:9.1,a:0.2},
-          {k:"vignette",t0:0,t1:9.1,a:0.5}
+          {k:"dust",t0:0,t1:8.9,col:"#ffd9a0",a:0.35,n:0.5},
+          {k:"scan",t0:5.8,t1:8.9,a:0.2},
+          {k:"vignette",t0:0,t1:8.9,a:0.5}
         ],
         lines:[
           {who:"mags",text:"Six thousand three hundred and ten.",t:0.3,dur:2.2,style:"normal",expr:"neutral"},
-          {who:"idris",text:"Cradle six thousand three hundred and ten.",t:3.3,dur:2.6,style:"normal",expr:"determined"},
-          {who:"overseer",text:"RESERVE 6,067. DISPATCH CONTINUES.",t:6.4,dur:2.1,style:"radio"}
+          {who:"idris",text:"Cradle six thousand three hundred and ten.",t:2.9,dur:2.6,style:"normal",expr:"determined"},
+          {who:"overseer",text:"RESERVE 6,067. DISPATCH CONTINUES.",t:6,dur:2.1,style:"radio"}
         ],
         sfx:[
-          {t:6.2,name:"comms"}
+          {t:5.8,name:"comms"}
         ]
       },
-      {id:"band",dur:6.6,
-        bg:{k:"base",faction:"meridian",time:"dawn",state:"calm"},
+      {id:"band",dur:6.8,
+        bg:{k:"surface",biome:"dust",time:"dawn",features:["towers","hub"]},
         cam:{from:{x:0.4,y:0.58,z:1.2,r:0},to:{x:0.44,y:0.56,z:1.34,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.28,0.66],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:6.6},
+          {id:"idris",char:"idris",at:[0.28,0.66],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:6.8},
           {id:"kaz",char:"kaz",at:[0.72,0.58],h:0.82,face:"l",expr:"cold",mode:"hologram",t0:0,t1:6}
         ],
         props:[],
         fx:[
           {k:"scan",t0:0,t1:6,a:0.3},
           {k:"glitch",t0:5.9,t1:6.3},
-          {k:"dust",t0:0,t1:6.6,col:"#ffd9a0",a:0.35,n:0.5},
-          {k:"vignette",t0:0,t1:6.6,a:0.5}
+          {k:"dust",t0:0,t1:6.8,col:"#ffd9a0",a:0.35,n:0.5},
+          {k:"vignette",t0:0,t1:6.8,a:0.5}
         ],
         lines:[
           {who:"kaz",text:"Thank you for the light, Marshal. The Reckoner wished to see it answer.",t:0.3,dur:4.1,style:"radio",expr:"cold"},
@@ -282,7 +287,7 @@ Object.assign(STORY.cine,{
           {id:"mags",char:"mags",at:[0.64,0.66],h:0.96,face:"l",expr:"weary",mode:"bust",t0:0,t1:4}
         ],
         props:[
-          {k:"beacon",t0:0,t1:4,at:[0.3,0.7],scale:0.5,col:"#ffcf80"}
+          {k:"beacon",t0:0,t1:4,at:[0.32,0.68],scale:0.9,col:"#ffcf80"}
         ],
         fx:[
           {k:"flare",t0:0.3,t1:1.2,x:0.3,y:0.62,col:"#ffcf80",a:0.4,r:0.4},
@@ -351,7 +356,7 @@ Object.assign(STORY.cine,{
         cam:{from:{x:0.5,y:0.66,z:1.05,r:0},to:{x:0.5,y:0.4,z:1.35,r:0},ease:"inout"},
         actors:[],
         props:[
-          {k:"beacon",t0:0,t1:8.9,at:[0.5,0.3],scale:1,col:"#33524e",a:0.5}
+          {k:"beacon",t0:0,t1:8.9,at:[0.5,0.3],scale:1.3,col:"#4b6f69",a:0.7}
         ],
         fx:[
           {k:"dust",t0:0,t1:8.9,col:"#9ff3df",a:0.35,n:0.5},
@@ -365,7 +370,7 @@ Object.assign(STORY.cine,{
         music:{cue:"mystery"}
       },
       {id:"map",dur:8.6,
-        bg:{k:"map",focus:[0.5,0.5],faction:"aurora",marks:[{x:0.373,y:0.786,k:"friendly"},{x:0.574,y:0.758,k:"objective"},{x:0.377,y:0.414,k:"objective"},{x:0.418,y:0.223,k:"objective"},{x:0.46,y:0.7,k:"danger"},{x:0.627,y:0.214,k:"enemy"}]},
+        bg:{k:"map",focus:[0.5,0.5],faction:"aurora",marks:[{x:0.376,y:0.786,k:"friendly"},{x:0.572,y:0.758,k:"objective"},{x:0.38,y:0.414,k:"objective"},{x:0.42,y:0.223,k:"objective"},{x:0.512,y:0.634,k:"danger"},{x:0.412,y:0.49,k:"danger"},{x:0.624,y:0.214,k:"enemy"}]},
         cam:{from:{x:0.5,y:0.5,z:1,r:0},to:{x:0.5,y:0.52,z:1.12,r:0},ease:"inout"},
         actors:[
           {id:"lyra",char:"lyra",at:[0.26,0.66],h:0.86,face:"r",expr:"neutral",mode:"bust",t0:0,t1:8.6},
@@ -386,21 +391,21 @@ Object.assign(STORY.cine,{
         ],
         music:{cue:"tension"}
       },
-      {id:"drawer",dur:1.8,
-        bg:{k:"void",tint:"#0a2622",glow:0.25},
-        cam:{from:{x:0.5,y:0.5,z:1,r:0},to:{x:0.5,y:0.5,z:1.1,r:0},ease:"in"},
+      {id:"drawer",dur:2.2,
+        bg:{k:"hall",style:"forbidden",light:"cold"},
+        cam:{from:{x:0.5,y:0.5,z:1,r:0},to:{x:0.5,y:0.5,z:1.12,r:0},ease:"in"},
         actors:[],
         props:[],
         fx:[
-          {k:"vignette",t0:0,t1:1.8,a:0.7},
-          {k:"dust",t0:0,t1:1.8,col:"#9ff3df",a:0.3,n:0.4}
+          {k:"vignette",t0:0,t1:2.2,a:0.75},
+          {k:"dust",t0:0,t1:2.2,col:"#9ff3df",a:0.3,n:0.4}
         ],
         lines:[],
         sfx:[
           {t:0,name:"heartbeat"},
-          {t:0.4,name:"click"}
+          {t:0.5,name:"click"}
         ],
-        title:{text:"Y9",sub:"teal chalk, a locked drawer",t0:0.1,t1:1.8},
+        title:{text:"Y9",sub:"locked",t0:0.1,t1:2.1},
         trans:{in:"cut",out:"cut",len:0.3}
       },
       {id:"slip",dur:11.2,
@@ -411,7 +416,7 @@ Object.assign(STORY.cine,{
           {id:"mags",char:"mags",at:[0.74,0.68],h:0.82,face:"l",expr:"neutral",mode:"bust",t0:0,t1:11.2}
         ],
         props:[
-          {k:"beacon",t0:0,t1:11.2,at:[0.5,0.13],scale:0.6,col:"#33524e",a:0.5,z:-1}
+          {k:"beacon",t0:0,t1:11.2,at:[0.5,0.13],scale:0.8,col:"#4b6f69",a:0.7,z:-1}
         ],
         fx:[
           {k:"dust",t0:0,t1:11.2,col:"#9ff3df",a:0.35,n:0.5},
@@ -546,19 +551,19 @@ Object.assign(STORY.cine,{
         ],
         trans:{in:"fade",out:"cut",len:0.8}
       },
-      {id:"doorway",dur:4.7,
+      {id:"doorway",dur:4.8,
         bg:{k:"hall",style:"meridian",light:"cold"},
         cam:{from:{x:0.55,y:0.5,z:1.05,r:0},to:{x:0.58,y:0.5,z:1.15,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.26,0.64],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:4.7},
-          {id:"marr",char:"marr",at:[0.8,0.64],h:0.82,face:"l",expr:"neutral",mode:"bust",t0:0.3,t1:4.7,move:{to:[0.76,0.64],ease:"out"}}
+          {id:"idris",char:"idris",at:[0.26,0.64],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:4.8},
+          {id:"marr",char:"marr",at:[0.8,0.64],h:0.82,face:"l",expr:"neutral",mode:"bust",t0:0.3,t1:4.8,move:{to:[0.76,0.64],ease:"out"}}
         ],
         props:[
-          {k:"holo",t0:0,t1:4.7,shape:"map",at:[0.5,0.42],scale:1.1,col:"#d9b45a",a:0.7,z:-1}
+          {k:"holo",t0:0,t1:4.8,shape:"map",at:[0.5,0.42],scale:1.1,col:"#d9b45a",a:0.7,z:-1}
         ],
         fx:[
-          {k:"scan",t0:0,t1:4.7,a:0.2},
-          {k:"vignette",t0:0,t1:4.7,a:0.6}
+          {k:"scan",t0:0,t1:4.8,a:0.2},
+          {k:"vignette",t0:0,t1:4.8,a:0.6}
         ],
         lines:[
           {who:"marr",text:"Two hundred and twelve before Lamp Night, Marshal.",t:1,dur:3,style:"normal",expr:"neutral"}
@@ -640,21 +645,23 @@ Object.assign(STORY.cine,{
   m03_brief:{
     id:"m03_brief",kind:"briefing",title:"The Axis",music:"mystery",letterbox:true,seed:107,
     scenes:[
-      {id:"survey",dur:7,
-        bg:{k:"map",focus:[0.5,0.5],faction:"neutral",marks:[{x:0.5,y:0.5,k:"objective"},{x:0.37,y:0.6,k:"friendly"},{x:0.443,y:0.29,k:"friendly"},{x:0.488,y:0.33,k:"friendly"},{x:0.585,y:0.71,k:"friendly"},{x:0.373,y:0.786,k:"friendly"}]},
+      {id:"survey",dur:7.5,
+        bg:{k:"map",focus:[0.5,0.5],faction:"neutral",marks:[{x:0.5,y:0.5,k:"objective"},{x:0.412,y:0.49,k:"danger"},{x:0.444,y:0.29,k:"danger"},{x:0.488,y:0.366,k:"danger"},{x:0.512,y:0.634,k:"danger"},{x:0.436,y:0.748,k:"friendly"},{x:0.376,y:0.786,k:"friendly"}]},
         cam:{from:{x:0.5,y:0.52,z:1,r:0},to:{x:0.5,y:0.5,z:1.5,r:0},ease:"inout"},
         actors:[],
         props:[],
         fx:[
-          {k:"scan",t0:0,t1:7,a:0.25},
-          {k:"dust",t0:0,t1:7,col:"#d9cdf2",a:0.3,n:0.5},
-          {k:"vignette",t0:0,t1:7,a:0.5}
+          {k:"scan",t0:0,t1:7.5,a:0.25},
+          {k:"dust",t0:0,t1:7.5,col:"#d9cdf2",a:0.3,n:0.5},
+          {k:"vignette",t0:0,t1:7.5,a:0.5}
         ],
         lines:[
-          {who:"narrator",text:"The Guild had surveyed the Basin for twenty years and found one place every line bent toward.",t:0.9,dur:5.3,style:"narration"}
+          {who:"narrator",text:"The Guild had surveyed the Basin for twenty years and found one place every line bent toward.",t:1.4,dur:5.3,style:"narration"}
         ],
-        sfx:[],
-        title:{text:"THE AXIS",sub:"Day 4",t0:0.5,t1:4.2},
+        sfx:[
+          {t:0.3,name:"click"}
+        ],
+        title:{text:"THE AXIS",sub:"Day 4",t0:0.3,t1:4.3},
         trans:{in:"fade",out:"cut",len:0.8}
       },
       {id:"ring",dur:5.3,
@@ -710,7 +717,7 @@ Object.assign(STORY.cine,{
         ],
         props:[],
         fx:[
-          {k:"flare",t0:1.6,t1:3.2,x:0.74,y:0.72,col:"#ff7a62",a:0.55,r:0.5},
+          {k:"flare",t0:1.6,t1:3.2,x:0.72,y:0.8,col:"#ff7a62",a:0.55,r:0.5},
           {k:"dust",t0:0,t1:5.5,col:"#ffd9a0",a:0.3,n:0.4},
           {k:"vignette",t0:0,t1:5.5,a:0.5}
         ],
@@ -761,7 +768,7 @@ Object.assign(STORY.cine,{
           {k:"crystal",t0:0,t1:5.8,at:[0.367,0.537],scale:0.58,z:-1},
           {k:"crystal",t0:0,t1:5.8,at:[0.548,0.522],scale:0.56,z:-1},
           {k:"crystal",t0:0,t1:5.8,at:[0.7,0.565],scale:0.61,z:-1},
-          {k:"beacon",t0:0,t1:5.8,at:[0.5,0.64],scale:0.9,col:"#ffb060"}
+          {k:"beacon",t0:0,t1:5.8,at:[0.5,0.64],scale:1.3,col:"#ffb060"}
         ],
         fx:[
           {k:"smoke",t0:0,t1:5.8,a:0.5},
@@ -786,7 +793,8 @@ Object.assign(STORY.cine,{
           {id:"brio",char:"brio",at:[0.74,0.58],h:0.82,face:"l",expr:"determined",mode:"hologram",t0:0,t1:10.7}
         ],
         props:[
-          {k:"beacon",t0:0,t1:10.7,at:[0.5,0.72],scale:0.8,col:"#ffb060"}
+          {k:"beacon",t0:0,t1:10.7,at:[0.5,0.72],scale:1.1,col:"#ffb060"},
+          {k:"beacon",t0:10.7,t1:12.2,at:[0.5,0.72],scale:1.1,col:"#2d2b30",a:0.9}
         ],
         fx:[
           {k:"smoke",t0:0,t1:12.2,a:0.4},
@@ -865,12 +873,12 @@ Object.assign(STORY.cine,{
           {id:"ostrander",char:"ostrander",at:[0.72,0.58],h:0.95,face:"l",expr:"neutral",mode:"hologram",t0:0,t1:7.7}
         ],
         props:[
-          {k:"holo",t0:0,t1:7.7,shape:"ring",at:[0.72,0.31],scale:0.55,col:"#ffd070",z:-1},
-          {k:"holo",t0:0.5,t1:7.7,shape:"sigil",at:[0.5,0.62],scale:0.55,col:"#d9b45a",a:0.9}
+          {k:"holo",t0:0,t1:7.7,shape:"ring",at:[0.72,0.47],scale:1.8,col:"#f6c04a",z:-1},
+          {k:"holo",t0:0.5,t1:7.7,shape:"sigil",at:[0.5,0.66],scale:0.7,col:"#d9b45a",a:0.9}
         ],
         fx:[
           {k:"scan",t0:0,t1:7.7,a:0.2},
-          {k:"pulse",t0:0,t1:7.7,col:"#ffd070",a:0.22,x:0.72,y:0.3},
+          {k:"pulse",t0:0,t1:7.7,col:"#f6c04a",a:0.22,x:0.72,y:0.47},
           {k:"dust",t0:0,t1:7.7,col:"#ff6a5a",a:0.3,n:0.5},
           {k:"vignette",t0:0,t1:7.7,a:0.7}
         ],
@@ -892,11 +900,11 @@ Object.assign(STORY.cine,{
           {id:"ostrander",char:"ostrander",at:[0.72,0.58],h:1.05,face:"l",expr:"neutral",mode:"hologram",t0:0,t1:6.3}
         ],
         props:[
-          {k:"holo",t0:0,t1:6.3,shape:"ring",at:[0.72,0.27],scale:0.6,col:"#ffd070",z:-1}
+          {k:"holo",t0:0,t1:6.3,shape:"ring",at:[0.72,0.45],scale:1.9,col:"#f6c04a",z:-1}
         ],
         fx:[
           {k:"scan",t0:0,t1:6.3,a:0.2},
-          {k:"pulse",t0:0,t1:6.3,col:"#ffd070",a:0.22,x:0.72,y:0.27},
+          {k:"pulse",t0:0,t1:6.3,col:"#f6c04a",a:0.22,x:0.72,y:0.45},
           {k:"dust",t0:0,t1:6.3,col:"#ff6a5a",a:0.3,n:0.5},
           {k:"vignette",t0:0,t1:6.3,a:0.75}
         ],
@@ -904,7 +912,9 @@ Object.assign(STORY.cine,{
           {who:"marr",text:"Seven years of saying 'Yes, Marshal.'",t:0.5,dur:2.3,style:"normal",expr:"cold"},
           {who:"ostrander",text:"Then it will be well spent.",t:3.6,dur:1.8,style:"radio",expr:"neutral"}
         ],
-        sfx:[],
+        sfx:[
+          {t:0.1,name:"stinger"}
+        ],
         music:{cue:"villain"}
       },
       {id:"array",dur:3,
@@ -925,24 +935,20 @@ Object.assign(STORY.cine,{
         ],
         trans:{in:"glitch",out:"cut",len:0.5}
       },
-      {id:"tower",dur:5.1,
+      {id:"hit",dur:2.4,
         bg:{k:"base",faction:"meridian",time:"night",state:"siege"},
-        cam:{from:{x:0.5,y:0.6,z:1,r:0},to:{x:0.5,y:0.52,z:1.2,r:0},ease:"out"},
+        cam:{from:{x:0.5,y:0.6,z:1,r:0},to:{x:0.5,y:0.52,z:1.18,r:0},ease:"out"},
         actors:[],
-        props:[
-          {k:"building",t0:0,t1:2,type:"hub",faction:"meridian",at:[0.5,0.58],scale:1.7}
-        ],
+        props:[],
         fx:[
-          {k:"beam",t0:0,t1:5.1,x:0.5,y:0.8,to:[0.5,0.02],col:"#b79cff",a:0.9},
-          {k:"embers",t0:0,t1:5.1,col:"#b79cff",a:0.7,dir:-1.57,n:1.3},
-          {k:"rings",t0:0,t1:5.1,x:0.5,y:0.78,col:"#b79cff",a:0.5},
-          {k:"shake",t0:0,t1:1.6,a:0.5},
-          {k:"smoke",t0:0,t1:5.1,a:0.4},
-          {k:"vignette",t0:0,t1:5.1,a:0.6}
+          {k:"beam",t0:0,t1:2.4,x:0.5,y:0.8,to:[0.5,0.02],col:"#b79cff",a:0.95},
+          {k:"rings",t0:0,t1:2.4,x:0.5,y:0.78,col:"#b79cff",a:0.5},
+          {k:"embers",t0:0,t1:2.4,col:"#b79cff",a:0.7,dir:-1.57,n:1.3},
+          {k:"shake",t0:0,t1:1.8,a:0.5},
+          {k:"smoke",t0:0,t1:2.4,a:0.4},
+          {k:"vignette",t0:0,t1:2.4,a:0.6}
         ],
-        lines:[
-          {who:"narrator",text:"Thirty-eight keepers were on the Tower stair.",t:1.3,dur:2.7,style:"narration"}
-        ],
+        lines:[],
         sfx:[
           {t:0.1,name:"boom"},
           {t:0.5,name:"rumble"}
@@ -950,28 +956,46 @@ Object.assign(STORY.cine,{
         music:{cue:"sting_reveal"},
         trans:{in:"flash",out:"cut",len:0.4}
       },
-      {id:"forum",dur:9.5,
+      {id:"tower",dur:4.6,
+        bg:{k:"base",faction:"meridian",time:"night",state:"ruined"},
+        cam:{from:{x:0.5,y:0.56,z:1.08,r:0},to:{x:0.5,y:0.48,z:1.3,r:0},ease:"out"},
+        actors:[],
+        props:[],
+        fx:[
+          {k:"beam",t0:0,t1:4.6,x:0.5,y:0.8,to:[0.5,0.02],col:"#b79cff",a:0.6},
+          {k:"embers",t0:0,t1:4.6,col:"#b79cff",a:0.7,dir:-1.57,n:1.3},
+          {k:"smoke",t0:0,t1:4.6,a:0.5},
+          {k:"vignette",t0:0,t1:4.6,a:0.65}
+        ],
+        lines:[
+          {who:"narrator",text:"Thirty-eight keepers were on the Tower stair.",t:0.9,dur:2.7,style:"narration"}
+        ],
+        sfx:[
+          {t:0.2,name:"wind"}
+        ]
+      },
+      {id:"forum",dur:10.3,
         bg:{k:"hall",style:"meridian",light:"cold"},
         cam:{from:{x:0.5,y:0.54,z:1.05,r:0},to:{x:0.46,y:0.56,z:1.2,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.28,0.66],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:9.5},
-          {id:"thane",char:"thane",at:[0.72,0.64],h:0.88,face:"l",expr:"weary",mode:"bust",t0:0,t1:9.5}
+          {id:"idris",char:"idris",at:[0.28,0.66],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:10.3},
+          {id:"thane",char:"thane",at:[0.72,0.64],h:0.88,face:"l",expr:"weary",mode:"bust",t0:0,t1:10.3}
         ],
         props:[
-          {k:"holo",t0:0,t1:9.5,shape:"crown",at:[0.5,0.28],scale:0.5,col:"#a6ceff",a:0.6,z:-1}
+          {k:"holo",t0:0,t1:10.3,shape:"crown",at:[0.5,0.28],scale:0.5,col:"#a6ceff",a:0.6,z:-1}
         ],
         fx:[
-          {k:"flare",t0:5.4,t1:6.4,x:0.62,y:0.8,col:"#a6ceff",a:0.4,r:0.4},
-          {k:"flare",t0:8,t1:9.3,x:0.3,y:0.82,col:"#e6c06a",a:0.5,r:0.5},
-          {k:"vignette",t0:0,t1:9.5,a:0.5}
+          {k:"flare",t0:6.6,t1:7.6,x:0.62,y:0.8,col:"#a6ceff",a:0.4,r:0.4},
+          {k:"flare",t0:8.7,t1:10.1,x:0.3,y:0.74,col:"#e6c06a",a:0.5,r:0.4},
+          {k:"vignette",t0:0,t1:10.3,a:0.5}
         ],
         lines:[
-          {who:"thane",text:"Marshal... the Council, regrettably, in the circumstances, is minded to...",t:0.5,dur:4.2,style:"normal",expr:"weary"},
-          {who:"thane",text:"Prudent.",t:5.4,dur:1.2,style:"normal",expr:"cold"},
-          {who:"idris",text:"Noted, Speaker.",t:7.2,dur:1.2,style:"normal",expr:"determined"}
+          {who:"thane",text:"Marshal... the Tower, regrettably... and in the circumstances, the Council is minded to relieve you.",t:0.5,dur:5.6,style:"normal",expr:"weary"},
+          {who:"thane",text:"Prudent.",t:6.6,dur:1.2,style:"normal",expr:"cold"},
+          {who:"idris",text:"Noted, Speaker.",t:8.3,dur:1.2,style:"normal",expr:"determined"}
         ],
         sfx:[
-          {t:5.4,name:"click"}
+          {t:6.6,name:"click"}
         ],
         music:{cue:"tragedy"},
         trans:{in:"cut",out:"cut",len:0.4}
@@ -1009,7 +1033,7 @@ Object.assign(STORY.cine,{
           {id:"idris",char:"idris",at:[0.3,0.66],h:0.96,face:"r",expr:"weary",mode:"bust",t0:0,t1:5.2}
         ],
         props:[
-          {k:"beacon",t0:0,t1:5.2,at:[0.7,0.74],scale:0.5,col:"#2d2b30",a:0.95}
+          {k:"beacon",t0:0,t1:5.2,at:[0.7,0.72],scale:0.8,col:"#2d2b30",a:0.95}
         ],
         fx:[
           {k:"dust",t0:0,t1:5.2,col:"#d9cdf2",a:0.2,n:0.3},

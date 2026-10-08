@@ -1,0 +1,24 @@
+{
+ "_doc": "Hand-labelled syllable counts (by a person, not generated from src/js/84_voice.js). regression = words the segmenter was tuned on (must be 100%); heldout = common English words labelled before looking at the segmenter output; adversarial = deliberately awkward words (hiatus, silent letters, syllabic m) - honest accuracy is reported, not tuned to 100%. Format: {set: {syllableCount: 'space separated words'}}.",
+ "regression": {
+  "1": "asked blade brandt breaks called caves cleared closed doyle eight field flame fought friend ghosts gross ground held hold house jumped light line lines make march marked named night queen saved shield ships shores signed speak steel stone storm strike sword thane the there thought three through twelve was waves were wished wrecked",
+  "2": "about across again alone answer answered armor around ashby attack barracks battle because before begin being beware beyond boxes cables careful castle caution compare cradles create defend doing double ended engine engines falling fifteen fortress forward foundry going handle homeless horses houses hundred hunted hunter journey likeness little lonely machine marshal matches million money movement nation needed never noted ocean over people places poet prizes quiet raining ranges react ready receipt reserve retreat return safely science seventh signal silver simple someone something somewhere speaker steady story surely table tables thousand tonight toward tower turret twenty under until valley value wanted wicked winter wishes",
+  "3": "another anything aurora average battery beautiful caspian colony commander continue continues dominion eleven enemy engineer everard everything gideon halloran holloway keziah lysander marguerite ninety orbital ostrander overseer radio rafferty reactor reckoner remember teodor tobias together tomorrow victory warrior whoever",
+  "4": "acceptable allocation circumstances generator meridian naturally obsidian oyelaran practically regrettably technically territory",
+  "5": "electricity unbelievable",
+  "6": "responsibility"
+ },
+ "heldout": {
+  "1": "bought breathe bridge caught change clothes edge grasped hedge huge judge laughed phrase picked plough pushed rushed sledge sprint strange strength taught thought through watched worked",
+  "2": "anger answer captain certain college courage curtain damage danger feather finger fountain garbage gather hunger knowledge leather lightning listened message mountain number orange package painted planet shelter silent summer thunder under village weather winter wonder",
+  "3": "animal banana beautiful computer dangerous delicious dramatic electric elephant enormous fantastic favorite generous horrible hospital imagine important magnetic possible powerful romantic terrible tremendous visible volunteer wonderful",
+  "4": "celebration communicate education information invisible population ridiculous television",
+  "5": "imagination organization unbelievable unforgettable university"
+ },
+ "adversarial": {
+  "1": "aisle bruise height juice queue",
+  "2": "bayou bias chasm client cruel dial diet dual fuel giant lion poem prism quiet rhythm riot ruin ruins science trial",
+  "3": "fiery idiom patio radio studio violin",
+  "4": "anxiety society variety"
+ }
+}
