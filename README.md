@@ -6,7 +6,7 @@ XP; a master AI ("the Overseer") directs the colony; a labour marketplace lets y
 five billing cadences (minute / hour / day / month / per task).
 
 It ships three ways from one source tree (`python3 build.py`): a **single self-contained HTML file**
-(`dist/orbital_dominion_v3.html`, ≈ 0.6 MB, no external requests, no libraries) to download and share; an **installable,
+(`dist/orbital_dominion_v3.html`, ≈ 2 MB since 3.2, no external requests, no libraries) to download and share; an **installable,
 offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) for Capacitor wrappers. See `docs/DEPLOY.md`.
 
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
@@ -109,6 +109,7 @@ docs/                         all handoff documents (below)
 | `docs/TOUCH_SPEC.md` | Gesture specification mapped to the tests that verify it |
 | `docs/DEPLOY.md` | Release as a file, as a web app, as store apps; checklist |
 | `docs/MONETIZATION.md` | Optional Stripe payments: modes, security model, store rules, setup, what is verified |
+| `docs/story/SCRIPT.md` | The full screenplay of *The Lantern Tithe*: every film, mission, radio line and character, generated from the story data (`node tools/story_to_md.js`); do not edit by hand |
 | `docs/story/BIBLE.md` | The series bible: premise, chronology, characters with voice guides, factions, the nine missions, the cinematic manifest |
 | `docs/CAMPAIGN_SPEC.md` | Mission data format, the condition and action language, runtime semantics, progress save |
 | `docs/CINEMATIC_SPEC.md` | Film format, renderer contract, painter registry, player API |

@@ -52,10 +52,11 @@ const words = s => String(s == null ? '' : s).trim().split(/\s+/).filter(Boolean
 const sumBy = (xs, f) => xs.reduce((t, x) => t + f(x), 0);
 const listJoin = xs => (xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]);
 const tc = t => { const k = Math.max(0, Math.round(num(t, 0) * 10)); const m = Math.floor(k / 600), r = k - m * 600; return m + ':' + pad2(Math.floor(r / 10)) + '.' + (r % 10); };
-const sec = d => (Math.round(num(d, 0) * 10) / 10) + ' s';
+const sec = d => num(d, 0).toFixed(1) + ' s';
 const mss = s => { const k = Math.round(num(s, 0)); return Math.floor(k / 60) + ':' + pad2(k % 60); };
 const clock = s => mss(Math.floor(num(s, 0)));
 const NUMW = { 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten', 11: 'eleven', 12: 'twelve' };
+const counted = (k, one, many) => k + ' ' + (k === 1 ? one : many);
 
 /* hex colour -> a plain English colour word (deterministic HSL bands) */
 function colourWord(hex) {
@@ -111,6 +112,8 @@ const EDGE_NAME = { N: 'north', E: 'east', S: 'south', W: 'west' };
 const HERO_POLICY = { none: 'no hero (locked for this mission)', available: 'the hero can be trained at the Hub', start: 'the hero stands at the Hub from the start' };
 const EASE_WORD = { lin: 'at a steady pace', in: 'easing in', out: 'easing out', inout: 'easing in and out' };
 const MARK_SAY = { 'scar-l': 'left-cheek scar', tattoo: 'tattoo', 'glow-eye': 'glowing eye', mask: 'mask', visor: 'visor', halo: 'halo', cracks: 'cracked plating' };
+const EXPR_WORD = { smile: 'smiling', smirk: 'smirking', laugh: 'laughing', shock: 'shocked', angry: 'angry', sad: 'sad', scared: 'scared',
+  cold: 'cold', weary: 'weary', determined: 'determined' };
 /* per prop kind: [one, many, timed one, timed many] verbs */
 const VERBS = {
   beacon: ['glows', 'line', 'lights up', 'light up'], banner: ['hangs', 'hang', 'appears', 'appear'], building: ['stands', 'stand', 'appears', 'appear'],
@@ -147,12 +150,13 @@ const framing = h => (h >= 0.8 ? 'close-up' : h >= 0.5 ? 'medium shot' : 'distan
 const dirOf = a => (a.face === 'l' ? 'left' : 'right');
 function actorDesc(a) {
   const bits = [framing(num(a.h, 0.8))];
-  if (a.expr && a.expr !== 'neutral' && a.expr !== 'talk') bits.push(a.expr);
+  if (a.expr && a.expr !== 'neutral' && a.expr !== 'talk') bits.push(EXPR_WORD[a.expr] || a.expr);
   const mode = { silhouette: 'in silhouette', shadow: 'in shadow with glowing eyes', hologram: 'as a flickering hologram' }[a.mode];
   if (mode) bits.push(mode);
   return bits.join(', ');
 }
 const zoomWord = z => (z < 0.9 ? 'wide' : z < 1.3 ? 'medium' : z < 2 ? 'close' : 'tight close-up');
+const r2 = x => String(Math.round(num(x, 1) * 100) / 100);
 function cameraSay(cam) {
   if (!cam || !cam.from || !cam.to) return 'Camera: the default slow push-in over the scene.';
   const f = cam.from, t = cam.to;
@@ -161,10 +165,13 @@ function cameraSay(cam) {
   if (Math.abs(dz) >= 0.03) parts.push(dz > 0 ? 'pushes in' : 'pulls back');
   if (Math.abs(dx) >= 0.03) parts.push(dx > 0 ? 'drifts right' : 'drifts left');
   if (Math.abs(dy) >= 0.03) parts.push(dy > 0 ? 'tilts down' : 'tilts up');
-  if (Math.abs(dr) >= 0.02) parts.push('rolls ' + (dr > 0 ? 'clockwise' : 'anticlockwise'));
+  if (Math.abs(dr) >= 0.02) {
+    const d = Math.round(Math.abs(dr) * 180 / Math.PI);
+    parts.push(`rolls ${dr > 0 ? 'clockwise' : 'anticlockwise'} ${d} ${d === 1 ? 'degree' : 'degrees'}`);
+  }
   const ease = cam.ease && EASE_WORD[cam.ease] ? ', ' + EASE_WORD[cam.ease] : '';
   if (!parts.length) return `Camera holds on a ${zoomWord(num(f.z, 1))} shot.`;
-  const zoomNote = Math.abs(dz) >= 0.03 ? ` (${zoomWord(num(f.z, 1))} to ${zoomWord(num(t.z, 1))})` : '';
+  const zoomNote = Math.abs(dz) >= 0.03 ? ` (zoom ${r2(f.z)} to ${r2(t.z)})` : '';
   return `Camera ${parts.join(', ')}${ease}${zoomNote}.`;
 }
 function transSay(tr) {
@@ -296,7 +303,7 @@ function bgSay(bg) {
     case 'orbit': return `A ${PLANET_WORD[bg.planet] || 'distant'} world fills the lower frame, its ${esc(bg.limb || 'bottom')} limb lit${bg.station ? ', and an orbital station turns above it' : ''}${bg.ships ? `; ${bg.ships === 1 ? 'one ship hangs' : bg.ships + ' ships hang'} in the dark` : ''}.`;
     case 'surface': {
       const f = (bg.features || []).map(x => FEATURE_SAY[x] || esc(x));
-      return cap(`${BIOME_NAME[bg.biome] || 'open ground'}.`) + (f.length ? ` ${cap(listJoin(f))} ${f.length === 1 ? 'is' : 'are'} in view.` : '');
+      return cap(`${BIOME_NAME[bg.biome] || 'open ground'}.`) + (f.length ? ` ${cap(listJoin(f))} in view.` : '');
     }
     case 'base': return { calm: 'Its lights are steady.', siege: 'Its walls take fire, and smoke climbs past them.', ruined: 'Half its walls are gone; the lights that remain flicker.', celebration: 'Banners and bunting hang from its gates.' }[bg.state] || '';
     case 'bridge': return `The bridge is ${bg.alert ? 'on alert, lit red' : 'quiet, its consoles steady'}. ${VIEW_SAY[bg.view] || ''}`.trim();
@@ -307,7 +314,7 @@ function bgSay(bg) {
     }
     case 'ruins': return `Ruins stand on ${BIOME_NAME[bg.biome] || 'open ground'}.`;
     case 'array': return { dormant: 'The Array sits dark.', charging: 'Energy gathers in the Array.', firing: 'The Array fires.', broken: 'The Array is broken and dark.' }[bg.state] || 'The Array is in view.';
-    case 'void': return `Empty dark${colourWord(bg.tint) ? ', tinted ' + colourWord(bg.tint) : ''}${num(bg.glow, 0) > 0.3 ? ', with a faint glow' : ''}.`;
+    case 'void': return `Empty dark${colourWord(bg.tint) && colourWord(bg.tint) !== 'black' ? ', tinted ' + colourWord(bg.tint) : ''}${num(bg.glow, 0) > 0.3 ? ', with a faint glow' : ''}.`;
     case 'map': {
       const c = {};
       for (const m of bg.marks || []) c[m.k] = (c[m.k] || 0) + 1;
@@ -332,7 +339,7 @@ function sceneHead(bg, place) {
     case 'battlefield': return 'EXT. BATTLEFIELD' + (P ? ' — ' + P : '') + B + T;
     case 'ruins': return 'EXT. RUINS' + (P ? ' — ' + P : '') + B + T;
     case 'array': return 'EXT. THE ARRAY — ' + esc(String(bg.state || 'idle')).toUpperCase();
-    case 'void': return 'THE VOID' + (colourWord(bg.tint) ? ' — ' + colourWord(bg.tint).toUpperCase() + ' DARK' : '');
+    case 'void': return 'THE VOID' + (colourWord(bg.tint) && colourWord(bg.tint) !== 'black' ? ' — ' + colourWord(bg.tint).toUpperCase() : '');
     case 'map': return 'INT. TACTICAL DISPLAY' + (bg.faction ? ' — ' + facAdj(bg.faction).toUpperCase() + ' VIEW' : '');
     default: return 'EXT. ' + esc(String(bg.k || 'UNKNOWN')).toUpperCase();
   }
@@ -359,22 +366,29 @@ function propNoun(p) {
 }
 const isMoving = p => Array.isArray(p.from) && Array.isArray(p.to);
 const pt0 = p => num(p.t0, 0);
-function spread(items, timed) {
+/* "from A to B", saying the shared height once when both ends sit at the same height */
+const fromTo = (a, b) => (vPos(num(a[1], 0.5)) === vPos(num(b[1], 0.5))
+  ? `from ${hPos(num(a[0], 0.5))} to ${hPos(num(b[0], 0.5))}, ${vPos(num(a[1], 0.5))}`
+  : `from ${posOf(a)} to ${posOf(b)}`);
+function spreadPhrase(items, timed) {
   const pts = items.map(p => (Array.isArray(p.at) ? p.at : [0.5, 0.5]));
-  if (timed) return `from ${posOf(pts[0])} to ${posOf(pts[pts.length - 1])}`;
   const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
   const minx = Math.min(...xs), maxx = Math.max(...xs), avgy = ys.reduce((a, b) => a + b, 0) / ys.length;
-  if (maxx - minx < 0.12) return `in a cluster at ${posOf([(minx + maxx) / 2, avgy])}`;
+  const mid = posOf([(minx + maxx) / 2, avgy]);
+  if (timed) {
+    const f = pts[0], l = pts[pts.length - 1];
+    return hPos(f[0]) === hPos(l[0]) ? `in turn, at ${mid}` : `in turn, ${fromTo(f, l)}`;
+  }
+  if (maxx - minx < 0.12) return `in a cluster at ${mid}`;
   if (Math.min(...ys) > 0.75 && maxx - minx > 0.25) return `along the bottom edge, from ${hPos(minx)} to ${hPos(maxx)}`;
   const L = pts.reduce((a, b) => (b[0] < a[0] ? b : a)), R = pts.reduce((a, b) => (b[0] > a[0] ? b : a));
-  return `from ${posOf(L)} to ${posOf(R)}`;
+  return hPos(L[0]) === hPos(R[0]) ? `in a row at ${mid}` : `in a row, ${fromTo(L, R)}`;
 }
 function staticSentence(items, timed) {
   const n0 = items[0], nn = propNoun(n0), v = VERBS[n0.k] || ['is', 'are', 'appears', 'appear'];
   if (items.length === 1) return cap(artFor(nn.s)) + ' ' + (timed ? v[2] : v[0]) + ' at ' + posOf(n0.at) + '.';
   const cnt = NUMW[items.length] || String(items.length);
-  if (timed) return `${cap(cnt)} ${nn.p} ${v[3]} in turn, ${spread(items, true)}.`;
-  return `${cap(cnt)} ${nn.p} ${v[1]} ${spread(items, false)}.`;
+  return `${cap(cnt)} ${nn.p} ${timed ? v[3] : v[1]} ${spreadPhrase(items, timed)}.`;
 }
 function groupStatics(list) {
   const map = new Map();
@@ -385,14 +399,13 @@ function groupStatics(list) {
 }
 function movingSay(p, t0, t1) {
   const subj = cap(artFor(propNoun(p).s));
-  const dx = p.to[0] - p.from[0], dy = p.to[1] - p.from[1];
-  let verb;
-  if (Math.hypot(dx, dy) < 0.03) verb = 'holds position';
-  else if (Math.abs(dx) >= Math.abs(dy)) verb = 'crosses';
-  else verb = dy > 0 ? 'descends' : 'climbs';
-  const dur = t1 - t0;
+  const dx = p.to[0] - p.from[0], dy = p.to[1] - p.from[1], dur = t1 - t0;
+  const span = dur > 0.5 ? ' over ' + sec(dur) : '';
   const ease = p.ease && EASE_WORD[p.ease] ? ', ' + EASE_WORD[p.ease] : '';
-  return `${subj} ${verb} from ${posOf(p.from)} to ${posOf(p.to)}${dur > 0.5 ? ' over ' + sec(dur) : ''}${ease}.`;
+  if (Math.hypot(dx, dy) < 0.03) return `${subj} holds position at ${posOf(p.from)}${span}.`;
+  if (hPos(p.from[0]) === hPos(p.to[0]) && vPos(p.from[1]) === vPos(p.to[1])) return `${subj} drifts slightly within ${posOf(p.from)}${span}${ease}.`;
+  const verb = Math.abs(dx) >= Math.abs(dy) ? 'crosses' : dy > 0 ? 'descends' : 'climbs';
+  return `${subj} ${verb} ${fromTo(p.from, p.to)}${span}${ease}.`;
 }
 function ambientSay(f) {
   const c = colourWord(f.col) ? colourWord(f.col) + ' ' : '';
@@ -470,7 +483,7 @@ function lineCue(ln, present) {
   else if (st === 'whisper') bits.push('whispering');
   else if (st === 'shout') bits.push('shouting');
   else if (!present.has(ln.who)) bits.push('O.S.');
-  if (st !== 'narration' && ln.expr && ln.expr !== 'neutral' && ln.expr !== 'talk') bits.push(ln.expr);
+  if (st !== 'narration' && ln.expr && ln.expr !== 'neutral' && ln.expr !== 'talk') bits.push(EXPR_WORD[ln.expr] || ln.expr);
   if (isStatus(sp.c) && st === 'normal') bits.push('status line');
   return `**${sp.name}**` + (bits.length ? ' *(' + bits.join(', ') + ')*' : '');
 }
@@ -517,7 +530,7 @@ function filmDoc(id, level, flow, place) {
   const c = CINE[id], out = [], st = filmStats(id), lim = LIMITS[c.kind];
   out.push('#'.repeat(level) + ' ' + `${KIND_LABEL[c.kind] || esc(c.kind)} — "${esc(c.title)}" ${code(id)}`);
   if (flow) out.push(esc(flow));
-  out.push('*' + [tc(st.runtime) + ' runtime', st.scenes + ' scenes', st.lines + ' lines, ' + st.words + ' words',
+  out.push('*' + [tc(st.runtime) + ' runtime', counted(st.scenes, 'scene', 'scenes'), counted(st.lines, 'line', 'lines') + ', ' + st.words + ' words',
     'music: ' + musicWord(c.music), lim ? 'kind limit ' + lim[0] + '–' + lim[1] + ' s' : null].filter(Boolean).join(' · ') + '*');
   if (c.kind === 'intro') out.push('*FADE IN.*');
   let t = 0;
@@ -604,7 +617,7 @@ function lookSay(c) {
 function screenSay(id) {
   const x = ap(id);
   if (!x.first) return x.radio ? `never on screen; ${x.radio} radio ${x.radio === 1 ? 'line' : 'lines'}` : 'never on screen and not on the radio';
-  return `first in ${esc(CINE[x.first].title)} ${code(x.first)}; ${x.scenes} scenes, ${x.lines} film lines (${x.words} words), ${x.radio} radio lines`;
+  return `first in ${esc(CINE[x.first].title)} ${code(x.first)}; ${counted(x.scenes, 'scene', 'scenes')}, ${counted(x.lines, 'film line', 'film lines')} (${x.words} words), ${counted(x.radio, 'radio line', 'radio lines')}`;
 }
 function personEntry(id) {
   const c = CH[id], out = [];
@@ -620,8 +633,9 @@ function personEntry(id) {
     `- **Voice:** ${voiceSay(c.voice)}`,
     `- **Look:** ${lookSay(c)}`,
     `- **Signature line:** “${esc(c.quote)}”`,
-    `- **On screen:** ${screenSay(id)}.`
-  ].join('\n'));
+    `- **On screen:** ${screenSay(id)}.`,
+    c.role === 'narrator' ? '- **Speaks as:** NARRATOR (V.O.) in cues, the narrator tag used by the cinematic and radio data.' : null
+  ].filter(Boolean).join('\n'));
   return out;
 }
 function castParas() {
@@ -871,7 +885,7 @@ TITLE.push(`# ${esc(STORY.meta && STORY.meta.title)}`);
 TITLE.push(`*${esc(STORY.meta && STORY.meta.tagline)}*`);
 TITLE.push(`> ${esc(STORY.meta && STORY.meta.logline)}`);
 TITLE.push(`**Campaign script:** the screenplay of every film, the mission book with its radio log, and the statistics. Version ${num(STORY.meta && STORY.meta.version, 1)}, rated ${esc(STORY.meta && STORY.meta.rating)}.`);
-TITLE.push(`Generated by ${code('tools/story_to_md.js')} from ${sourceLine} (fingerprint ${code(FP)}). Do not edit this file by hand: change the story source and run ${code('node tools/story_to_md.js')}.`);
+TITLE.push(`Generated by ${code('tools/story_to_md.js')} from ${sourceLine}, fingerprint ${code(FP)}. Do not edit this file by hand: change the story source and run ${code('node tools/story_to_md.js')}.`);
 const glance = [
   `- **Runtime:** ${mss(S.runtime)} of film (${sec(S.runtime)}) across ${S.films} films and ${S.scenes} scenes.`,
   `- **Spoken lines:** ${S.lines} (${S.filmLines} in films, ${S.radioLines} on the radio) and ${S.words} words.`,
@@ -890,6 +904,7 @@ ACTS.forEach((a, ai) => (a.missions || []).forEach(id => {
 const glanceTable = table(['Act', 'No.', 'Mission', 'Place', 'You vs. enemy', 'Briefing', 'Debrief', 'Afterwards'], gRows);
 
 const bodyText = body.join('\n\n');
+HEADS.unshift({ level: 2, text: 'At a glance' });
 const tocLines = HEADS.filter(h => h.level === 2 || h.level === 3)
   .map(h => (h.level === 3 ? '  - ' : '- ') + '[' + plain(h.text) + '](#' + slug(h.text) + ')');
 const head = [
@@ -906,17 +921,19 @@ DOC = DOC.replace(/\n{3,}/g, '\n\n');
 /* ---------------------------------------------------------------- output */
 const outOpt = argOf('--out');
 const target = outOpt ? path.resolve(outOpt) : OUT_DEFAULT;
+const shown = p => (p.startsWith(ROOT + path.sep) ? path.relative(ROOT, p) : p);
 if (argv.includes('--check')) {
   let disk = null;
   try { disk = fs.readFileSync(target, 'utf8'); } catch (e) { disk = null; }
-  if (disk === DOC) { console.log('up to date: ' + path.relative(ROOT, target)); process.exit(0); }
-  console.error('out of date: ' + path.relative(ROOT, target) + ' (run node tools/story_to_md.js)');
+  if (disk === DOC) { console.log('up to date: ' + shown(target)); process.exit(0); }
+  console.error((disk === null ? 'missing: ' : 'out of date: ') + shown(target) + ' (run node tools/story_to_md.js)');
   process.exit(1);
 }
 if (argv.includes('--stdout') || (storyOpt && !outOpt)) {
+  process.stdout.on('error', e => { if (e.code === 'EPIPE') process.exit(0); throw e; });   // quiet when piped into head
   process.stdout.write(DOC);
 } else {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, DOC);
-  console.log('wrote ' + path.relative(ROOT, target) + ' (' + DOC.split('\n').length + ' lines, ' + Buffer.byteLength(DOC) + ' bytes, fingerprint ' + FP + ')');
+  console.log('wrote ' + shown(target) + ' (' + DOC.split('\n').length + ' lines, ' + Buffer.byteLength(DOC) + ' bytes, fingerprint ' + FP + ')');
 }
