@@ -99,10 +99,10 @@ function applyTarget(wx,wy,shift){
   if(k.startsWith('role:')){swApplyRole(k.slice(5),wx,wy,shift);return;}
   if(k==='rally'){for(const b of ownBuildings())setRally(b,wx,wy,entityAt(wx,wy));}
   else if(k==='repair'){const e=entityAt(wx,wy),ws=ownUnits().filter(u=>u.def.worker);
-    if(e&&e.team===0&&e.hp<e.maxhp&&(e.kind==='building'||e.def.tags.mech)&&ws.length){for(const u of ws)setOrder(u,{t:'repair',target:e},shift);ping(e.x,e.y,'#7cc4ff');sfx('ack');}else msg(0,'Nothing to repair there');}
+    if(e&&e.team===0&&e.hp<e.maxhp&&(e.kind==='building'||e.def.tags.mech)&&ws.length){for(const u of ws)setOrder(u,{t:'repair',target:e},shift);ping(e.x,e.y,'#7cc4ff');sfx('ack',undefined,undefined,ws[0]);}else msg(0,'Nothing to repair there');}
   else if(k==='trade'){const e=entityAt(wx,wy),fs=ownUnits().filter(u=>u.def.trade);
-    if(e&&e.kind==='neutral'&&e.type==='post'&&fs.length){for(const u of fs)setOrder(u,{t:'trade',post:e,st:'toPost'},shift);ping(e.x,e.y,'#ffd45a');sfx('ack');}else msg(0,'Pick a Trading Post');}
-  else if(k.startsWith('skill')){const h=heroUnit(0),i=+k.slice(5);if(h){setOrder(h,{t:'cast',i,x:wx,y:wy});ping(wx,wy,'#ff9a6a');sfx('click');}}
+    if(e&&e.kind==='neutral'&&e.type==='post'&&fs.length){for(const u of fs)setOrder(u,{t:'trade',post:e,st:'toPost'},shift);ping(e.x,e.y,'#ffd45a');sfx('ack',undefined,undefined,fs[0]);}else msg(0,'Pick a Trading Post');}
+  else if(k.startsWith('skill')){const h=heroUnit(0),i=+k.slice(5);if(h){setOrder(h,{t:'cast',i,x:wx,y:wy});ping(wx,wy,'#ff9a6a');sfx('ack',undefined,undefined,h);}}
   else issueGroup(ownUnits(),wx,wy,k,shift);
 }
 function bindInput(){
@@ -148,9 +148,9 @@ function bindInput(){
   cmdEl.addEventListener('mouseleave',hideTip);
   $('info').addEventListener('mousedown',e=>{
     const q=e.target.closest('[data-q]');
-    if(q){const b=ownBuildings().find(x=>x.queue.length>+q.dataset.q);if(b){cancelQueue(b,+q.dataset.q);sfx('click');}return;}
+    if(q){const b=ownBuildings().find(x=>x.queue.length>+q.dataset.q);if(b){cancelQueue(b,+q.dataset.q);sfx('cancel');}return;}
     const g=e.target.closest('[data-id]');
-    if(g){const id=+g.dataset.id,ent=ui.sel.find(s=>s.id===id);if(!ent)return;if(e.shiftKey)setSel(ui.sel.filter(s=>s!==ent));else if(e.ctrlKey)setSel(ui.sel.filter(s=>s.type===ent.type));else setSel([ent]);}});
+    if(g){const id=+g.dataset.id,ent=ui.sel.find(s=>s.id===id);if(!ent)return;if(e.shiftKey)setSel(ui.sel.filter(s=>s!==ent));else if(e.ctrlKey)setSel(ui.sel.filter(s=>s.type===ent.type));else setSel([ent]);selSfx();}});
   $('groups').addEventListener('mousedown',e=>{const a=e.target.closest('[data-grpadd]');if(a){const n=nextFreeGroup();if(n){groupSet(n,false);ui.groupsDirty=true;$('groups').dataset.h='';}return;}const g=e.target.closest('[data-grp]');if(g)groupRecall(+g.dataset.grp);});
   for(const el of document.querySelectorAll('[data-tip]')){el.addEventListener('mouseover',()=>{if(!ui.touchMode)showTipHTML(el.dataset.tip,el.getBoundingClientRect(),false);});el.addEventListener('mouseleave',()=>{if(!ui.touchMode)hideTip();});}
   $('ecoPanel').addEventListener('mousedown',e=>{

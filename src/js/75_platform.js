@@ -52,7 +52,7 @@ function platShare(){
   else if(navigator.clipboard)navigator.clipboard.writeText(data.url).then(()=>toastAny('Link copied')).catch(()=>{});
 }
 function toastAny(t){   // toast() hides itself on the menu: show a small notice there too
-  const el=document.createElement('div');el.className='tmsg good';el.textContent=t;el.style.cssText='position:fixed;left:50%;top:calc(var(--tH) + 12px);transform:translateX(-50%);z-index:80';document.body.appendChild(el);setTimeout(()=>el.remove(),2600);
+  sfx('toast');const el=document.createElement('div');el.className='tmsg good';el.textContent=t;el.style.cssText='position:fixed;left:50%;top:calc(var(--tH) + 12px);transform:translateX(-50%);z-index:80';document.body.appendChild(el);setTimeout(()=>el.remove(),2600);
 }
 function syncPlatformUI(){
   const show=(id,on)=>{const el=$(id);if(el)el.classList.toggle('hidden',!on);};

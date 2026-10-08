@@ -1,7 +1,7 @@
 /* =========================================================================
    SYSTEMS — unit behaviour, construction/repair, heroes, creeps, economy
    ========================================================================= */
-function msg(team,t,cls){if(team===0&&G&&!G.ais[0]){toast(t,cls||'bad');if(cls!=='good')sfx('err');}}
+function msg(team,t,cls){if(team===0&&G&&!G.ais[0]){toast(t,cls||'bad');if(cls!=='good')sfx(/Generators|Supply/.test(t)?'supply':'err');}}
 function moraleMul(team){return 0.85+0.30*(G.teams[team].morale/100);}
 function heroUnit(team){const H=G.teams[team].hero;if(!H.alive)return null;for(const u of G.units)if(u.id===H.uid&&!u.dead)return u;return null;}
 
@@ -101,7 +101,7 @@ function callToArms(team,hub){
   for(const u of G.units){if(u.dead||u.team!==team||!u.def.worker||u.hidden||hyp(u.x-hub.x,u.y-hub.y)>1000)continue;if(n>=15)break;
     const saved=u.order.t==='gather'&&u.order.res&&!u.order.res.dead?{t:'gather',res:u.order.res,st:u.carry>0?'ret':'go',hx:u.order.hx,hy:u.order.hy}:null;
     setOrder(u,{t:'garrison',hub});u.saved=saved;n++;}
-  if(team===0){sfx('alert');toast('Call to Arms: Haulers are sheltering in the Hub','good');}
+  if(team===0){sfx('alert',undefined,undefined,hub);toast('Call to Arms: Haulers are sheltering in the Hub','good');}
   uiDirty();
 }
 
@@ -126,7 +126,7 @@ function gatherStep(u,dt){
       let n=r.type==='crystal'?5*(1+0.2*T.mining):4*(1+0.2*T.compress);n=Math.round(n)+2*T.cargo+(T.faction==='aurora'?1:0)+(u.ag?u.ag.m.carry:0);n=Math.min(n,Math.ceil(r.amount));
       const i=r.users.indexOf(u.id);if(i>=0)r.users.splice(i,1);u.inRes=null;
       if(u.hidden&&!u.garr){u.hidden=false;popOut(u);}
-      u.carry=n;u.carryType=r.type==='crystal'?'c':'e';r.amount-=n;o.st='ret';u.path=null;
+      u.carry=n;u.carryType=r.type==='crystal'?'c':'e';r.amount-=n;o.st='ret';u.path=null;sfx('mine',u.x,u.y,u);
       if(r.amount<=0)removeRes(r);}
     return;}
   if(o.st==='ret'){
@@ -134,7 +134,7 @@ function gatherStep(u,dt){
     if(rectDist(u.x,u.y,hub)<=u.r+11){
       if(u.carryType==='c'){T.c+=u.carry*T.mult;T.minedC+=u.carry;}else{T.e+=u.carry*T.mult;T.minedE+=u.carry;}T.mined+=u.carry;
       if(u.ag)agDelivered(u,u.carry,u.carryType);
-      u.carry=0;o.st='go';u.path=null;return;}
+      sfx('deliver',u.x,u.y,u);u.carry=0;o.st='go';u.path=null;return;}
     const p=approachPoint(hub,u.x,u.y);navigate(u,p.x,p.y,dt,4);return;}
   let res=o.res;
   if(!res&&u.carry>0){o.st='ret';return;}
@@ -160,7 +160,7 @@ function buildStep(u,dt){
     if(!canPlace(u.team,o.type,o.tx,o.ty,true)||footprintBusy(site,u)){
       msg(u.team,'Cannot build here');refundOrder(u,o);o.paid=false;finishBuild(u,o);return;}
     b=addBuilding(o.type,u.team,o.tx,o.ty,false);ejectUnits(b);o.bld=b;o.paid=false;G.teams[u.team].built++;
-    if(u.team===0&&!G.ais[0])sfx('place');uiDirty();}
+    if(u.team===0&&!G.ais[0])sfx('place',undefined,undefined,b);uiDirty();}
   if(b.dead||b.done){finishBuild(u,o);return;}
   if(rectDist(u.x,u.y,b)>u.r+15){const p=approachPoint(b,u.x,u.y);navigate(u,p.x,p.y,dt,4);return;}
   b._cnt++;u.ang=turn(u.ang,Math.atan2(b.y-u.y,b.x-u.x),dt*8);if(u.ag&&G.tick%30===0)agXP(u,0.6);
@@ -197,11 +197,11 @@ function tradeStep(u,dt){
     const dist=pathLength(ex.x,ex.y,post.x,post.y);
     if(o.st==='toPost'){
       const pay=Math.round(0.6*dist*post.demand*T.tradeMul);T.c+=pay;T.tradeEarn+=pay;post.demand=Math.max(0.15,post.demand-0.12);if(u.ag)agTradeEarn(u,pay);
-      G.fx.push({x:u.x,y:u.y-16,t:0,max:1.6,kind:'text',txt:'+'+pay,col:'#ffd45a'});if(u.team===0)sfx('coin');
+      G.fx.push({x:u.x,y:u.y-16,t:0,max:1.6,kind:'text',txt:'+'+pay,col:'#ffd45a'});if(u.team===0)sfx('trade',undefined,undefined,u);
       o.st='toEx';}
     else{
       const pay=Math.round(0.25*dist*T.tradeMul);T.c+=pay;T.tradeEarn+=pay;if(u.ag)agTradeEarn(u,pay);
-      G.fx.push({x:u.x,y:u.y-16,t:0,max:1.6,kind:'text',txt:'+'+pay,col:'#ffd45a'});if(u.team===0)sfx('coin');
+      G.fx.push({x:u.x,y:u.y-16,t:0,max:1.6,kind:'text',txt:'+'+pay,col:'#ffd45a'});if(u.team===0)sfx('coin',undefined,undefined,u);
       o.st='toPost';}
     u.path=null;return;}
   const p=approachPoint(target,u.x,u.y);navigate(u,p.x,p.y,dt,4);
@@ -221,8 +221,8 @@ function gauss(){const r=G.rng;return Math.sqrt(-2*Math.log(Math.max(1e-9,r())))
 /* ------------------------------ abilities ----------------------------- */
 function toggleSiege(u,forceOff){
   if(!u.def.siege)return;
-  if(u.sieged&&(forceOff===true||forceOff===undefined)){u.sieged=false;u.siegeT=1.2;if(u.team===0)sfx('click');return;}
-  if(!u.sieged&&forceOff!==true&&u.siegeT<=0){u.sieged=true;u.siegeT=1.6;u.path=null;u.order={t:'idle'};u.home={x:u.x,y:u.y};if(u.team===0)sfx('click');}
+  if(u.sieged&&(forceOff===true||forceOff===undefined)){u.sieged=false;u.siegeT=1.2;if(u.team===0)sfx('cancel',undefined,undefined,u);return;}
+  if(!u.sieged&&forceOff!==true&&u.siegeT<=0){u.sieged=true;u.siegeT=1.6;u.path=null;u.order={t:'idle'};u.home={x:u.x,y:u.y};if(u.team===0)sfx('siege',undefined,undefined,u);}
 }
 function useStim(u){
   const T=G.teams[u.team];if(!T.stims||!u.def.stim)return false;if(hasBuff(u,'stim')||u.hp<=14)return false;
@@ -241,20 +241,20 @@ function castSkill(u,i,x,y){
   switch(u.type+':'+s.id){
     case'hero_idris:barrage':
       aoeEnemies(team,x,y,s.radius,e=>{damageEnt(e,30+20*lv,team,u);if(e.kind==='unit')addBuff(e,'slow',0.45,5);});
-      G.fx.push({x,y,t:0,max:0.7,kind:'ring',r:s.radius,col:'#7cc4ff'});for(let k=0;k<5;k++)explode(x+(Math.random()-.5)*s.radius,y+(Math.random()-.5)*s.radius,false);sfx('boomBig',x,y);G.shake=Math.max(G.shake,4);break;
+      G.fx.push({x,y,t:0,max:0.7,kind:'ring',r:s.radius,col:'#7cc4ff'});for(let k=0;k<5;k++)explode(x+(Math.random()-.5)*s.radius,y+(Math.random()-.5)*s.radius,false);sfx('skill:barrage',x,y,u);G.shake=Math.max(G.shake,4);break;
     case'hero_idris:orbital':
-      G.zones.push({type:'orbital',x,y,r:s.radius,t:0,max:2.2,team,dmg:240,sdmg:300,fired:false});sfx('alert');break;
+      G.zones.push({type:'orbital',x,y,r:s.radius,t:0,max:2.2,team,dmg:240,sdmg:300,fired:false});sfx('skill:orbital',x,y,u);break;
     case'hero_kaz:shock':
       aoeEnemies(team,x,y,s.radius,e=>{damageEnt(e,30+20*lv,team,u);if(e.kind==='unit')addBuff(e,'stun',1,0.8+0.4*lv);},true);
-      G.fx.push({x,y,t:0,max:0.6,kind:'ring',r:s.radius,col:'#ff9a6a'});explode(x,y,true);sfx('boomBig',x,y);G.shake=Math.max(G.shake,7);break;
+      G.fx.push({x,y,t:0,max:0.6,kind:'ring',r:s.radius,col:'#ff9a6a'});explode(x,y,true);sfx('skill:shock',x,y,u);G.shake=Math.max(G.shake,7);break;
     case'hero_kaz:rampage':
       aoeAllies(team,u.x,u.y,s.radius,a=>addBuff(a,'rampage',1,12));
-      G.fx.push({x:u.x,y:u.y,t:0,max:0.9,kind:'ring',r:s.radius,col:'#ff4d4d'});sfx('alert');break;
+      G.fx.push({x:u.x,y:u.y,t:0,max:0.9,kind:'ring',r:s.radius,col:'#ff4d4d'});sfx('skill:rampage',u.x,u.y,u);break;
     case'hero_lyra:veil':
       aoeAllies(team,u.x,u.y,s.radius,a=>{if(!a.def.hero||true){a.revealT=0;addBuff(a,'cloak',1,6+2*lv);}});
-      G.fx.push({x:u.x,y:u.y,t:0,max:0.9,kind:'ring',r:s.radius,col:'#a8ffe6'});sfx('click');break;
+      G.fx.push({x:u.x,y:u.y,t:0,max:0.9,kind:'ring',r:s.radius,col:'#a8ffe6'});sfx('skill:veil',u.x,u.y,u);break;
     case'hero_lyra:sing':
-      G.zones.push({type:'sing',x,y,r:s.radius,t:0,max:3,team,acc:0});sfx('boomBig',x,y);break;
+      G.zones.push({type:'sing',x,y,r:s.radius,t:0,max:3,team,acc:0});sfx('skill:sing',x,y,u);break;
     default:return false;}
   u.mana-=s.mana;u.cds[i]=s.cd;u.revealT=Math.max(u.revealT,1.2);
   if(team===0)uiDirty();return true;
@@ -273,7 +273,7 @@ function learnSkill(team,i){
 }
 function skillPoints(team){const H=G.teams[team].hero;return H.level-(H.sk[0]+H.sk[1]+H.sk[2]);}
 function applyAuras(){
-  for(let t=0;t<2;t++){const u=heroUnit(t);if(!u)continue;const H=G.teams[t].hero,lv=H.sk[0];if(lv<=0)continue;
+  for(let t=0;t<2;t++){const u=heroUnit(t);if(!u)continue;const H=G.teams[t].hero,lv=H.sk[0];if(lv<=0)continue;{const ask=skillOf(u,0);if(ask&&G.tick%120===0)sfx('skill:'+ask.id,u.x,u.y,u);}
     aoeAllies(t,u.x,u.y,300,a=>{
       if(u.type==='hero_idris')addBuff(a,'banner',lv,0.8);
       else if(u.type==='hero_kaz')addBuff(a,'bloodlust',0.08*lv,0.8);
@@ -284,7 +284,7 @@ function updateZones(dt){
     z.t+=dt;
     if(z.type==='orbital'&&!z.fired&&z.t>=z.max){z.fired=true;
       aoeEnemies(z.team,z.x,z.y,z.r,e=>damageEnt(e,e.kind==='building'?z.sdmg:z.dmg,z.team,null));
-      G.fx.push({x:z.x,y:z.y,t:0,max:0.9,kind:'beam',r:z.r});explode(z.x,z.y,true);sfx('boomBig',z.x,z.y);G.shake=Math.max(G.shake,12);G.decalDirty.push({x:z.x,y:z.y,r:z.r*0.6,k:'scorch'});}
+      G.fx.push({x:z.x,y:z.y,t:0,max:0.9,kind:'beam',r:z.r});explode(z.x,z.y,true);G.shake=Math.max(G.shake,12);G.decalDirty.push({x:z.x,y:z.y,r:z.r*0.6,k:'scorch'});}
     else if(z.type==='sing'&&z.t<z.max){
       z.acc+=dt;const tick=z.acc>=0.25;if(tick)z.acc-=0.25;
       aoeEnemies(z.team,z.x,z.y,z.r,e=>{
@@ -305,7 +305,7 @@ function updateBuilding(b,dt){
   if(!b.done){
     if(b.nb>0){const dp=dt*(b.nb+2)/(3*d.time);b.prog=Math.min(1,b.prog+dp);b.hp=Math.min(b.maxhp,b.hp+b.maxhp*0.9*dp);}
     if(b.prog>=1){b.prog=1;b.done=true;if(G.camp)campNote('built',b.team,b.type);   // `built` condition counter (45_campaign.js)
-      if(b.team===0&&!G.ais[0]){toast(d.name+' complete','good');sfx('done');if(b.type==='generator')say('Supply increased');}
+      if(b.team===0&&!G.ais[0]){toast(d.name+' complete','good');sfx('done',undefined,undefined,b);if(b.type==='generator')say('Supply increased');}
       uiDirty();G.fx.push({x:b.x,y:b.y,t:0,max:0.8,kind:'ring',r:b.r*1.2,col:'#9fe8ff'});}
     return;}
   if(d.dmg){
@@ -320,13 +320,13 @@ function updateBuilding(b,dt){
     q.t+=dt*moraleMul(b.team);
     if(q.t>=q.total){
       b.queue.shift();
-      if(q.k==='u'){spawnUnit(b,q.id);if(b.team===0&&!G.ais[0])sfx('done');}
-      else if(q.k==='r'){const R=TECH[q.id];T[R.key]++;if(b.team===0&&!G.ais[0]){toast(R.name+' researched','good');sfx('done');}}
+      if(q.k==='u'){const nu=spawnUnit(b,q.id);if(b.team===0&&!G.ais[0])sfx('done',undefined,undefined,nu);}
+      else if(q.k==='r'){const R=TECH[q.id];T[R.key]++;if(b.team===0&&!G.ais[0]){toast(R.name+' researched','good');sfx('research',undefined,undefined,b);}}
       else if(q.k==='era'){T.era=q.to;G.events.push({t:G.time,team:b.team,txt:'Era '+ERAS[q.to].rom});
-        if(b.team===0&&!G.ais[0]){toast('Era '+ERAS[q.to].rom+': '+ERAS[q.to].name+' — new technology unlocked!','good');sfx('era');say('Era advanced');}
+        if(b.team===0&&!G.ais[0]){toast('Era '+ERAS[q.to].rom+': '+ERAS[q.to].name+' — new technology unlocked!','good');sfx('era',undefined,undefined,{faction:T.faction});say('Era advanced');}
         G.fx.push({x:b.x,y:b.y,t:0,max:1.4,kind:'ring',r:b.r*2.5,col:'#ffe27a'});}
       else if(q.k==='hero'){T.hero.reviving=false;const u=spawnUnit(b,FACTIONS[T.faction].hero);
-        if(b.team===0&&!G.ais[0]){toast(u.def.name+' has arrived','good');sfx('done');say(q.revive?'Hero revived':'Hero ready');}}
+        if(b.team===0&&!G.ais[0]){toast(u.def.name+' has arrived','good');sfx(q.revive?'heroRevive':'hero',undefined,undefined,u);say(q.revive?'Hero revived':'Hero ready');}}
       uiDirty();}}
 }
 function neutralsStep(dt){

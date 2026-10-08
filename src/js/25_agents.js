@@ -79,7 +79,7 @@ function agShop(u,ag){
   if(g.need&&!hasDone(u.team,g.need))return false;if(g.era&&T.era<g.era)return false;
   const c=gearCost(u,tier);if(ag.wallet<c)return false;
   ag.wallet-=c;T.c+=c;ag.spent+=c;ag.gear=tier;agMods(u);led('gear',c);
-  G.fx.push({x:u.x,y:u.y-20,t:0,max:1.4,kind:'text',txt:'Gear '+g.n,col:'#ffd45a'});if(u.team===0)sfx('coin');
+  G.fx.push({x:u.x,y:u.y-20,t:0,max:1.4,kind:'text',txt:'Gear '+g.n,col:'#ffd45a'});if(u.team===0)sfx('coin',undefined,undefined,u);
   return true;
 }
 /* ---------------------------- money in / out --------------------------- */

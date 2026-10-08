@@ -96,7 +96,7 @@ function econHire(lid,cad,o){
   if(cad==='task'){led('escrow',price);E.stats.escrow+=price;}else{led('wage',price);E.stats.wages+=price;}
   if(cad==='task'){const j=mkJob('me',spec,price);j.state='active';j.t0=G.time;j.deadline=G.time+(spec.dur||240);j.agents=[u.id];j.cad='task';j.hireId=cid;j.title=taskTitle(spec);j.where=spec.camp?{x:spec.camp.x,y:spec.camp.y}:spec.pts?{x:spec.pts[0].x,y:spec.pts[0].y}:null;j.need='any';E.jobs.push(j);c.jobId=j.id;ag.cid=j.id;ag.prev={role,dm:'set',dir:{}};}
   E.free=E.free.filter(x=>x!==l);
-  G.fx.push({x:u.x,y:u.y,t:0,max:1,kind:'ring',r:36,col:'#ffe27a'});if(SET.swarmHints||true)sfx('coin');
+  G.fx.push({x:u.x,y:u.y,t:0,max:1,kind:'ring',r:36,col:'#ffe27a'});if(SET.swarmHints||true)sfx('coin',undefined,undefined,u);
   uiDirty();return c;
 }
 function econLeave(u,why){
@@ -271,7 +271,7 @@ function jobDone(j){
     const cl=j.clientObj||E.clients.find(c=>c.id===j.client);
     T.c+=j.pay;led('gig',j.pay);E.stats.gigIn+=j.pay;cl.rep=Math.min(100,cl.rep+4);cl.done++;
     G.fx.push({x:j.where?j.where.x:0,y:j.where?j.where.y-20:0,t:0,max:1.8,kind:'text',txt:'+'+j.pay,col:'#ffd45a'});
-    ovLog('labor','Job complete: '+j.title+' (+'+j.pay+'◆)');if(SET.swarmHints)toast('Job complete: '+j.title+'  +'+j.pay+'◆','good');sfx('coin');
+    ovLog('labor','Job complete: '+j.title+' (+'+j.pay+'◆)');if(SET.swarmHints)toast('Job complete: '+j.title+'  +'+j.pay+'◆','good');sfx('coin',undefined,undefined,{team:0});
     const share=j.pay/Math.max(1,j.agents.length);
     for(const id of j.agents){const u=byId(id);if(!u||u.dead)continue;u.ag.tasks++;u.ag.earned+=share;agXP(u,40);agCommission(u,share);econReleaseFromJob(u,j);}
   }
@@ -325,7 +325,7 @@ function jobsStep(dt){
           const fromEsc=Math.min(pay,Math.max(0,j.escrow-j.paidTotal));const rest=pay-fromEsc;if(rest>0)cl.budget-=rest;
           j.paidTotal+=pay;T.c+=pay;led('gig',pay);E.stats.gigIn+=pay;
           const share=pay/Math.max(1,us.length);for(const u of us){u.ag.earned+=share;agCommission(u,share);}
-          G.fx.push({x:sp.x,y:sp.y-20,t:0,max:1.4,kind:'text',txt:'+'+Math.round(pay),col:'#ffd45a'});if(CADI[j.cad].secs>=60)sfx('coin');
+          G.fx.push({x:sp.x,y:sp.y-20,t:0,max:1.4,kind:'text',txt:'+'+Math.round(pay),col:'#ffd45a'});if(CADI[j.cad].secs>=60)sfx('coin',undefined,undefined,{team:0});
         }
         if(frac<0.4){cl.rep=Math.max(0,cl.rep-3);}
         j.tT=0;j.onT=0;j.nextDue+=j.period;

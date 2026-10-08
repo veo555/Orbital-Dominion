@@ -264,7 +264,7 @@ function queueUnit(b,id){
   if(b.queue.length>=5){msg(b.team,'Queue is full');return false;}
   const r=reqUnit(b.team,id);if(!r.ok){msg(b.team,r.why);return false;}
   pay(T,uCost(b.team,id));T.used+=d.supply;b.queue.push({k:'u',id,t:0,total:uTime(b.team,id)});
-  if(b.team===0)sfx('train');uiDirty();return true;
+  if(b.team===0)sfx('train',undefined,undefined,b);uiDirty();return true;
 }
 function techLevel(T,id){return T[TECH[id].key]||0;}
 function techNext(T,id){const R=TECH[id],lvl=techLevel(T,id);return lvl<R.lv.length?R.lv[lvl]:null;}
@@ -275,7 +275,7 @@ function queueResearch(b,id){
   if(T.era<L.era){msg(b.team,'Requires Era '+ERAS[L.era].rom);return false;}
   if(!afford(T,L)){msg(b.team,T.c<L.c?'Not enough crystals':'Not enough ether');return false;}
   if(b.queue.length>=5){msg(b.team,'Queue is full');return false;}
-  pay(T,L);b.queue.push({k:'r',id,t:0,total:L.time});if(b.team===0)sfx('train');uiDirty();return true;
+  pay(T,L);b.queue.push({k:'r',id,t:0,total:L.time});if(b.team===0)sfx('train',undefined,undefined,b);uiDirty();return true;
 }
 function queueEra(b){
   const T=G.teams[b.team];if(T.era>=3){msg(b.team,'Highest era reached');return false;}
@@ -285,7 +285,7 @@ function queueEra(b){
   if(!afford(T,E.cost)){msg(b.team,T.c<E.cost.c?'Not enough crystals':'Not enough ether');return false;}
   if(T.era===1&&!hasDone(b.team,'garrison')){msg(b.team,'Requires Garrison');return false;}
   if(T.era===2&&!hasDone(b.team,'armory')){msg(b.team,'Requires Armory');return false;}
-  pay(T,E.cost);b.queue.push({k:'era',to:T.era+1,t:0,total:E.time});if(b.team===0)sfx('train');uiDirty();return true;
+  pay(T,E.cost);b.queue.push({k:'era',to:T.era+1,t:0,total:E.time});if(b.team===0)sfx('train',undefined,undefined,b);uiDirty();return true;
 }
 function queueHero(b){
   const T=G.teams[b.team],H=T.hero,id=FACTIONS[T.faction].hero,d=UDEF[id];
@@ -294,7 +294,7 @@ function queueHero(b){
   const dead=H.deaths>0,cost=dead?{c:150+30*H.level,e:50+15*H.level}:d.cost,time=dead?30+5*H.level:d.time;
   if(!afford(T,cost)){msg(b.team,T.c<cost.c?'Not enough crystals':'Not enough ether');return false;}
   if(T.used+d.supply>T.cap){msg(b.team,'Build more Generators');return false;}
-  pay(T,cost);T.used+=d.supply;b.queue.push({k:'hero',t:0,total:time,revive:dead});H.reviving=true;if(b.team===0)sfx('train');uiDirty();return true;
+  pay(T,cost);T.used+=d.supply;b.queue.push({k:'hero',t:0,total:time,revive:dead});H.reviving=true;if(b.team===0)sfx('train',undefined,undefined,b);uiDirty();return true;
 }
 function heroCost(team){const T=G.teams[team],H=T.hero,id=FACTIONS[T.faction].hero;return H.deaths>0?{c:150+30*H.level,e:50+15*H.level}:UDEF[id].cost;}
 function cancelQueue(b,i){
@@ -357,7 +357,7 @@ function recalcBuffs(u,dt){
   if(u.def.hero){const l=G.teams[u.team].hero.level;dmg*=1+0.10*(l-1);arm+=Math.floor((l-1)/2);}
   if(u.ag){const m=u.ag.m;spd*=m.spd;dmg*=m.dmg;arm+=m.arm;}
   u.spdMul=spd;u.atkMul=atk;u.dmgMul=dmg;u.armAdd=arm;u.stunned=stun;
-  u.cloaked=!!((u.def.cloak||hasBuff(u,'cloak'))&&u.revealT<=0);
+  const wasCl=u.cloaked;u.cloaked=!!((u.def.cloak||hasBuff(u,'cloak'))&&u.revealT<=0);if(u.def.cloak&&wasCl!==u.cloaked)sfx('cloak',u.x,u.y,u);
 }
 
 /* ------------------------------ orders ------------------------------- */
@@ -497,13 +497,13 @@ function fire(src,t){
   if(d.proj){
     const c=Math.cos(src.ang),s=Math.sin(src.ang),lift=src.flying?10:0;
     G.proj.push({x:src.x+c*10,y:src.y+s*10-lift,sx:src.x,sy:src.y,t,tx:t.x,ty:t.y,sp:d.pspd,kind:d.proj,team:src.team,base,bon,splash:spl,src,life:4,total:Math.max(1,hyp(t.x-src.x,t.y-src.y)),dead:false});
-    sfx(d.proj==='bullet'?'shoot':d.proj==='rocket'?'rocket':d.proj==='shell'?'shell':d.proj==='acid'?'acid':'bolt',src.x,src.y);
+    sfx(d.proj==='bullet'?'shoot':d.proj==='rocket'?'rocket':d.proj==='shell'?'shell':d.proj==='acid'?'acid':'bolt',src.x,src.y,src);
     addPart(src.x+c*12,src.y+s*12,0,0,0.09,5,d.proj==='bolt'?G.teams[src.team].pal.light:(d.proj==='acid'?'#c8ff6a':'#ffe9a0'),1);
     if(src.kind==='unit'&&d.proj==='shell'&&src.type==='howitzer'||d.proj==='shell'&&src.type==='titan')G.shake=Math.max(G.shake,2);
   }else{
     const dmg=dmgVs(base,bon,t,false),dealt=damageEnt(t,dmg,src.team,src);
     if(d.lifesteal&&src.kind==='unit'){src.hp=Math.min(src.maxhp,src.hp+dealt*d.lifesteal);src.healFx=0.4;}
-    sfx('melee',src.x,src.y);addPart(t.x,t.y,0,0,0.12,5,'#fff',1);
+    sfx('melee',src.x,src.y,src);addPart(t.x,t.y,0,0,0.12,5,'#fff',1);
   }
   if(src.kind==='unit'&&hasBuff(src,'cloak'))src.buffs=src.buffs.filter(b=>b.k!=='cloak');
 }
@@ -524,7 +524,7 @@ function provokeCamp(e,src){
 function alertPlayer(e){
   if(G.ais[0])return;
   G.alertPos={x:e.x,y:e.y};G.alertT=G.time;G.fightT=G.time;
-  if(G.time-G.lastAlertT>9){G.lastAlertT=G.time;toast(e.kind==='building'?'Your base is under attack!':'Your forces are under attack!','bad');sfx('alert');say('Your forces are under attack');}
+  if(G.time-G.lastAlertT>9){G.lastAlertT=G.time;toast(e.kind==='building'?'Your base is under attack!':'Your forces are under attack!','bad');sfx('alert',undefined,undefined,e);say('Your forces are under attack');}
 }
 function giveXP(team,x,y,amt){
   if(team>1)return;const H=G.teams[team].hero;if(!H.alive||H.level>=HERO_MAXLVL)return;
@@ -534,7 +534,7 @@ function giveXP(team,x,y,amt){
   while(H.level<HERO_MAXLVL&&H.xp>=HERO_LVL_XP[H.level+1]){
     H.level++;heroApply(u,false);u.hp=Math.min(u.maxhp,u.hp+u.maxhp*0.25);u.mana=heroMaxMana(u);
     G.fx.push({x:u.x,y:u.y,t:0,max:1.1,kind:'levelup',r:60});
-    if(team===0&&!G.ais[0]){toast(u.def.name+' reached level '+H.level+'!  Press Z to learn a skill.','good');sfx('level');say('Hero level up');}
+    if(team===0&&!G.ais[0]){toast(u.def.name+' reached level '+H.level+'!  Press Z to learn a skill.','good');sfx('level',undefined,undefined,u);say('Hero level up');}
     G.events.push({t:G.time,team,txt:'Hero level '+H.level});
   }
 }
@@ -547,16 +547,16 @@ function kill(e,by){
     if(by!==undefined&&by!==e.team&&by<2)G.teams[by].kills++;
     if(e.team<2){T.lost++;T.rl+=e.def.supply;
       if(by!==undefined&&by<2&&by!==e.team){const k=G.teams[by];k.rk+=e.def.supply;giveXP(by,e.x,e.y,Math.round((e.def.cost.c+e.def.cost.e)*0.4)+(e.def.hero?150:0));}
-      if(e.def.hero){const H=T.hero;H.alive=false;H.deaths=(H.deaths||0)+1;H.reviving=false;if(e.team===0&&!G.ais[0]){toast('Your hero has fallen. Revive them at the Hub.','bad');say('Hero has fallen');}G.events.push({t:G.time,team:e.team,txt:'Hero fell'});}
+      if(e.def.hero){const H=T.hero;H.alive=false;H.deaths=(H.deaths||0)+1;H.reviving=false;if(e.team===0&&!G.ais[0]){toast('Your hero has fallen. Revive them at the Hub.','bad');sfx('heroFall',undefined,undefined,e);say('Hero has fallen');}G.events.push({t:G.time,team:e.team,txt:'Hero fell'});}
     }else if(by!==undefined&&by<2){
       const K=G.teams[by];K.c+=e.def.bounty;K.kills++;K.creeps=(K.creeps||0)+1;giveXP(by,e.x,e.y,e.def.xp);
       G.fx.push({x:e.x,y:e.y-14,t:0,max:1.3,kind:'text',txt:'+'+e.def.bounty,col:'#ffd45a'});
     }
-    explode(e.x,e.y,false,e.flying);sfx('boom',e.x,e.y);
+    explode(e.x,e.y,false,e.flying);sfx('boom',e.x,e.y,e);
     G.decalDirty.push({x:e.x,y:e.y,r:e.r*1.5,k:'scorch'});
     if(G.camp&&e.team===2&&e.camp>=0)campCreepKilled(e,by);   // `camps` condition: who cleared which creep camp
   }else{
-    G.needBlocked=true;explode(e.x,e.y,true);sfx('boomBig',e.x,e.y);G.shake=Math.max(G.shake,8);
+    G.needBlocked=true;explode(e.x,e.y,true);sfx('boomBig',e.x,e.y,e);if(e.team===0&&!G.ais[0])sfx('alertBase',undefined,undefined,e);G.shake=Math.max(G.shake,8);
     if(by!==undefined&&by!==e.team&&by<2){G.teams[by].kills++;giveXP(by,e.x,e.y,60);}
     G.teams[e.team].lost++;G.teams[e.team].rl+=3;
     G.decalDirty.push({x:e.x,y:e.y,r:e.r*1.3,k:'rubble'});
@@ -574,10 +574,10 @@ function projHit(p){
       if(!enemyOf(e)||e.flying||e.hidden)return;
       if(hyp(e.x-p.x,e.y-p.y)-e.r<=p.splash)damageEnt(e,dmgVs(p.base,p.bon,e,true),p.team,p.src);});
     for(const b of G.buildings){if(!enemyOf(b))continue;if(rectDist(p.x,p.y,b)<=p.splash)damageEnt(b,dmgVs(p.base,p.bon,b,true),p.team,p.src);}
-    G.fx.push({x:p.x,y:p.y,t:0,max:0.35,kind:'ring',r:p.splash,col:'#ffb15a'});explode(p.x,p.y,false);sfx('boom',p.x,p.y);
+    G.fx.push({x:p.x,y:p.y,t:0,max:0.35,kind:'ring',r:p.splash,col:'#ffb15a'});explode(p.x,p.y,false);sfx('boom',p.x,p.y,{team:p.team});
     G.decalDirty.push({x:p.x,y:p.y,r:p.splash*0.7,k:'scorch'});
   }else if(p.t&&!p.t.dead){
-    damageEnt(p.t,dmgVs(p.base,p.bon,p.t,true),p.team,p.src);
+    damageEnt(p.t,dmgVs(p.base,p.bon,p.t,true),p.team,p.src);if(p.t.kind==='unit'&&p.t.def.armor>0)sfx('hit',p.t.x,p.t.y,p.t);
     addPart(p.x,p.y,0,0,0.14,p.kind==='rocket'?9:5,p.kind==='bolt'?G.teams[p.team].pal.light:(p.kind==='acid'?'#c8ff6a':'#ffd27a'),1);
     if(p.kind==='rocket')explode(p.x,p.y,false);
   }

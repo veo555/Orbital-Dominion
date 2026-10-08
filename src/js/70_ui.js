@@ -14,7 +14,7 @@ function onStepEnd(){
   if(ui.pings.length&&G.time-ui.pings[0].t>ui.pings[0].dur)ui.pings.shift();
   if(G.time-ui.lastInc>=1){ui.lastInc=G.time;const T=G.teams[0];ui.inc.push({t:G.time,c:T.minedC+T.taxEarn+T.tradeEarn,e:T.minedE});if(ui.inc.length>40)ui.inc.shift();}
 }
-function onGameOver(res){platMatchStop();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose');say(res==='victory'?'Victory':'Defeat');}
+function onGameOver(res){platMatchStop();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});say(res==='victory'?'Victory':'Defeat');}
 function incomeRates(){
   const a=ui.inc;if(a.length<3)return{c:0,e:0};const f=a[0],l=a[a.length-1],dt=Math.max(1,l.t-f.t);
   return{c:(l.c-f.c)/dt*60,e:(l.e-f.e)/dt*60};
@@ -35,6 +35,8 @@ function setSel(arr){
   ui.sel=arr;ui.selSet=new Set(arr);ui.activeType=arr.length?arr[0].type:null;ui.menu=null;ui.infoDirty=ui.cmdDirty=true;
   if(ui.target&&ui.target.kind!=='rally'&&!arr.some(e=>e.team===0))ui.target=null;
 }
+/* the select chirp is queued one task after the tap: the first play of a voice builds its caches synchronously, which would lengthen the tap that caused it (touch double-tap window, tests/e2e/e2e_touch.py) */
+function selSfx(){const l=ui.sel[0];if(l&&l.team===0)setTimeout(()=>sfx('select',undefined,undefined,l),0);}
 function entityAt(wx,wy,padPx){
   let best=null,bd=1e9;const pad=(padPx===undefined?5:padPx)/cam.z;
   for(const u of G.units){if(u.dead||u.hidden||!entVisible(u))continue;
@@ -56,19 +58,19 @@ function clickSelect(wx,wy,shift,now,ctrl,pre){
   if(ent.team===0&&(ent.kind==='unit'||ent.kind==='building')){
     if(dbl||ctrl){
       const list=ent.kind==='unit'?G.units.filter(u=>!u.dead&&!u.hidden&&u.team===0&&u.type===ent.type&&onScreen(u.x,u.y,0)):G.buildings.filter(b=>!b.dead&&b.team===0&&b.type===ent.type&&onScreen(b.x,b.y,0));
-      setSel(list.slice(0,80));ui.lastClick.t=0;return;}
-    if(shift){const cur=ui.sel.filter(e=>e.team===0&&e.kind===ent.kind);const i=cur.indexOf(ent);if(i>=0)cur.splice(i,1);else cur.push(ent);setSel(cur.slice(0,80));return;}
+      setSel(list.slice(0,80));selSfx();ui.lastClick.t=0;return;}
+    if(shift){const cur=ui.sel.filter(e=>e.team===0&&e.kind===ent.kind);const i=cur.indexOf(ent);if(i>=0)cur.splice(i,1);else cur.push(ent);setSel(cur.slice(0,80));selSfx();return;}
   }
-  setSel([ent]);
+  setSel([ent]);selSfx();
 }
 function boxSelect(d,shift){
   const x0=Math.min(d.x0,d.x1),x1=Math.max(d.x0,d.x1),y0=Math.min(d.y0,d.y1),y1=Math.max(d.y0,d.y1);let found=[];
   for(const u of G.units){if(u.dead||u.hidden||u.team!==0)continue;const p=w2s(u.x,u.y-(u.flying?16:0));if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1)found.push(u);}
   if(found.some(u=>!u.def.worker))found=found.filter(u=>!u.def.worker);
-  if(found.length){const base=shift?ui.sel.filter(e=>e.kind==='unit'&&e.team===0):[];setSel(base.concat(found.filter(f=>!base.includes(f))).slice(0,100));}
+  if(found.length){const base=shift?ui.sel.filter(e=>e.kind==='unit'&&e.team===0):[];setSel(base.concat(found.filter(f=>!base.includes(f))).slice(0,100));selSfx();}
   else if(!shift){
     const bl=[];for(const b of G.buildings){if(b.dead||b.team!==0)continue;const p=w2s(b.x,b.y);if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1)bl.push(b);}
-    if(bl.length){const t=bl[0].type;setSel(bl.filter(b=>b.type===t));}else setSel([]);}
+    if(bl.length){const t=bl[0].type;setSel(bl.filter(b=>b.type===t));selSfx();}else setSel([]);}
 }
 function groupSet(n,add){
   const own=ui.sel.filter(e=>e.team===0);if(!own.length)return;
@@ -82,13 +84,13 @@ function groupEntities(n){
 function groupRecall(n){
   const arr=groupEntities(n);if(!arr.length)return;const now=performance.now();
   if(ui.groupTap.n===n&&now-ui.groupTap.t<380){centerOn(arr.reduce((s,e)=>s+e.x,0)/arr.length,arr.reduce((s,e)=>s+e.y,0)/arr.length);}
-  ui.groupTap={n,t:now};setSel(arr);
+  ui.groupTap={n,t:now};setSel(arr);selSfx();
 }
 function idleWorkers(){return G.units.filter(u=>!u.dead&&u.team===0&&u.def.worker&&u.order.t==='idle'&&!u.hidden&&!u.garr);}
-function selectIdle(){const l=idleWorkers();if(!l.length){toast('No idle Haulers','good');return;}ui.idleIdx=(ui.idleIdx+1)%l.length;const u=l[ui.idleIdx];setSel([u]);centerOn(u.x,u.y);}
-function selectArmy(){const l=G.units.filter(u=>!u.dead&&u.team===0&&!u.def.worker&&!u.def.trade&&!u.hidden);if(!l.length){toast('No army units','bad');return;}setSel(l.slice(0,100));sfx('click');}
+function selectIdle(){const l=idleWorkers();if(!l.length){toast('No idle Haulers','good');return;}ui.idleIdx=(ui.idleIdx+1)%l.length;const u=l[ui.idleIdx];setSel([u]);selSfx();centerOn(u.x,u.y);}
+function selectArmy(){const l=G.units.filter(u=>!u.dead&&u.team===0&&!u.def.worker&&!u.def.trade&&!u.hidden);if(!l.length){toast('No army units','bad');return;}setSel(l.slice(0,100));selSfx();}
 function selectHero(){const h=heroUnit(0);if(!h){toast('Your hero is not in play — train or revive at the Hub (W)','bad');return;}
-  if(ui.sel.length===1&&ui.sel[0]===h)centerOn(h.x,h.y);else{setSel([h]);centerOn(h.x,h.y);}}
+  if(ui.sel.length===1&&ui.sel[0]===h)centerOn(h.x,h.y);else{setSel([h]);selSfx();centerOn(h.x,h.y);}}
 function goHub(){const h=G.buildings.find(b=>b.team===0&&b.type==='hub'&&!b.dead);if(h){centerOn(h.x,h.y);}}
 
 /* ----------------------------- formations ------------------------------- */
@@ -111,7 +113,7 @@ function issueGroup(units,x,y,kind,queue){
     if(!u.flying){const tx=clamp(p.x/TILE|0,0,MW-1),ty=clamp(p.y/TILE|0,0,MH-1);if(G.blocked[ty*MW+tx]){const f=nearestFree(tx,ty,6);if(f)p={x:(f[0]+.5)*TILE,y:(f[1]+.5)*TILE};}}
     const t=kind==='attack'&&!u.def.worker&&!u.def.noWeapon?'attackmove':'move';
     setOrder(u,{t,x:p.x,y:p.y,gs:gs&&!u.def.worker?gs:0},queue);});
-  ping(x,y,kind==='attack'?'#ff6a5a':'#6dff9d');sfx('ack');
+  ping(x,y,kind==='attack'?'#ff6a5a':'#6dff9d');sfx('ack',undefined,undefined,units[0]);
 }
 function setRally(b,wx,wy,ent){
   let r={x:wx,y:wy,res:null,post:null};
@@ -134,23 +136,23 @@ function contextCommand(wx,wy,shift){
     const others=units.filter(u=>!u.def.worker);
     for(const u of workers){if(ent.type==='geyser'&&!geyserOK(ent,0)){setOrder(u,{t:'move',x:ent.x,y:ent.y+TILE},shift);msg(0,'Build an Ether Siphon on the geyser first');continue;}setOrder(u,gatherOrder(u,ent),shift);}
     if(others.length)issueGroup(others,ent.x,ent.y+TILE,'move',shift);
-    ping(ent.x,ent.y,'#f6c04a');sfx('ack');return;}
+    ping(ent.x,ent.y,'#f6c04a');sfx('ack',undefined,undefined,workers[0]||units[0]);return;}
   if(ent&&ent.team!==0&&ent.team!==undefined&&(ent.kind==='unit'||ent.kind==='building')){
     for(const u of units){if(!u.def.noWeapon&&!u.def.worker&&canAttack(u.def,ent))setOrder(u,{t:'attack',target:ent},shift);else if(!u.def.worker||units.length===workers.length)setOrder(u,{t:'move',x:ent.x,y:ent.y},shift);}
-    ping(ent.x,ent.y,'#ff6a5a');sfx('ack');return;}
+    ping(ent.x,ent.y,'#ff6a5a');sfx('ack',undefined,undefined,units[0]);return;}
   if(ent&&ent.kind==='neutral'){
     if(ent.type==='post'&&freighters.length){
       if(!hasDone(0,'exchange')){msg(0,'Freighters need an Exchange first');}
-      else{for(const u of freighters)setOrder(u,{t:'trade',post:ent,st:'toPost'},shift);ping(ent.x,ent.y,'#ffd45a');sfx('ack');}
+      else{for(const u of freighters)setOrder(u,{t:'trade',post:ent,st:'toPost'},shift);ping(ent.x,ent.y,'#ffd45a');sfx('ack',undefined,undefined,freighters[0]);}
       const rest=units.filter(u=>!u.def.trade);if(rest.length)issueGroup(rest,ent.x,ent.y+TILE*1.6,'move',shift);return;}
     issueGroup(units,ent.x,ent.y+TILE*1.6,'move',shift);return;}
   if(ent&&ent.kind==='building'&&ent.team===0){
-    if(!ent.done&&workers.length){for(const u of workers)setOrder(u,{t:'build',type:ent.type,tx:ent.tx,ty:ent.ty,paid:false,st:'go',bld:ent,after:null},shift);ping(ent.x,ent.y,'#7cc4ff');sfx('ack');return;}
-    if(ent.done&&ent.hp<ent.maxhp&&workers.length){for(const u of workers)setOrder(u,{t:'repair',target:ent},shift);ping(ent.x,ent.y,'#7cc4ff');sfx('ack');return;}
+    if(!ent.done&&workers.length){for(const u of workers)setOrder(u,{t:'build',type:ent.type,tx:ent.tx,ty:ent.ty,paid:false,st:'go',bld:ent,after:null},shift);ping(ent.x,ent.y,'#7cc4ff');sfx('ack',undefined,undefined,workers[0]);return;}
+    if(ent.done&&ent.hp<ent.maxhp&&workers.length){for(const u of workers)setOrder(u,{t:'repair',target:ent},shift);ping(ent.x,ent.y,'#7cc4ff');sfx('ack',undefined,undefined,workers[0]);return;}
     if(ent.done&&ent.def.dropoff&&workers.some(u=>u.carry>0)){for(const u of workers.filter(w=>w.carry>0))setOrder(u,{t:'gather',res:null,st:'ret',hx:u.x,hy:u.y},shift);}
   }
   if(ent&&ent.kind==='unit'&&ent.team===0&&ent.hp<ent.maxhp&&ent.def.tags.mech&&!ent.def.worker&&workers.length&&!workers.includes(ent)){
-    for(const u of workers)setOrder(u,{t:'repair',target:ent},shift);ping(ent.x,ent.y,'#7cc4ff');sfx('ack');return;}
+    for(const u of workers)setOrder(u,{t:'repair',target:ent},shift);ping(ent.x,ent.y,'#7cc4ff');sfx('ack',undefined,undefined,workers[0]);return;}
   issueGroup(units,wx,wy,'move',shift);
 }
 function beginTarget(kind){ui.target={kind};ui.place=null;}
@@ -182,7 +184,7 @@ function tryPlace(shift){
 }
 function cancelConstruction(b){
   if(b.done||b.dead||b.team!==0)return;const c=bCost(0,b.type);refund(0,{c:Math.floor(c.c*0.75),e:Math.floor(c.e*0.75)});
-  b.dead=true;G.needBlocked=true;if(b.res)b.res.siphon=null;explode(b.x,b.y,false);sfx('click');toast('Construction cancelled — 75% refunded','good');setSel(ui.sel.filter(e=>e!==b));
+  b.dead=true;G.needBlocked=true;if(b.res)b.res.siphon=null;explode(b.x,b.y,false);sfx('cancel');toast('Construction cancelled — 75% refunded','good');setSel(ui.sel.filter(e=>e!==b));
 }
 function cmdStop(){for(const u of ownUnits()){setOrder(u,{t:'idle'});goIdle(u);}sfx('click');}
 function cmdHold(){for(const u of ownUnits()){if(u.def.worker||u.def.noWeapon){setOrder(u,{t:'idle'});goIdle(u);}else setOrder(u,{t:'hold'});}sfx('click');}
@@ -232,17 +234,17 @@ function buildCommands(){
     if(units.some(u=>!u.def.noWeapon&&!u.def.worker))mk(4,{icon:'g:attack',name:'Attack-Move',tip:'Advance and engage everything on the way.',ok:true,run:()=>beginTarget('attack')});
     if(hasWorker){
       mk(3,{icon:'g:repair',name:'Repair',tip:'Repair a damaged structure or mechanical unit. Costs '+(T.faction==='meridian'?'half of ':'')+'a share of its price. Right-click a damaged ally also repairs.',ok:true,run:()=>beginTarget('repair')});
-      mk(8,{icon:'g:build',name:'Build Structure',tip:'Basic structures: Hub, Generator, Siphon, Depot, Garrison, Armory, Habitat, Turret.',ok:true,run:()=>{ui.menu='build';ui.cmdDirty=true;}});
-      mk(9,{icon:'g:build2',name:'Advanced Structures',tip:'Era II structures: Forum, Exchange, Foundry, Airfield.',ok:T.era>=2||true,run:()=>{ui.menu='build2';ui.cmdDirty=true;}});
+      mk(8,{icon:'g:build',name:'Build Structure',tip:'Basic structures: Hub, Generator, Siphon, Depot, Garrison, Armory, Habitat, Turret.',ok:true,run:()=>{ui.menu='build';ui.cmdDirty=true;sfx('tab');}});
+      mk(9,{icon:'g:build2',name:'Advanced Structures',tip:'Era II structures: Forum, Exchange, Foundry, Airfield.',ok:T.era>=2||true,run:()=>{ui.menu='build2';ui.cmdDirty=true;sfx('tab');}});
       const hub=G.buildings.find(b=>b.team===0&&b.type==='hub'&&b.done&&!b.dead);
       if(hub)mk(10,{icon:'g:call',name:hub.garr.length?'Release Haulers':'Call to Arms',tip:'Up to 15 Haulers shelter inside the Hub and add +3 damage each to its cannon. Press again to release them.',ok:true,run:()=>callToArms(0,hub)});
     }
-    if(act.def.stim)mk(3,{icon:'g:stim',name:'Overdrive',tip:'Stim: +50% speed and fire rate for 8s at 12 HP. Requires Combat Stims.',ok:T.stims>0,why:'Research Combat Stims at the Armory',run:()=>{for(const u of units)if(u.def.stim)useStim(u);sfx('click');}});
+    if(act.def.stim)mk(3,{icon:'g:stim',name:'Overdrive',tip:'Stim: +50% speed and fire rate for 8s at 12 HP. Requires Combat Stims.',ok:T.stims>0,why:'Research Combat Stims at the Armory',run:()=>{for(const u of units)if(u.def.stim)useStim(u);sfx('stim');}});
     if(act.def.siege)mk(5,{icon:'g:siege',name:units.some(u=>u.sieged)?'Unsiege':'Siege Mode',tip:'Siege Mode (S): range 350, splash and heavy structure damage, but immobile. Ground targets only.',ok:true,run:()=>{const on=units.some(u=>u.sieged);for(const u of units)if(u.def.siege)toggleSiege(u,on?true:false);}});
     if(act.def.trade)mk(3,{icon:'g:trade',name:'Trade Route',tip:'Pick a Trading Post. The Freighter shuttles between it and your Exchange. Profit grows with distance and with the post\'s demand.',ok:hasDone(0,'exchange'),why:'Requires an Exchange',run:()=>beginTarget('trade')});
     if(d.hero){
       const H=T.hero,sp=skillPoints(0);
-      mk(3,{icon:'g:learn',name:'Learn Skills',tip:'Spend skill points. The hero gains one point per level.',ok:sp>0,why:'No skill points',badge:sp>0?sp:'',run:()=>{ui.menu='learn';ui.cmdDirty=true;}});
+      mk(3,{icon:'g:learn',name:'Learn Skills',tip:'Spend skill points. The hero gains one point per level.',ok:sp>0,why:'No skill points',badge:sp>0?sp:'',run:()=>{ui.menu='learn';ui.cmdDirty=true;sfx('tab');}});
       for(let i=0;i<3;i++){const s=SKILLS[act.type][i],lv=H.sk[i];
         mk(5+i,{icon:'g:'+s.id,name:s.name+(s.passive?' (aura)':''),tip:s.desc(Math.max(1,lv)),ok:s.passive?false:canCast(act,i),why:s.passive?'Passive aura':lv<=0?'Not learned (Z)':act.cds[i]>0?'Recharging':'Not enough mana',
           cost:s.mana?{c:0,e:0,mana:s.mana}:null,badge:lv>0?'★'.repeat(lv):'',cd:()=>s.cd?clamp(act.cds[i]/s.cd,0,1):0,run:()=>castHero(i)});}
@@ -284,6 +286,6 @@ function buildCommands(){
 }
 function runCmd(i){
   const c=ui.cmds[i];if(!c)return;
-  if(!c.ok){if(c.why){toast(c.why,'bad');sfx('err');}return;}
+  if(!c.ok){if(c.why){toast(c.why,'bad');sfx(/Generators|Supply/.test(c.why)?'supply':'err');}return;}
   c.run();ui.cmdDirty=true;
 }

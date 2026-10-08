@@ -108,7 +108,7 @@ function tpLongTap(sx,sy){                         // hold, then release without
   if(!ent||ent.team!==0||(ent.kind!=='unit'&&ent.kind!=='building'))return;
   const cur=ui.sel.filter(e=>e.team===0&&e.kind===ent.kind),i=cur.indexOf(ent);
   if(i>=0)cur.splice(i,1);else cur.push(ent);
-  setSel(cur.slice(0,80));buzz(10);
+  setSel(cur.slice(0,80));selSfx();buzz(10);
 }
 
 /* ------------------------------- minimap (touch) ------------------------------- */
