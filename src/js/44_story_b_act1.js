@@ -54,8 +54,8 @@ Object.assign(STORY.cine,{
         bg:{k:"battlefield",biome:"ash",time:"dusk",intensity:0.25,sides:["meridian","obsidian"]},
         cam:{from:{x:0.7,y:0.44,z:1,r:0},to:{x:0.74,y:0.41,z:1.22,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.22,0.66],h:0.9,face:"r",expr:"determined",mode:"bust",t0:0,t1:10.6},
-          {id:"marr",char:"marr",at:[0.42,0.72],h:0.72,face:"r",expr:"neutral",mode:"bust",t0:0,t1:10.6}
+          {id:"idris",char:"idris",at:[0.33,0.66],h:0.9,face:"r",expr:"determined",mode:"bust",t0:0,t1:10.6},
+          {id:"marr",char:"marr",at:[0.53,0.72],h:0.72,face:"r",expr:"neutral",mode:"bust",t0:0,t1:10.6}
         ],
         props:[
           {k:"banner",t0:0,t1:10.6,faction:"obsidian",at:[0.62,0.5],scale:1.5,z:-1},
@@ -120,7 +120,7 @@ Object.assign(STORY.cine,{
     scenes:[
       {id:"dawn",dur:8.5,
         bg:{k:"base",faction:"meridian",time:"dawn",state:"calm"},
-        cam:{from:{x:0.56,y:0.5,z:1,r:0},to:{x:0.34,y:0.58,z:1.3,r:0},ease:"inout"},
+        cam:{from:{x:0.56,y:0.5,z:1,r:0},to:{x:0.4,y:0.58,z:1.3,r:0},ease:"inout"},
         actors:[
           {id:"idris",char:"idris",at:[0.28,0.64],h:0.92,face:"r",expr:"weary",mode:"bust",t0:0.8,t1:8.5},
           {id:"marr",char:"marr",at:[0.72,0.68],h:0.78,face:"l",expr:"neutral",mode:"bust",t0:0.8,t1:8.5}
@@ -212,7 +212,7 @@ Object.assign(STORY.cine,{
         ],
         lines:[
           {who:"kaz",text:"Thank you for the light, Marshal. The Reckoner wished to see it answer.",t:0.3,dur:4.1,style:"radio",expr:"cold"},
-          {who:"idris",text:"See it?",t:4.8,dur:1.2,style:"normal",expr:"shock"}
+          {who:"idris",text:"See it?",t:4.8,dur:1.2,style:"normal",expr:"determined"}
         ],
         sfx:[
           {t:0.2,name:"comms"},
@@ -348,10 +348,10 @@ Object.assign(STORY.cine,{
       },
       {id:"lamp",dur:8.9,
         bg:{k:"base",faction:"aurora",time:"dusk",state:"calm"},
-        cam:{from:{x:0.5,y:0.64,z:1.1,r:0},to:{x:0.5,y:0.36,z:1.45,r:0},ease:"inout"},
+        cam:{from:{x:0.5,y:0.66,z:1.05,r:0},to:{x:0.5,y:0.4,z:1.35,r:0},ease:"inout"},
         actors:[],
         props:[
-          {k:"beacon",t0:0,t1:8.9,at:[0.5,0.2],scale:0.85,col:"#33524e",a:0.95}
+          {k:"beacon",t0:0,t1:8.9,at:[0.5,0.3],scale:1,col:"#33524e",a:0.95}
         ],
         fx:[
           {k:"dust",t0:0,t1:8.9,col:"#9ff3df",a:0.35,n:0.5},
@@ -538,7 +538,7 @@ Object.assign(STORY.cine,{
         ],
         lines:[
           {who:"idris",text:"Reserve Draw. Signed Y. Ostrander. Sealed A. Thane. Two thousand seven hundred and fourteen.",t:0.9,dur:5.2,style:"whisper",expr:"weary"},
-          {who:"idris",text:"Thirty shots.",t:7.2,dur:1.2,style:"normal",expr:"shock"}
+          {who:"idris",text:"Thirty shots.",t:7.2,dur:1.2,style:"normal",expr:"sad"}
         ],
         sfx:[
           {t:0.3,name:"comms"},
@@ -571,8 +571,8 @@ Object.assign(STORY.cine,{
         bg:{k:"hall",style:"meridian",light:"cold"},
         cam:{from:{x:0.6,y:0.52,z:1.2,r:0},to:{x:0.62,y:0.52,z:1.34,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.2,0.68],h:0.8,face:"r",expr:"weary",mode:"bust",t0:0,t1:11.1},
-          {id:"marr",char:"marr",at:[0.66,0.64],h:1,face:"l",expr:"cold",mode:"bust",t0:0,t1:11.1}
+          {id:"idris",char:"idris",at:[0.25,0.68],h:0.8,face:"r",expr:"weary",mode:"bust",t0:0,t1:11.1},
+          {id:"marr",char:"marr",at:[0.68,0.64],h:1,face:"l",expr:"cold",mode:"bust",t0:0,t1:11.1}
         ],
         props:[
           {k:"holo",t0:0,t1:11.1,shape:"map",at:[0.46,0.38],scale:0.9,col:"#d9b45a",a:0.5,z:-1}
@@ -596,7 +596,7 @@ Object.assign(STORY.cine,{
         bg:{k:"hall",style:"meridian",light:"cold"},
         cam:{from:{x:0.5,y:0.52,z:1.08,r:0},to:{x:0.5,y:0.52,z:1.18,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.26,0.64],h:0.9,face:"r",expr:"shock",mode:"bust",t0:0,t1:7.5},
+          {id:"idris",char:"idris",at:[0.26,0.64],h:0.9,face:"r",expr:"sad",mode:"bust",t0:0,t1:7.5},
           {id:"marr",char:"marr",at:[0.74,0.64],h:0.86,face:"l",expr:"cold",mode:"bust",t0:0,t1:7.5}
         ],
         props:[],
@@ -641,7 +641,7 @@ Object.assign(STORY.cine,{
     id:"m03_brief",kind:"briefing",title:"The Axis",music:"mystery",letterbox:true,seed:107,
     scenes:[
       {id:"survey",dur:7,
-        bg:{k:"map",focus:[0.5,0.5],faction:"neutral",marks:[{x:0.5,y:0.5,k:"objective"},{x:0.41,y:0.49,k:"friendly"},{x:0.443,y:0.29,k:"friendly"},{x:0.488,y:0.366,k:"friendly"},{x:0.512,y:0.634,k:"friendly"},{x:0.373,y:0.786,k:"friendly"}]},
+        bg:{k:"map",focus:[0.5,0.5],faction:"neutral",marks:[{x:0.5,y:0.5,k:"objective"},{x:0.37,y:0.6,k:"friendly"},{x:0.443,y:0.29,k:"friendly"},{x:0.488,y:0.33,k:"friendly"},{x:0.585,y:0.71,k:"friendly"},{x:0.373,y:0.786,k:"friendly"}]},
         cam:{from:{x:0.5,y:0.52,z:1,r:0},to:{x:0.5,y:0.5,z:1.5,r:0},ease:"inout"},
         actors:[],
         props:[],
@@ -870,6 +870,7 @@ Object.assign(STORY.cine,{
         ],
         fx:[
           {k:"scan",t0:0,t1:7.7,a:0.2},
+          {k:"pulse",t0:0,t1:7.7,col:"#ffd070",a:0.22,x:0.72,y:0.3},
           {k:"dust",t0:0,t1:7.7,col:"#ff6a5a",a:0.3,n:0.5},
           {k:"vignette",t0:0,t1:7.7,a:0.7}
         ],
@@ -895,6 +896,7 @@ Object.assign(STORY.cine,{
         ],
         fx:[
           {k:"scan",t0:0,t1:6.3,a:0.2},
+          {k:"pulse",t0:0,t1:6.3,col:"#ffd070",a:0.22,x:0.72,y:0.27},
           {k:"dust",t0:0,t1:6.3,col:"#ff6a5a",a:0.3,n:0.5},
           {k:"vignette",t0:0,t1:6.3,a:0.75}
         ],
@@ -952,7 +954,7 @@ Object.assign(STORY.cine,{
         bg:{k:"hall",style:"meridian",light:"cold"},
         cam:{from:{x:0.5,y:0.54,z:1.05,r:0},to:{x:0.46,y:0.56,z:1.2,r:0},ease:"inout"},
         actors:[
-          {id:"idris",char:"idris",at:[0.28,0.66],h:0.9,face:"r",expr:"neutral",mode:"bust",t0:0,t1:9.5},
+          {id:"idris",char:"idris",at:[0.28,0.66],h:0.9,face:"r",expr:"weary",mode:"bust",t0:0,t1:9.5},
           {id:"thane",char:"thane",at:[0.72,0.64],h:0.88,face:"l",expr:"weary",mode:"bust",t0:0,t1:9.5}
         ],
         props:[
@@ -966,7 +968,7 @@ Object.assign(STORY.cine,{
         lines:[
           {who:"thane",text:"Marshal... the Council, regrettably, in the circumstances, is minded to...",t:0.5,dur:4.2,style:"normal",expr:"weary"},
           {who:"thane",text:"Prudent.",t:5.4,dur:1.2,style:"normal",expr:"cold"},
-          {who:"idris",text:"Noted, Speaker.",t:7.2,dur:1.2,style:"normal",expr:"neutral"}
+          {who:"idris",text:"Noted, Speaker.",t:7.2,dur:1.2,style:"normal",expr:"determined"}
         ],
         sfx:[
           {t:5.4,name:"click"}

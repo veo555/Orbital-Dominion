@@ -18,7 +18,7 @@
        collisions avoided so different characters get different voices where the device has several), ttsPitch/ttsRate applied, async 'voiceschanged' handled,
        cancel/queue handled. When TTS is going to speak, the blip stream is mixed down (VOX_TTSMIX) so it is a murmur under the voice, not a second talker.
    Characters come from STORY.characters[id].voice {pitch,rate,timbre,formant,ttsPitch,ttsRate}; a hash of the id adds small offsets (+-1.4 st, tract +-4.5 %, tempo +-5 %,
-   vibrato, intonation habit) so two characters with identical voice data still differ. Unknown ids get a default voice derived from the hash.
+   vibrato, intonation habit, tilt +-2.5 dB, cutoff -10/+14 %, breathiness x0.7..1.4) so two characters with identical voice data still differ. Unknown ids get a default voice derived from the hash.
    Honest limits: nobody has listened to it. Quality is claimed only through tests/audio/voice_gate.py (level, pitch, formants, rate, determinism, prosody direction).
    ========================================================================= */
 const VOX_F0=135,VOX_TEMPO=1.0,VOX_REL=0.14,VOX_TTSMIX=0.35,VOX_ASP=9,VOX_FK=1.0,VOX_BK=1.0,VOX_PRE=2.0,VOX_GAP=0.03,VOX_LEAD=0.03;
@@ -243,7 +243,7 @@ function voiceProfile(charId){
   const pitch=num('pitch',1),rate=num('rate',1),formant=num('formant',.5),stDelta=(voxU(h,1)*2-1)*1.4;
   const P={id,found:!!R.ch,name:R.ch?(R.ch.name||id):id,timbre:tim,pitch,formant,rate:rate*(1+(voxU(h,3)*2-1)*.05),ttsPitch:num('ttsPitch',1),ttsRate:num('ttsRate',1),
     f0:VOX_F0*pitch*Math.pow(2,stDelta/12),tract:(0.82+0.4*formant)*(1+(voxU(h,2)*2-1)*.045),habit:0.85+0.3*voxU(h,4),range:TM.rng,
-    vibHz:4.8+1.2*voxU(h,5),vibCents:(10+14*voxU(h,6))*TM.vib,jit:TM.jit,Q:TM.Q,G:TM.G,lp:TM.lp,breath:TM.breath,att:TM.att,sub:TM.sub,drv:TM.drv,rm:TM.rm,harm:TM.harm,seed:h};
+    vibHz:4.8+1.2*voxU(h,5),vibCents:(10+14*voxU(h,6))*TM.vib,jit:TM.jit,Q:TM.Q,G:TM.G,lp:TM.lp*(0.9+0.24*voxU(h,7)),breath:TM.breath*(0.7+0.7*voxU(h,8)),tilt:(voxU(h,9)*2-1)*2.5,att:TM.att,sub:TM.sub,drv:TM.drv,rm:TM.rm,harm:TM.harm,seed:h};
   P.rmF=P.f0*0.62;
   return P;
 }
@@ -394,6 +394,7 @@ function voxBuild(A,T0,plan,P,style,vol){
   flt('lowpass',Math.min(P.lp*SY.lp,x.sampleRate*.45),.707);
   if(TM.pk)flt('peaking',TM.pk[0],TM.pk[1],TM.pk[2]);
   if(TM.hs||SY.hs)flt('highshelf',3000,.707,(TM.hs||0)+(SY.hs||0));
+  if(P.tilt)flt('highshelf',1800,.707,P.tilt);   // per-character spectral tilt (+-2.5 dB from the id hash): two characters with the same voice data still differ in brightness
   if(SY.warm)flt('lowshelf',240,.707,4);
   if(P.rm>0){n=KIT.ring(A,T0,{f:P.rmF,depth:.9*P.rm,type:'sine'},T1,n);}
   const drv=Math.max(P.drv,SY.drive||0);if(drv>0){const w=x.createWaveShaper();w.curve=voxDriveCurve(drv);w.oversample='2x';lnk(w);}

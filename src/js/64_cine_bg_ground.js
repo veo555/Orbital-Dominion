@@ -31,6 +31,7 @@ const CBG_SKY={     // [zenith, mid, horizon]
   green  :{day:['#3d80d4','#92c8f2','#e2f6ea'],dusk:['#2b2a66','#d4647c','#ffb870'],night:['#030818','#0c1c42','#1e3c54'],dawn:['#3c5e9e','#eaaaac','#ffe4b4']},
   ice    :{day:['#4d8ad4','#acd4f4','#f2fbff'],dusk:['#2c3c7e','#ac9acc','#ffcaa8'],night:['#040a26','#0e2c5e','#3c6c9e'],dawn:['#3c5ea2','#c4b4dc','#ffeed6']}
 };
+const CBG_FAR={dust:'#94705a',crystal:'#52408f',ash:'#52403f',green:'#4d7a78',ice:'#5a7ea6'};
 const CBG_MAT={     // ground far/near, rock, rock2 (lighter strata), accent
   dust   :{ground:['#a8835c','#5e4429'],rock:'#7e5e41',rock2:'#a07a52',accent:'#e0b070'},
   crystal:{ground:['#5a4a90','#221a46'],rock:'#4a3b80',rock2:'#6e5aae',accent:'#9ae8ff'},
@@ -237,14 +238,14 @@ const cbgHAt=(prof,x,H,amp)=>prof(x/H)*amp;
 function cbgFarLand(g,C,opt){
   opt=opt||{};const{E,H,hzY,u}=C,M=E.mat,bio=E.bio,amp0=opt.amp||1,gt=E.fog(E.sh(M.ground[0],.7),.45);
   const layers=[
-    {L:0,amp:H*.30*amp0,fog:.6,off:0},{L:1,amp:H*.23*amp0,fog:.42,off:H*.004},{L:2,amp:H*.16*amp0,fog:.24,off:H*.012}
+    {L:0,amp:H*.30*amp0,fog:.5,off:0},{L:1,amp:H*.23*amp0,fog:.36,off:H*.004},{L:2,amp:H*.16*amp0,fog:.2,off:H*.012}
   ];
   if(opt.near)layers.push({L:3,amp:H*.09*amp0,fog:.1,off:H*.026});
   const out=[],snowy=bio==='ice'||(bio==='green'&&opt.alps!==false);
   for(const l of layers){
     const prof=cbgProfile(bio,l.L,C.seed+(opt.seedOff||0)),k=l.fog;
-    const rockC=bio==='ice'?'#5a7ea6':M.rock;
-    const topC=E.fog(E.sh(cnMix(M.rock2,rockC,.4+l.L/6),.8),k),mid=E.fog(E.sh(rockC,.42),k+.06);
+    const rockC=cnMix(CBG_FAR[bio],M.rock,.2+l.L*.2);
+    const topC=E.fog(E.sh(cnMix(M.rock2,rockC,.45+l.L*.1),.85),k),mid=E.fog(E.sh(rockC,.45),k+.06);
     const r=cbgRidge(g,C,{prof,base:hzY+l.off,amp:l.amp,bottom:hzY+H*.06,top:topC,mid,bot:E.fog(gt,Math.max(0,.35-k*.3)),
       lit:E.fog(E.sh(bio==='ice'?'#ffffff':M.rock2,1.35),k*.7),shade:E.fog(E.sh(rockC,-.05),k*.5),litA:.72*(1-k*.4),shA:.66*(1-k*.3),
       strip:l.amp*.75,rim:cnA(E.litCol,.55*(1-k)),
@@ -670,7 +671,7 @@ function cbgSurfLayout(p,W,H,seed,fac,hz,bio){
   let k=0;
   for(const o of order){
     const sl=slots[k++%slots.length],d=sl[1],dj=(cnR(seed,o.i,91)-.5)*.04;
-    items.push({f:o.f,x:W*(sl[0]+dj),y:H*(hz+.052+.1*d),s:H*(.15+.13*d)*(o.f==='tents'?.82:o.f==='wreck'?.9:1),d,i:o.i,seed:cnH32(seed,o.i,7,7),fac});
+    items.push({f:o.f,x:W*(sl[0]+dj),y:H*(hz+.052+.1*d),s:H*(.15+.13*d)*(o.f==='tents'?.82:o.f==='wreck'?.9:o.f==='hub'?1.3:1),d,i:o.i,seed:cnH32(seed,o.i,7,7),fac});
   }
   feats.forEach((f,fi)=>{
     if(f==='banners')[[.1,.1],[.5,.5],[.9,.28]].forEach((q,j)=>{const d=q[1];items.push({f:'banner',x:W*(q[0]+(cnR(seed,j,92)-.5)*.04),y:H*(hz+.055+.1*d),s:H*(.115+.07*d),d,i:j+40,seed:cnH32(seed,j,8,8),fac});});
@@ -682,36 +683,37 @@ function cbgDrawItems(g,C,items,mode,t){for(const it of items){const f=CBG_FEAT[
 
 /* ------------------------------------------------ 8. terrain features that are not objects: cliffs, dunes ------------------------------------------------ */
 function cbgCliffs(g,C){
-  const{F,E,H,W,u,hzY,seed,ld}=C,M=E.mat,right=ld>0,dir=right?1:-1,xe=right?W*.7:W*.3,base=hzY+H*.24,top=H*.1,N=6,far=right?F.x+F.w:F.x;
-  const rockC=E.bio==='ice'?'#4f7298':M.rock,rock2=E.bio==='ice'?'#8fb4d8':M.rock2;
-  const ex=[],ty=[];
-  for(let i=0;i<N;i++){ex.push(xe+dir*(i*W*.045+(cnR(seed,i,1)-.3)*W*.025));ty.push(base-(i+1)/N*(base-top)*(.9+.2*cnR(seed,i,2)));}
-  /* far ledges first (they sit behind), nearest slab last */
-  for(let i=N-1;i>=0;i--){
-    const x0=ex[i],y0=ty[i],wv=[];
-    const hgt=base-y0;
-    /* wall silhouette with ragged edge */
-    g.save();g.beginPath();g.moveTo(far,base+H*.05);g.lineTo(x0,base+H*.05);
-    const segs=Math.max(6,Math.round(hgt/(H*.03)));
-    for(let j=0;j<=segs;j++){const k=j/segs,yy=base-hgt*k,jx=(cnFbm(k*5+i*3,i,seed+3,3)-.5)*W*.018+(k>.96?dir*(-W*.012):0);g.lineTo(x0+jx,yy);wv.push([x0+jx,yy]);}
-    g.lineTo(far,y0-H*.012);g.closePath();
-    const lit=right?[[0,E.sh(rock2,1.15)],[.35,E.sh(rockC,.6)],[1,E.sh(rockC,.1)]]:[[0,E.sh(rockC,.1)],[.65,E.sh(rockC,.6)],[1,E.sh(rock2,1.15)]];
-    g.fillStyle=cnLG(g,x0,0,x0+dir*W*.22,0,right?lit:lit.slice().reverse().map((q,idx)=>[1-q[0],q[1]]).reverse());g.fill();g.clip();
-    /* strata + vertical fractures */
-    for(let b2=0;b2<14;b2++){const yy=y0+(base-y0)*(b2/14)+(cnR(seed+i,b2,5)-.5)*H*.012,hh=H*(.006+.02*cnR(seed+i,b2,6));
-      g.fillStyle=cnA(b2%2?E.sh(rock2,.5):E.sh(rockC,-.1),.14+.14*cnR(seed+i,b2,7));g.fillRect(Math.min(x0,far)-W,yy,W*3,hh);}
-    for(let q=0;q<26;q++){const xx=x0+dir*W*.22*cnR(seed+i,q,8)*cnR(seed+i,q,8),yy=y0+(base-y0)*cnR(seed+i,q,9),hh=H*(.06+.2*cnR(seed+i,q,10)),ww=W*(.002+.008*cnR(seed+i,q,11));
-      g.fillStyle=cnLG(g,0,yy,0,yy+hh,[[0,cnA(E.sh(rockC,-.1),.5)],[1,'rgba(0,0,0,0)']]);g.fillRect(xx,yy,ww,hh);
-      g.fillStyle=cnLG(g,0,yy,0,yy+hh,[[0,cnA(E.sh(rock2,1.3),.25)],[1,'rgba(0,0,0,0)']]);g.fillRect(xx+ww*dir,yy,ww*.6,hh*.8);}
-    g.restore();
-    /* ledge top face + rim light */
-    g.fillStyle=E.bio==='ice'?E.sh('#ffffff',1.1):E.sh(cnMix(rock2,'#fff',.2),1.15);cbgPoly(g,[x0,y0,x0+dir*W*.3,y0,x0+dir*W*.3,y0-H*.012,x0+dir*W*.004,y0-H*.012]);g.fill();
-    g.strokeStyle=cnA(E.litCol,.55);g.lineWidth=Math.max(1.2,1.4*u);g.lineJoin='round';g.beginPath();wv.forEach((q,j)=>j?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.stroke();
-    /* shadow cast by this slab onto the ground at its foot */
+  const{F,E,H,W,u,hzY,seed,ld}=C,M=E.mat,right=ld>0,dir=right?1:-1,xe=right?W*.7:W*.3,base=hzY+H*.24,top=H*.03,far=right?F.x+F.w:F.x,ice=E.bio==='ice';
+  const rockC=ice?'#4a6e98':M.rock,rock2=ice?'#9bbde0':M.rock2,M1=40,edge=[];
+  for(let j=0;j<=M1;j++){const k=j/M1,off=k*W*.1+(cnFbm(k*5+1.3,.4,seed+5,4)-.5)*W*.1+Math.sin(k*13+seed)*W*.006+(cnR(seed,j,3)<.18?W*.012:0);edge.push([xe+dir*off,base-(base-top)*k]);}
+  const tp=[];for(let j=1;j<=14;j++){const k=j/14,xx=edge[M1][0]+(far-edge[M1][0])*k;tp.push([xx,top+(cnFbm(k*4+seed*.01,.8,seed+9,4)-.35)*H*.16*(1-k*.5)]);}
+  const outline=edge.concat(tp);
+  g.save();g.beginPath();g.moveTo(far,base+H*.06);g.lineTo(edge[0][0],base+H*.06);outline.forEach(q=>g.lineTo(q[0],q[1]));g.lineTo(far,top-H*.2);g.closePath();
+  const lit=[[0,E.sh(rock2,1.2)],[.4,E.sh(rockC,.55)],[1,E.sh(rockC,.06)]];
+  g.fillStyle=cnLG(g,xe,0,xe+dir*W*.3,0,lit);g.fill();g.clip();
+  /* low-poly rock plates: lit near the inner edge, dark deeper in */
+  for(let q=0;q<90;q++){
+    const dd=Math.pow(cnR(seed,q,1),1.5),cx=xe+dir*(dd*W*.32)+dir*W*.03,cy=top+(base-top)*cnR(seed,q,2),sz=H*(.04+.14*cnR(seed,q,3)),a0=cnR(seed,q,4)*TAU;
+    const litP=cnR(seed,q,5)<.62-dd*.45,al=.12+.22*cnR(seed,q,6);
+    g.fillStyle=cnA(litP?E.sh(rock2,1.3):E.sh(rockC,-.05),al);
+    g.beginPath();for(let v=0;v<3;v++){const aa=a0+v*TAU/3+(cnR(seed,q*3+v,7)-.5)*.8,rr2=sz*(.6+.6*cnR(seed,q*3+v,8));g.lineTo(cx+Math.cos(aa)*rr2*.8,cy+Math.sin(aa)*rr2*1.3);}g.closePath();g.fill();
   }
-  /* haze at the foot, talus and boulders */
-  g.fillStyle=cnLG(g,0,base-H*.34,0,base+H*.05,[[0,cnA(E.haze,0)],[1,cnA(E.haze,.4)]]);g.fillRect(Math.min(xe,far)-W,base-H*.34,W*3,H*.4);
-  for(let i=0;i<16;i++){const bx=xe+dir*(-W*.05+cnR(seed,i,15)*W*.3),by=base+H*(.0+.05*cnR(seed,i,16));cbgRock(g,C,bx,by,H*(.02+.045*cnR(seed,i,17)),seed+i,null);}
+  /* strata and cracks */
+  g.lineCap='round';
+  for(let b2=0;b2<16;b2++){const yy=top+(base-top)*(b2/16)+(cnR(seed,b2,11)-.5)*H*.02;g.strokeStyle=cnA(b2%2?E.sh(rockC,-.1):E.sh(rock2,.9),.16);g.lineWidth=Math.max(1,u*(1+2*cnR(seed,b2,12)));g.beginPath();g.moveTo(Math.min(xe,far)-W,yy+H*.02);g.lineTo(Math.max(xe,far)+W,yy-H*.01);g.stroke();}
+  for(let q=0;q<22;q++){const xx=xe+dir*W*.26*Math.pow(cnR(seed,q,13),1.4),yy=top+(base-top)*cnR(seed,q,14);g.strokeStyle=cnA(E.sh('#0a0c14',.2),.35);g.lineWidth=Math.max(1,u);g.beginPath();g.moveTo(xx,yy);g.lineTo(xx+(cnR(seed,q,15)-.5)*W*.02,yy+H*(.05+.12*cnR(seed,q,16)));g.stroke();}
+  /* snow / dust on the upper faces */
+  const sn=ice?'#ffffff':E.sh(cnMix(M.ground[0],'#fff',.2),1.1);
+  g.beginPath();g.moveTo(edge[M1][0]+dir*W*.002,edge[M1][1]);for(const q of tp)g.lineTo(q[0],q[1]);g.lineTo(far,top-H*.1);g.lineTo(edge[M1][0],top-H*.1);g.closePath();g.fillStyle=cnA(sn,.0);
+  for(let j=22;j<=M1;j++){const k=j/M1,q0=edge[j-1],q1=edge[j],dpt=H*(.02+.05*cnFbm(k*9,.2,seed+4,2))*cnSS(.5,.8,k)*(ice?1.6:.7);if(dpt<2)continue;g.fillStyle=cnA(sn,ice?.95:.5);cbgPoly(g,[q0[0],q0[1],q1[0],q1[1],q1[0]+dir*W*.05,q1[1]+dpt,q0[0]+dir*W*.05,q0[1]+dpt]);g.fill();}
+  g.fillStyle=cnA(sn,ice?.95:.45);g.beginPath();g.moveTo(far,top+H*.3);tp.slice().reverse().forEach(q=>g.lineTo(q[0],q[1]));g.lineTo(edge[M1][0],edge[M1][1]);g.lineTo(edge[M1][0]+dir*W*.1,edge[M1][1]+H*.12);g.lineTo(far,top+H*.25);g.closePath();g.fill();
+  /* haze at the foot */
+  g.fillStyle=cnLG(g,0,base-H*.4,0,base+H*.05,[[0,cnA(E.haze,0)],[1,cnA(E.haze,.5)]]);g.fillRect(Math.min(xe,far)-W,base-H*.4,W*3,H*.46);
+  g.restore();
+  g.save();g.strokeStyle=cnA(E.litCol,.6);g.lineWidth=Math.max(1.2,1.5*u);g.lineJoin='round';g.beginPath();outline.forEach((q,j)=>j?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.stroke();g.restore();
+  /* cast shadow of the massif and talus boulders at its foot */
+  cbgCast(g,C,edge[0][0]+dir*W*.1,base,W*.3,H*.5,.55);
+  for(let i=0;i<18;i++){const bx=xe+dir*(-W*.06+cnR(seed,i,21)*W*.3),by=base+H*(.0+.05*cnR(seed,i,22));cbgRock(g,C,bx,by,H*(.02+.045*cnR(seed,i,23)),seed+i,ice?'#5a7eaa':null);}
 }
 /* ------------------------------------------------ 9. surface painter ------------------------------------------------ */
 const SURFACE=(g,W,H,p,t,seed,S)=>{
