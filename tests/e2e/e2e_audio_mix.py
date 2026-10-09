@@ -98,6 +98,25 @@ with sync_playwright() as p:
         if 'v3' in SC:
             ok(SC['v3']['burst500']['tpDb'] > -1.0 or SC['v3']['burst500']['clipped'] > 0, 'MUTATION: the v3 chain (no limiter, 0.97 ceiling) FAILS the v4 true-peak/clipping gate on burst500 (TP %s dBTP, %d clipped)' % (f(SC['v3']['burst500']['tpDb'], 2), SC['v3']['burst500']['clipped']))
 
+    rm = pg.evaluate("()=>ODM.rooms(['plate','hall','air','open','canyon','cave'])")
+    REPORT['rooms'] = rm
+    print('note  rooms (send 1.0: wet-dry dB, RT60 s): ' + '  '.join('%s %+.2f %.2fs' % (k, v['diffDb'], v['t60']) for k, v in rm.items()))
+    ok(all(abs(v['diffDb']) < 0.3 for v in rm.values()), 'every reverb room returns wet energy = dry energy at send 1.0 within 0.3 dB (calibration of the open/canyon/cave presets)')
+    ok(rm['open']['t60'] < rm['canyon']['t60'] < rm['cave']['t60'], 'room presets differ: open %.2fs < canyon %.2fs < cave %.2fs' % (rm['open']['t60'], rm['canyon']['t60'], rm['cave']['t60']))
+    REPORT['distance'] = {}
+    for vid in ('rifleman.fire.meridian', 'rifleman.fire.aurora', 'skiff.fire.aurora', 'hub.fire.obsidian', 'hero_lyra.fire.aurora'):
+        d = pg.evaluate("(v)=>ODM.distance(v)", vid)
+        REPORT['distance'][vid] = d
+        ok(d['far']['centroid'] < d['near']['centroid'] * 0.92 and d['far']['activeDb'] < d['near']['activeDb'] - 1.5 and d['far']['decay'] > d['near']['decay'] + 0.1,
+           '%s: far source is darker (centroid %d -> %d Hz), has a reverb tail (decay %.2f -> %.2f s)' % (vid, d['near']['centroid'], d['far']['centroid'], d['near']['decay'], d['far']['decay']))
+    for vid in ('rifleman.fire.meridian', 'hero_lyra.hit.aurora'):
+        cs = pg.evaluate("(v)=>ODM.variation(v)", vid)['centroids']
+        steps = [abs(cs[i + 1] - cs[i]) / max(cs[i], 1) for i in range(len(cs) - 1)]
+        near = sum(1 for x in steps if x < 0.004) / len(steps)
+        REPORT.setdefault('variation', {})[vid] = {'near_identical_fraction': near, 'spread': (max(cs) - min(cs)) / (sum(cs) / len(cs))}
+        ok(near < 0.1 and (max(cs) - min(cs)) / (sum(cs) / len(cs)) > 0.03, '%s: 30 consecutive instances: %.0f%% of neighbouring pairs are near-identical (< 0.4%% centroid step), spread %.1f%%' % (vid, near * 100, 100 * (max(cs) - min(cs)) / (sum(cs) / len(cs))))
+    ctrl = [1000.0] * 30
+    ok(sum(1 for i in range(29) if abs(ctrl[i + 1] - ctrl[i]) / ctrl[i] < 0.004) / 29 >= 0.1, 'CONTROL: a machine-gun (identical instances) is rejected by the variation criterion')
     if not ARGS.no_scen:
         for ch in sorted(set(chains + ['v4'])):
             tr = pg.evaluate("(c)=>ODM.transfer(c)", ch)

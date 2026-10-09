@@ -19,7 +19,7 @@ const BUSES=['sfx','ui','voice','amb','cine','music'],BIX={sfx:0,ui:1,voice:2,am
 /* plate/hall/air are the content rooms; open/canyon/cave are the ROOM PRESETS of the distance send (audioRoom(name)): open = a field (short, dark, 20 ms pre-delay), canyon = hard walls (long pre-delay slap), cave = long and dull.
    `ret` of the three newer rooms is the measured return that makes send 1.0 return wet energy = dry energy (tests/e2e/e2e_audio_mix.py, 'room calibration'). */
 const ROOMS={plate:0,hall:1,air:2,open:3,canyon:4,cave:5},NROOM=8,RROOM={plate:{len:0.9,rt:0.7,dm:2.6,pre:0.003,ret:5.37},hall:{len:2.0,rt:1.7,dm:1.6,pre:0.012,ret:2.88},air:{len:3.2,rt:2.9,dm:1.0,pre:0.02,ret:2.16},
-  open:{len:1.1,rt:0.8,dm:2.4,pre:0.02,ret:1},canyon:{len:2.4,rt:2.0,dm:1.4,pre:0.06,ret:1},cave:{len:3.6,rt:3.2,dm:0.8,pre:0.015,ret:1}};
+  open:{len:1.1,rt:0.8,dm:2.4,pre:0.02,ret:3.78},canyon:{len:2.4,rt:2.0,dm:1.4,pre:0.06,ret:2.47},cave:{len:3.6,rt:3.2,dm:0.8,pre:0.015,ret:2.03}};
 const DLYRET=1.57;   // delay send 1.0: echo train energy ~ -3 dB re dry
 /* loudness classes: target RMS dBFS (active window, unit gain), priority, bus, default cooldown (ms), polyphony per voice id */
 const CLS={
@@ -228,7 +228,7 @@ function chain(A,p,t0,L,len,s){
   const g=x.createGain();n.connect(g);envApply(g.gain,t0,peakOf(A,L),L.env,len);n=g;
   if(L.trem){const T=L.trem,tg=x.createGain(),lf=x.createOscillator(),lg=x.createGain(),dp=T.depth!==undefined?T.depth:0.5;
     tg.gain.value=1-dp/2;lf.frequency.value=T.f||6;lg.gain.value=dp/2;lf.connect(lg);lg.connect(tg.gain);go(A,lf,t0,end+0.02);n.connect(tg);n=tg;}
-  if(L.pan!==undefined&&x.createStereoPanner){const pn=x.createStereoPanner();pn.pan.value=cl(p.pan+L.pan,-1,1);n.connect(pn);pn.connect(A.dest);trk(A,pn);trk(A,n);}
+  if(L.pan!==undefined&&x.createStereoPanner){const pn=x.createStereoPanner();pn.pan.value=cl(p.pan+L.pan,-1,1);n.connect(pn);pn.connect(A.sp||A.dest);trk(A,pn);trk(A,n);}
   else{n.connect(A.out);trk(A,n);}
   if(L.send)sendOut(A,n,L.send);
   return end;
@@ -544,11 +544,13 @@ const POS={pan:0,vol:1,far:0};
    send (-26 dB -> -9 dB re dry), so distant fire sits behind close fire instead of just being quieter. Equal-power pan is unchanged (StereoPanner). */
 const SPAT={near:0.3,lp0:16000,lp1:2200,rev0:0.05,rev1:0.35,room:'open'};
 function spatialOut(A,x,dest,pan,far){
-  let head=dest;
+  let head=dest;A.sp=null;
   if(Math.abs(pan)>0.015&&x.createStereoPanner){const o=x.createStereoPanner();o.pan.value=pan;o.connect(head);head=o;trk(A,o);}
   if(far>0.02){
     const lp=x.createBiquadFilter();lp.type='lowpass';lp.Q.value=0.5;lp.frequency.value=SPAT.lp0*Math.pow(SPAT.lp1/SPAT.lp0,far);lp.connect(head);
     const g=x.createGain();g.gain.value=SPAT.rev0+(SPAT.rev1-SPAT.rev0)*far;lp.connect(g);g.connect(getRev(A,SPAT.room));trk(A,g);trk(A,lp);head=lp;
+    /* layers that carry their own `pan` (stereo-wide faction voices) bypass A.out: they get the same low-pass and send through A.sp, straight to the bus (their pan already contains the positional pan) */
+    const l2=x.createBiquadFilter();l2.type='lowpass';l2.Q.value=0.5;l2.frequency.value=lp.frequency.value;l2.connect(dest);l2.connect(g);trk(A,l2);A.sp=l2;
   }
   return head;
 }
@@ -574,7 +576,7 @@ function run(A,v,t,p){
 function launch(v,vol,pan,pm,fa,far){
   const A=takeA(),p=A.p,inst=instGet(v);
   try{
-    A.ctx=AC;A.off=false;A.dest=S.buses[v.bus].inn;A.bus=v.bus;A.cache=S.cache;A.inst=inst;A.v=v;A.dur=v.dur;inst.m=v.bus===5;
+    A.ctx=AC;A.off=false;A.sp=null;A.dest=S.buses[v.bus].inn;A.bus=v.bus;A.cache=S.cache;A.inst=inst;A.v=v;A.dur=v.dur;inst.m=v.bus===5;
     A.s=(v.h^Math.imul(++v.n,0x9E3779B1))|0;
     p.vol=vol;p.pan=pan;p.faction=fa||v.fac||'meridian';p.pitch=pm;p.fmul=1;p.variant=0;p.seed=v.n;
     prep(A,v,p,v.n);
@@ -666,7 +668,7 @@ function renderVoice(spec,seconds,sr){
   if(!v)return Promise.reject(new Error('audioRender: no voice for '+JSON.stringify(spec).slice(0,100)));
   const sec=seconds||Math.min(12,v.dur+v.tail+0.1);
   return renderOffline(sec,sr,(A,ctx)=>{
-    const p=A.p,seed=spec.seed|0;
+    const p=A.p,seed=spec.seed|0;A.sp=null;
     A.bus=v.bus;A.v=v;A.dur=v.dur;A.s=(v.h^Math.imul(seed+1,0x9E3779B1))|0;
     p.vol=spec.vol!==undefined?spec.vol:1;p.pan=spec.pan||0;p.faction=spec.faction||W.fa||v.fac||'meridian';p.pitch=spec.pitch||1;p.fmul=1;p.variant=0;p.seed=seed;
     let far=spec.far||0;

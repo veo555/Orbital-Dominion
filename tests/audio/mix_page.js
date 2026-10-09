@@ -142,6 +142,14 @@ ODM.distance=async function(id){
   return out;
 };
 
+/* variation: spectral centroid of 30 consecutive instances (seeds 1..30) of one voice; control = the same voice with variation switched off */
+ODM.variation=async function(id){
+  const cen=async(spec)=>{const r=await AUD().render(spec,0,SR);return ODM.measure(r.channels,SR,{tp:false}).centroid;};
+  const a=[];for(let s=1;s<=30;s++)a.push(await cen({sfx:id,seed:s}));
+  const info=AUD().voices({info:true}).find(v=>v.id===id);
+  return{centroids:a};
+};
+
 /* ---------------------------------------------------------------- ducking envelope, read back from the live engine functions (tests the same code the game runs) */
 ODM.duckProbe=async function(){
   const tr=[{channels:[new Float32Array(SR*6).fill(0.2),new Float32Array(SR*6).fill(0.2)],at:0,bus:'music',gain:1}];
