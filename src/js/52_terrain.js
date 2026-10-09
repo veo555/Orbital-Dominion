@@ -29,6 +29,10 @@ function terrainSetup(){
     const n1=nA(fx*.06,fy*.06),n2=nB(fx*.28+7,fy*.28+3),n3=nB(fx*1.3,fy*1.3),t=clamp(n1*0.75+n2*0.35,0,1);
     let r=lerp(lerp(pa[0][0],pa[1][0],t),lerp(pb[0][0],pb[1][0],t),fr),gg=lerp(lerp(pa[0][1],pa[1][1],t),lerp(pb[0][1],pb[1][1],t),fr),b=lerp(lerp(pa[0][2],pa[1][2],t),lerp(pb[0][2],pb[1][2],t),fr);
     const gr=(n3-0.5)*16;r+=gr;gg+=gr;b+=gr;
+    /* macro variation: two very low-frequency fields shift the ground between warm dust and cool stone and breathe the brightness,
+       so no region of the map looks like a copy of another (period ~ 90 tiles; the 128-cell noise table wraps far beyond the map) */
+    const m1=nA(fx*.021+31,fy*.021+11)-.5,m2=nB(fx*.045+5,fy*.045+77)-.5;
+    r*=1+m1*.30+m2*.08;gg*=1+m1*.10+m2*.12;b*=1-m1*.22+m2*.06;
     let sh=1-0.30*oAt(fx,fy);
     if(RAMP[ti]){const xi=ti%MW,yi=(ti/MW)|0,ax=Math.abs(H[yi*MW+Math.min(MW-1,xi+1)]-H[yi*MW+Math.max(0,xi-1)]),ay=Math.abs(H[Math.min(MH-1,yi+1)*MW+xi]-H[Math.max(0,yi-1)*MW+xi]);
       sh*=1.06+0.06*Math.sin((ax>=ay?fx:fy)*TAU*1.6);}
@@ -66,11 +70,13 @@ function* terrainPaint(g,T){
   for(let i=0;i<140;i++){const x=R()*WW,y=R()*WH;if(!onFloor(x,y))continue;const h=H[tileOf(x,y)];if(h>0)continue;
     const hue=R()<.5?'rgba(120,255,214,':'rgba(190,150,255,';g.fillStyle=hue+'.55)';const s=2+R()*3;g.beginPath();g.moveTo(x,y-s*2);g.lineTo(x+s,y);g.lineTo(x,y+s*.8);g.lineTo(x-s,y);g.closePath();g.fill();
     g.fillStyle=hue+'.12)';g.beginPath();g.arc(x,y,s*4,0,TAU);g.fill();}
-  for(let y=0;y<MH;y+=2)for(let x=0;x<MW;x+=2){ // plateau panel seams
+  for(let y=0;y<MH;y+=2)for(let x=0;x<MW;x+=2){ // plateau plates: each 2x2-tile plate gets its own tint, seams only on some edges and only faintly (a regular grid read as tiling)
     if(tt(x,y)!==0||H[y*MW+x]<1||RAMP[y*MW+x])continue;
-    const hi=H[y*MW+x]>=2;g.strokeStyle=hi?'rgba(10,20,40,.20)':'rgba(0,0,0,.10)';g.lineWidth=1;g.strokeRect(x*TILE+.5,y*TILE+.5,TILE*2,TILE*2);
-    g.strokeStyle=hi?'rgba(190,225,255,.10)':'rgba(255,255,255,.04)';g.beginPath();g.moveTo(x*TILE+1.5,y*TILE+TILE*2+1.5);g.lineTo(x*TILE+1.5,y*TILE+1.5);g.lineTo(x*TILE+TILE*2+1,y*TILE+1.5);g.stroke();
-    if(hi&&R()<.2){g.fillStyle='rgba(120,200,255,.12)';g.fillRect(x*TILE+8,y*TILE+8,TILE*2-16,3);}}
+    const hi=H[y*MW+x]>=2,r1=R(),r2=R(),r3=R(),X=x*TILE,Y=y*TILE,S2=TILE*2;
+    g.fillStyle=r1<.5?'rgba(255,255,255,'+(.012+r2*.05).toFixed(3)+')':'rgba(0,6,20,'+(.012+r2*.06).toFixed(3)+')';g.fillRect(X,Y,S2,S2);
+    if(r3>.38){g.strokeStyle=hi?'rgba(10,20,40,.11)':'rgba(0,0,0,.055)';g.lineWidth=1;g.strokeRect(X+.5,Y+.5,S2,S2);
+      g.strokeStyle=hi?'rgba(190,225,255,.07)':'rgba(255,255,255,.03)';g.beginPath();g.moveTo(X+1.5,Y+S2+1.5);g.lineTo(X+1.5,Y+1.5);g.lineTo(X+S2+1,Y+1.5);g.stroke();}
+    if(hi&&r2<.12){g.fillStyle='rgba(120,200,255,.12)';g.fillRect(X+8,Y+8,S2-16,3);}}
 
   yield 4;
   /* 4) landing pads, resource fields, camp grounds, plazas */

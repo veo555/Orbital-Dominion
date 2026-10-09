@@ -123,6 +123,7 @@ function buildingSprite(type,f){
   const d=BDEF[type],w=d.w*TILE,h=d.h*TILE,cvs=mkCanvas(w*SC,h*SC),g=cvs.getContext('2d');
   g.translate(w*SC/2,h*SC/2);g.scale(SC,SC);g.lineJoin='round';g.lineCap='round';
   artBuilding(g,type,w,h,facCol(f),f);
+  spritePolish(cvs,'b');
   return spriteCache[k]={cv:cvs,w,h};
 }
 /* animated overlays — drawn each frame with the origin at the building centre */

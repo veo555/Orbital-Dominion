@@ -17,7 +17,7 @@ fails = []; errs = []
 def ok(c, m):
     print(('ok    ' if c else 'FAIL  ') + m, flush=True)
     if not c: fails.append(m)
-REF = {7: '2c52c2f0', 21: 'acbf291b', 99: '1ee2ff20'}   # FNV-1a over canvas.toDataURL('image/png') in the 3.0 build, headless Chromium 141
+REF = {7: '546baabe', 21: '1f650e65', 99: '6b28cd98'}   # FNV-1a over canvas.toDataURL('image/png') in the 4.0 build (macro colour variation + plate tints; the 3.x values were 2c52c2f0 / acbf291b / 1ee2ff20), headless Chromium 141
 
 HASH = """(seed)=>{const R=__RTS;R.newGame({seed,faction:'meridian',enemy:'aurora',diff:'normal'});R.ui.demo=false;R.buildTerrain();
   const d=R.G.terrainCv.toDataURL('image/png');let h=2166136261;for(let i=0;i<d.length;i++){h^=d.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16)}"""
@@ -39,8 +39,8 @@ with sync_playwright() as p:
     for seed in (7, 21, 99):
         h1, h2 = pg.evaluate(HASH, seed), pg.evaluate(HASH, seed)
         ok(h1 == h2, f'seed {seed}: baking twice gives identical pixels ({h1})')
-        if h1 != REF[seed]: print(f'      WARN  seed {seed}: base map hash {h1} differs from the 3.0 reference {REF[seed]} (a different Chromium rasteriser can do this; investigate if you changed terrain code)')
-        else: print(f'      seed {seed}: base map identical to the 3.0 reference')
+        if h1 != REF[seed]: print(f'      WARN  seed {seed}: base map hash {h1} differs from the 4.0 reference {REF[seed]} (a different Chromium rasteriser can do this; investigate if you changed terrain code)')
+        else: print(f'      seed {seed}: base map identical to the 4.0 reference')
     # seams
     for s, mx in ((2, 16), (3, 16)):
         r = pg.evaluate(SEAM, s)
