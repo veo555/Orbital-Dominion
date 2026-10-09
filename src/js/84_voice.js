@@ -526,7 +526,7 @@ function speak(charId,text,opts){
     const A=audioA('voice');
     if(A){try{cur.h=voxBuild(A,AC.currentTime+0.03,plan,P,style,vol*(tt?VOX_TTSMIX:1));cur.t0=cur.h.T0;res.blips=true;}catch(e){C.errors++;AUD.lastError='speech: '+(e&&e.message||e);}}
   }
-  if(!opts.bark&&opts.duck!==false)audioDuck('music',0.45,(plan.dur+0.5)*1000);
+  if(!opts.bark&&opts.duck!==false)audioDuckVoice((plan.dur+0.5)*1000);   // music dips deeply, battle sounds a little (80_audio.js VOICE_DUCKS)
   cur.timer=setTimeout(()=>{cur.blipDone=true;voxCheck(cur);},(plan.dur+0.1)*1000);
   return res;
 }
@@ -571,7 +571,7 @@ function say(txt){
   try{
     voxTtsInit();if(!voxAnn)voxAnnPick();const u=new SpeechSynthesisUtterance(txt);if(voxAnn)u.voice=voxAnn;u.rate=1.05;u.pitch=0.75;
     u.volume=clamp(SET.voiceVol===undefined?0.9:SET.voiceVol,0,1);speechSynthesis.cancel();speechSynthesis.speak(u);AUD.counters.says++;
-    audioDuck('music',0.4,400+txt.length*65);
+    audioDuckVoice(400+txt.length*65);
   }catch(e){}
 }
 AUD.voice={speak,stop:speakStop,bark,profile:voiceProfile,say,level:speakLevel,words:voxWords,syllables:voxSylWord,count:voxCount,plan:voxPlan,estimate:voxEstimate,styles:VOX_STYLES,canon:voxCanon,

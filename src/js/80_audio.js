@@ -16,7 +16,10 @@ const AUDIO=(function(){
 const C=AUD.counters;
 const BUSES=['sfx','ui','voice','amb','cine','music'],BIX={sfx:0,ui:1,voice:2,amb:3,cine:4,music:5};
 /* rooms: IR length, RT, damping, pre-delay, and the RETURN gain calibrated (measured, see tests/e2e/e2e_audio_engine.py) so that send 1.0 returns wet energy ~ dry energy for every room */
-const ROOMS={plate:0,hall:1,air:2},RROOM={plate:{len:0.9,rt:0.7,dm:2.6,pre:0.003,ret:5.37},hall:{len:2.0,rt:1.7,dm:1.6,pre:0.012,ret:2.88},air:{len:3.2,rt:2.9,dm:1.0,pre:0.02,ret:2.16}};
+/* plate/hall/air are the content rooms; open/canyon/cave are the ROOM PRESETS of the distance send (audioRoom(name)): open = a field (short, dark, 20 ms pre-delay), canyon = hard walls (long pre-delay slap), cave = long and dull.
+   `ret` of the three newer rooms is the measured return that makes send 1.0 return wet energy = dry energy (tests/e2e/e2e_audio_mix.py, 'room calibration'). */
+const ROOMS={plate:0,hall:1,air:2,open:3,canyon:4,cave:5},NROOM=8,RROOM={plate:{len:0.9,rt:0.7,dm:2.6,pre:0.003,ret:5.37},hall:{len:2.0,rt:1.7,dm:1.6,pre:0.012,ret:2.88},air:{len:3.2,rt:2.9,dm:1.0,pre:0.02,ret:2.16},
+  open:{len:1.1,rt:0.8,dm:2.4,pre:0.02,ret:1},canyon:{len:2.4,rt:2.0,dm:1.4,pre:0.06,ret:1},cave:{len:3.6,rt:3.2,dm:0.8,pre:0.015,ret:1}};
 const DLYRET=1.57;   // delay send 1.0: echo train energy ~ -3 dB re dry
 /* loudness classes: target RMS dBFS (active window, unit gain), priority, bus, default cooldown (ms), polyphony per voice id */
 const CLS={
@@ -138,7 +141,7 @@ function noiseBuf(A,color){
 }
 function getRev(A,room){
   const c=A.cache,ri=ROOMS[room||'hall'];if(ri===undefined)throw new Error('unknown reverb room '+room);
-  const ix=A.bus*3+ri;let r=c.rev[ix];if(r)return lk(A,r);
+  const ix=A.bus*NROOM+ri;let r=c.rev[ix];if(r)return lk(A,r);
   const x=A.ctx,sr=x.sampleRate;let buf=c.ir[ri];
   if(!buf){const d=irData(room||'hall',sr);buf=x.createBuffer(2,d.n,sr);buf.copyToChannel(d.L,0);buf.copyToChannel(d.R,1);c.ir[ri]=buf;}
   const inG=x.createGain(),conv=x.createConvolver(),ret=x.createGain();conv.buffer=buf;ret.gain.value=RROOM[room||'hall'].ret;
@@ -413,16 +416,31 @@ Object.defineProperty(AUD,'activeNodes',{get(){sweepNodes(performance.now());ret
 Object.defineProperty(AUD,'activeNodesMusic',{get(){sweepNodes(performance.now());return S.nodesM;}});
 
 /* ------------------------------------------------------------------ graph, volumes, ducking, lifecycle */
-function softClip(){const n=2049,c=new Float32Array(n),k=0.62;for(let i=0;i<n;i++){const x=i/(n-1)*2-1,a=Math.abs(x),y=a<=k?a:k+(0.97-k)*Math.tanh((a-k)/(0.97-k));c[i]=x<0?-y:y;}return c;}
+function softClip(k,ceil){k=k||0.62;ceil=ceil||0.97;const n=2049,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1,a=Math.abs(x),y=a<=k?a:k+(ceil-k)*Math.tanh((a-k)/(ceil-k));c[i]=x<0?-y:y;}return c;}
+/* MASTER CHAIN. One definition used by the live graph and by the offline mixdown (audioMixdown), so the tests measure the chain that ships.
+   v3 = the original chain (kept only so docs/AUDIO_V4.md can show before/after numbers from the same renderer): glue compressor -> soft clip (ceiling 0.97).
+   v4 = glue compressor (gentle, slow enough to keep transients) -> limiter (DynamicsCompressor, ratio 20, 1 ms attack; the browser's compressor has ~6 ms look-ahead)
+        -> soft clip with a -1.2 dBFS asymptote, so that sample peaks cannot pass 0.87 and true peaks stay <= -1 dBTP (measured by tests/e2e/e2e_audio_mix.py). */
+const MASTERS={
+  v3:{comp:{thr:-12,knee:10,ratio:3.5,att:0.004,rel:0.16},lim:null,clip:{k:0.62,ceil:0.97}},
+  v4:{comp:{thr:-18,knee:14,ratio:2.6,att:0.010,rel:0.22},trim:-4.2,lim:{thr:-4,knee:0,ratio:20,att:0.001,rel:0.09},clip:{k:0.5,ceil:0.87}}};
+function masterChain(x,input,preset){
+  const M=typeof preset==='object'&&preset?preset:(MASTERS[preset]||MASTERS.v4),comp=x.createDynamicsCompressor(),clip=x.createWaveShaper(),out=x.createGain();
+  const c=M.comp;comp.threshold.value=c.thr;comp.knee.value=c.knee;comp.ratio.value=c.ratio;comp.attack.value=c.att;comp.release.value=c.rel;
+  input.connect(comp);let n=comp,lim=null;
+  if(M.trim){const tg=x.createGain();tg.gain.value=Math.pow(10,M.trim/20);n.connect(tg);n=tg;}   // cancels the browser compressor's automatic make-up gain (0.6 x the static reduction at 0 dBFS) so quiet material passes at unity
+  if(M.lim){lim=x.createDynamicsCompressor();const l=M.lim;lim.threshold.value=l.thr;lim.knee.value=l.knee;lim.ratio.value=l.ratio;lim.attack.value=l.att;lim.release.value=l.rel;n.connect(lim);n=lim;}
+  clip.curve=softClip(M.clip.k,M.clip.ceil);clip.oversample='2x';n.connect(clip);clip.connect(out);
+  return{comp,lim,clip,out};
+}
 function buildGraph(){
-  const x=AC,mixIn=x.createGain(),comp=x.createDynamicsCompressor(),clip=x.createWaveShaper(),master=x.createGain(),an=x.createAnalyser();
-  comp.threshold.value=-12;comp.knee.value=10;comp.ratio.value=3.5;comp.attack.value=0.004;comp.release.value=0.16;
-  clip.curve=softClip();mixIn.connect(comp);comp.connect(clip);clip.connect(master);master.connect(x.destination);
-  an.fftSize=1024;an.smoothingTimeConstant=0;master.connect(an);S.an=an;S.anBuf=new Float32Array(1024);S.master=master;S.comp=comp;
+  const x=AC,mixIn=x.createGain(),master=x.createGain(),an=x.createAnalyser(),ch=masterChain(x,mixIn,'v4');
+  ch.out.connect(master);master.connect(x.destination);
+  an.fftSize=1024;an.smoothingTimeConstant=0;master.connect(an);S.an=an;S.anBuf=new Float32Array(1024);S.master=master;S.comp=ch.comp;S.lim=ch.lim;
   S.cache=mkCache();S.buses=[];S.A=[];
   S.anchor={n:1,v:null,out:null,m:true};   // keeps the live per-bus A handles' instance alive forever (music schedules notes over time)
   for(let i=0;i<BUSES.length;i++){
-    const inn=x.createGain(),dk=x.createGain();inn.connect(dk);dk.connect(mixIn);S.buses.push({name:BUSES[i],inn,dk,lo:1,end:0});
+    const inn=x.createGain(),dk=x.createGain();inn.connect(dk);dk.connect(mixIn);S.buses.push({name:BUSES[i],inn,dk,lo:1,end:0,from:1,t0:0});
     const A=mkA();A.ctx=x;A.dest=inn;A.out=inn;A.cache=S.cache;A.bus=i;A.inst=i===5?S.anchor:{n:1,v:null,out:null,m:false};S.A.push(A);
   }
   busSfx=S.buses[0].inn;busMusic=S.buses[5].inn;
@@ -430,15 +448,52 @@ function buildGraph(){
 }
 function applyVolumes(){
   if(!AC||!S.buses.length)return;
-  const t=AC.currentTime,vol=[SET.sfx,SET.sfx,SET.voiceVol===undefined?0.9:SET.voiceVol,SET.sfx,SET.sfx,SET.music];
+  const t=AC.currentTime,vol=[SET.sfx,SET.sfx,(SET.voiceVol===undefined?0.9:SET.voiceVol)*VBOOST,SET.sfx,SET.sfx,SET.music];
   for(let i=0;i<S.buses.length;i++){const g=S.buses[i].inn.gain;if(S.fresh)g.value=vol[i];else{g.cancelScheduledValues(t);g.setTargetAtTime(vol[i],t,0.02);}}
   const m=S.master.gain;if(S.fresh)m.value=muted?0:1;else{m.cancelScheduledValues(t);m.setTargetAtTime(muted?0:1,t,0.012);}
   S.fresh=false;
 }
+/* DUCKING (the sidechain of this engine: voices, alerts and the announcer tell the music bus to dip). A bus keeps one ramp state {from,t0,lo,end}; overlapping ducks combine
+   (deepest wins, the later end wins). The same functions schedule the live gain and the offline mixdown, so what the tests measure is what plays. */
+const DK={att:0.04,rel:0.9};
+function duckAt(b,t){
+  if(!(b.end>0)||t>=b.end+DK.rel)return 1;
+  if(t>=b.end)return b.lo+(1-b.lo)*(t-b.end)/DK.rel;
+  if(t<=b.t0)return b.from;
+  if(t<b.t0+DK.att)return b.from+(b.lo-b.from)*(t-b.t0)/DK.att;
+  return b.lo;
+}
+function duckPlan(b,t,amount,ms){
+  const active=t<b.end,from=duckAt(b,t),lo=Math.max(0.03,Math.min(1-amount,active?b.lo:1)),end=Math.max(t+DK.att+ms/1000,active?b.end:0);
+  b.from=from;b.t0=t;b.lo=lo;b.end=end;
+}
+function duckSchedule(g,b){g.cancelScheduledValues(b.t0);g.setValueAtTime(b.from,b.t0);g.linearRampToValueAtTime(b.lo,b.t0+DK.att);g.setValueAtTime(b.lo,b.end);g.linearRampToValueAtTime(1,b.end+DK.rel);}
+/* a spoken line / radio call: the music dips deeply, the battle sounds (sfx, ambience) a little, so the words stay on top. Alerts and UI are never ducked. */
+const VOICE_DUCKS=[['music',0.7],['sfx',0.4],['amb',0.4]];
+const VBOOST=1.8;   // the voice bus sits +5 dB over its class calibration: speech must stay on top of a dense fight (docs/AUDIO_V4.md, speech-to-background ratio)
+function voiceDucks(t,dur){const ms=(dur+0.5)*1000;return VOICE_DUCKS.map(d=>({bus:d[0],t,amount:d[1],ms}));}
+function audioDuckVoice(ms){for(const d of VOICE_DUCKS)audioDuck(d[0],d[1],ms);}
 function audioDuck(bus,amount,ms){
   if(!AC||!S.buses.length)return;const b=S.buses[BIX[bus]];if(!b)return;
-  const g=b.dk.gain,t=AC.currentTime,active=t<b.end,lo=Math.max(0.03,Math.min(1-amount,active?b.lo:1)),end=Math.max(t+0.05+ms/1000,active?b.end:0),cur=g.value;
-  g.cancelScheduledValues(t);g.setValueAtTime(cur,t);g.linearRampToValueAtTime(lo,t+0.05);g.setValueAtTime(lo,end);g.linearRampToValueAtTime(1,end+0.7);b.lo=lo;b.end=end;
+  duckPlan(b,AC.currentTime,amount,ms);duckSchedule(b.dk.gain,b);
+}
+/* OFFLINE MIXDOWN: tracks = [{channels:[L,R], at:seconds, bus:'sfx'|..., gain:linear, pan?:-1..1}], opt.ducks = [{bus,t,amount,ms}] (time-ordered). Every track is a pre-rendered buffer,
+   so the bus gains, the ducking and the REAL master chain (opt.chain 'v3'|'v4') are what is under test. opt.vol = bus volumes (default = the game's defaults). Resolves {sampleRate,channels}. */
+function audioMixdown(tracks,seconds,sr,opt){
+  opt=opt||{};sr=sr||44100;
+  const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;if(!OC)return Promise.reject(new Error('OfflineAudioContext unavailable'));
+  const x=new OC(2,Math.max(1,Math.ceil(seconds*sr)),sr),mixIn=x.createGain(),ch=masterChain(x,mixIn,opt.chain||'v4'),vol=Object.assign({sfx:0.8,ui:0.8,voice:0.9*VBOOST,amb:0.8,cine:0.8,music:0.45},opt.vol||{});
+  ch.out.connect(x.destination);
+  const buses={};for(const nm of BUSES){const inn=x.createGain(),dk=x.createGain();inn.gain.value=vol[nm];inn.connect(dk);dk.connect(mixIn);buses[nm]={inn,dk,st:{lo:1,end:0,from:1,t0:0}};}
+  const keep=[];
+  for(const d of(opt.ducks||[])){const b=buses[d.bus];if(!b)continue;duckPlan(b.st,d.t,d.amount,d.ms);duckSchedule(b.dk.gain,b.st);}
+  for(const tr of tracks){
+    const buf=x.createBuffer(tr.channels.length,tr.channels[0].length,sr);for(let c=0;c<tr.channels.length;c++)buf.copyToChannel(tr.channels[c],c);
+    const src=x.createBufferSource(),g=x.createGain();src.buffer=buf;g.gain.value=tr.gain===undefined?1:tr.gain;src.connect(g);
+    let o=g;if(tr.pan){const p=x.createStereoPanner();p.pan.value=tr.pan;g.connect(p);o=p;}
+    o.connect(buses[tr.bus||'sfx'].inn);src.start(Math.max(0,tr.at||0));keep.push(src,g);
+  }
+  return x.startRendering().then(buf=>{keep.length=0;return{sampleRate:buf.sampleRate,channels:[buf.getChannelData(0),buf.getChannelData(1)]};});
 }
 function audioInit(){
   if(!AC){
@@ -484,23 +539,39 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 /* ------------------------------------------------------------------ playing a voice (live) */
-const POS={pan:0,vol:1};
+const POS={pan:0,vol:1,far:0};
+/* SPATIAL: besides pan and volume, a voice far from the screen centre gets a low-pass (the air eats the highs: 16 kHz at `near` -> 2.2 kHz at the view edge, exponential in `far`) and a reverb
+   send (-26 dB -> -9 dB re dry), so distant fire sits behind close fire instead of just being quieter. Equal-power pan is unchanged (StereoPanner). */
+const SPAT={near:0.3,lp0:16000,lp1:2200,rev0:0.05,rev1:0.35,room:'open'};
+function spatialOut(A,x,dest,pan,far){
+  let head=dest;
+  if(Math.abs(pan)>0.015&&x.createStereoPanner){const o=x.createStereoPanner();o.pan.value=pan;o.connect(head);head=o;trk(A,o);}
+  if(far>0.02){
+    const lp=x.createBiquadFilter();lp.type='lowpass';lp.Q.value=0.5;lp.frequency.value=SPAT.lp0*Math.pow(SPAT.lp1/SPAT.lp0,far);lp.connect(head);
+    const g=x.createGain();g.gain.value=SPAT.rev0+(SPAT.rev1-SPAT.rev0)*far;lp.connect(g);g.connect(getRev(A,SPAT.room));trk(A,g);trk(A,lp);head=lp;
+  }
+  return head;
+}
+function audioRoom(name){if(name===undefined)return SPAT.room;if(ROOMS[name]===undefined)throw new Error('unknown room '+name);SPAT.room=name;return name;}
 function calcPos(x,y,range){
   const z=cam.z,hv=VW/z/2,cx=cam.x+hv,cy=cam.y+VH/z/2,hw=(hv+160)*range,hh=(VH/z/2+160)*range;
   if(Math.abs(x-cx)>hw||Math.abs(y-cy)>hh)return false;
-  POS.pan=cl((x-cx)/hv,-1,1)*0.8;POS.vol=cl(1.15-Math.hypot(x-cx,y-cy)/(hw*1.3),0.25,1);return true;
+  const dd=Math.hypot(x-cx,y-cy)/(hw*1.3);
+  POS.pan=cl((x-cx)/hv,-1,1)*0.8;POS.vol=cl(1.15-dd,0.25,1);POS.far=cl((dd-SPAT.near)/(1-SPAT.near),0,1);return true;
 }
 function prep(A,v,p,n){
-  const vy=v.vary,r=A.rng;
-  if(vy.pitch)p.pitch*=1+(r()*2-1)*vy.pitch;
-  if(vy.filter)p.fmul=1+(r()*2-1)*vy.filter;
+  const vy=v.vary,r=A.rng,u0=(v.h>>>0)/4294967296;
+  /* pitch and filter follow golden-ratio sequences (low discrepancy) instead of white noise: two consecutive shots are never nearly identical (the minimum step is about 0.38 of the range, white noise gives
+     steps of ~0), which is what makes a machine-gun burst sound like many shots. The sequence starts at a per-voice phase so two voices do not move together. */
+  if(vy.pitch)p.pitch*=1+(((u0+n*0.6180339887498949)%1)*2-1)*vy.pitch;
+  if(vy.filter)p.fmul=1+(((u0*7.31+n*0.7548776662466927)%1)*2-1)*vy.filter;
   if(vy.gain)p.vol*=1+(r()*2-1)*vy.gain;
   if(v.variants>1)p.variant=v.seq?((n-1)%v.variants):Math.floor(r()*v.variants);
 }
 function run(A,v,t,p){
   if(v.fn)v.fn(A,t,p);else{const Ls=v.layers;for(let i=0;i<Ls.length;i++)layerPlay(A,t,Ls[i],p);}
 }
-function launch(v,vol,pan,pm,fa){
+function launch(v,vol,pan,pm,fa,far){
   const A=takeA(),p=A.p,inst=instGet(v);
   try{
     A.ctx=AC;A.off=false;A.dest=S.buses[v.bus].inn;A.bus=v.bus;A.cache=S.cache;A.inst=inst;A.v=v;A.dur=v.dur;inst.m=v.bus===5;
@@ -508,7 +579,7 @@ function launch(v,vol,pan,pm,fa){
     p.vol=vol;p.pan=pan;p.faction=fa||v.fac||'meridian';p.pitch=pm;p.fmul=1;p.variant=0;p.seed=v.n;
     prep(A,v,p,v.n);
     const t=AC.currentTime+0.004;A.t0=t;p.t0=t;
-    if(Math.abs(pan)>0.015&&AC.createStereoPanner){const o=AC.createStereoPanner();o.pan.value=pan;o.connect(A.dest);A.out=o;inst.out=o;}else A.out=A.dest;
+    if(Math.abs(pan)>0.015||far>0.02){const o=spatialOut(A,AC,A.dest,pan,far||0);A.out=o;inst.out=o;}else A.out=A.dest;
     A.vg=v.gain*p.vol;
     run(A,v,t,p);
   }catch(e){C.errors++;AUD.lastError=v.id+': '+(e&&e.message||e);if(++v.bad>=3)v.mute=true;}
@@ -518,8 +589,8 @@ function launch(v,vol,pan,pm,fa){
   }
 }
 function play(v,x,y){
-  let pan=0,vol=1;
-  if(typeof x==='number'&&typeof y==='number'){if(!calcPos(x,y,v.range)){C.culled++;return'culled';}pan=POS.pan;vol=POS.vol;LPAN=pan;LVOL=vol;}
+  let pan=0,vol=1,posFar=0;
+  if(typeof x==='number'&&typeof y==='number'){if(!calcPos(x,y,v.range)){C.culled++;return'culled';}pan=POS.pan;vol=POS.vol;posFar=POS.far;LPAN=pan;LVOL=vol;}
   if(v.mute)return'bad';
   const now=performance.now();
   if(v.gap>0&&now-v.last<v.gap){v.pend++;C.merged++;return'merge';}
@@ -530,7 +601,7 @@ function play(v,x,y){
   const n=now-v.last<600?v.pend:0;v.pend=0;v.last=now;
   let pm=W.fa&&v.fallback?(FACP[W.fa]||1):1;
   if(n>0){vol*=1+Math.min(0.7,0.22*Math.log2(1+n));pm*=1-0.012*Math.min(n,3);}   // unit-spam compression: N merged calls -> one louder, slightly lower voice
-  launch(v,vol,pan,pm,W.fa);C.played++;
+  launch(v,vol,pan,pm,W.fa,posFar);C.played++;
   if(v.duck>0)audioDuck('music',v.duck,(v.dur+0.4)*1000);
   return'play';
 }
@@ -581,7 +652,7 @@ function renderOffline(seconds,sr,build,opt){
   const ctx=new OC(2,Math.max(1,Math.ceil(seconds*sr)),sr),A=mkA();
   A.ctx=ctx;A.off=true;A.cache=mkCache();A.inst={n:1,v:null,out:null,m:false};
   let dest=ctx.destination;
-  if(opt&&opt.master){const sh=ctx.createWaveShaper();sh.curve=softClip();sh.connect(ctx.destination);dest=sh;}
+  if(opt&&opt.master){const sh=ctx.createWaveShaper();sh.curve=softClip(0.62,0.97);sh.connect(ctx.destination);dest=sh;}
   A.dest=dest;A.out=dest;
   try{build(A,ctx);flushSinks(A);}catch(e){return Promise.reject(e);}   // builders run synchronously here: callers may stub Math.random around this call only
   // A (and with it the reverb/delay nodes in A.cache) must stay referenced until rendering is done: if nothing in JS holds the convolver once the
@@ -598,9 +669,10 @@ function renderVoice(spec,seconds,sr){
     const p=A.p,seed=spec.seed|0;
     A.bus=v.bus;A.v=v;A.dur=v.dur;A.s=(v.h^Math.imul(seed+1,0x9E3779B1))|0;
     p.vol=spec.vol!==undefined?spec.vol:1;p.pan=spec.pan||0;p.faction=spec.faction||W.fa||v.fac||'meridian';p.pitch=spec.pitch||1;p.fmul=1;p.variant=0;p.seed=seed;
-    if(spec.x!==undefined&&spec.y!==undefined&&typeof cam!=='undefined'){calcPos(spec.x,spec.y,1e6);p.vol*=POS.vol;p.pan=spec.pan!==undefined?spec.pan:POS.pan;}
+    let far=spec.far||0;
+    if(spec.x!==undefined&&spec.y!==undefined&&typeof cam!=='undefined'){calcPos(spec.x,spec.y,1e6);p.vol*=POS.vol;p.pan=spec.pan!==undefined?spec.pan:POS.pan;far=spec.far!==undefined?spec.far:POS.far;}
     prep(A,v,p,seed+1);
-    if(Math.abs(p.pan)>0.015){const o=ctx.createStereoPanner();o.pan.value=p.pan;o.connect(A.dest);A.out=o;}
+    if(Math.abs(p.pan)>0.015||far>0.02)A.out=spatialOut(A,ctx,A.dest,p.pan,far);
     A.vg=v.gain*p.vol;p.t0=0;A.t0=0;
     run(A,v,0,p);
   },{master:spec.master});
@@ -764,7 +836,7 @@ for(const id in CI){const d=CI[id];registerVoice('cine.'+id,d,{cls:'cine',fallba
 })();
 
 return{init:audioInit,applyVolumes,toggleMute,sfx,sfxUnit,sfxBuilding,cineSfx,registerVoice,registerRenderer,audioVoices,audioRender,audioStats,audioPlay,audioDuck,audioBus,audioA,audioDelay,
-  audioOffline:renderOffline,logReset,audioAnalyse,audioHash,audioClasses,audioOnReady,audioLegacyScore,audioMeter,tone,noiseBurst,mkVoice,VOICES,RENDERERS,resolve,calcPos,CLS,PRIO,hz,S};
+  audioOffline:renderOffline,audioMixdown,audioRoom,voiceDucks,audioDuckVoice,logReset,audioAnalyse,audioHash,audioClasses,audioOnReady,audioLegacyScore,audioMeter,tone,noiseBurst,mkVoice,VOICES,RENDERERS,resolve,calcPos,CLS,PRIO,hz,S};
 })();
 function audioInit(){AUDIO.init();}
 function applyVolumes(){AUDIO.applyVolumes();}
@@ -784,6 +856,9 @@ function audioBus(name){return AUDIO.audioBus(name);}
 function audioA(name){return AUDIO.audioA(name);}
 function audioDelay(bus,time,fb){AUDIO.audioDelay(bus,time,fb);}
 function audioOffline(seconds,sr,build,opt){return AUDIO.audioOffline(seconds,sr,build,opt);}
+function audioMixdown(tracks,seconds,sr,opt){return AUDIO.audioMixdown(tracks,seconds,sr,opt);}
+function audioRoom(name){return AUDIO.audioRoom(name);}
+function audioDuckVoice(ms){AUDIO.audioDuckVoice(ms);}
 function audioAnalyse(ch,sr){return AUDIO.audioAnalyse(ch,sr);}
 function audioHash(ch,exact){return AUDIO.audioHash(ch,exact);}
 function audioClasses(){return AUDIO.audioClasses();}
@@ -794,5 +869,5 @@ function tone(f,d,type,v,slide,delay,pan){AUDIO.tone(f,d,type,v,slide,delay,pan)
 function noiseBurst(d,v,f0,pan,type){AUDIO.noiseBurst(d,v,f0,pan,type);}
 Object.defineProperty(AUD,'ctx',{get(){return AC;}});
 Object.assign(AUD,{sfx,sfxUnit,sfxBuilding,cineSfx,init:audioInit,mute:toggleMute,stats:audioStats,registerVoice,registerRenderer,voices:audioVoices,render:audioRender,play:audioPlay,duck:audioDuck,analyse:audioAnalyse,hash:audioHash,
-  offline:audioOffline,classes:audioClasses,KIT,resolve:AUDIO.resolve,calcPos:AUDIO.calcPos,meter:audioMeter,say,tone,noiseBurst,audioA,bus:audioBus,delay:audioDelay,onReady:audioOnReady,legacyScore:audioLegacyScore,
+  offline:audioOffline,mixdown:audioMixdown,room:audioRoom,voiceDucks:AUDIO.voiceDucks,duckVoice:audioDuckVoice,classes:audioClasses,KIT,resolve:AUDIO.resolve,calcPos:AUDIO.calcPos,meter:audioMeter,say,tone,noiseBurst,audioA,bus:audioBus,delay:audioDelay,onReady:audioOnReady,legacyScore:audioLegacyScore,
   reset(all){const c=AUD.counters;for(const k in c)c[k]=0;AUDIO.logReset();AUD.peakNodes=AUDIO.S.nodes;AUD.lastError='';if(all)for(const v of AUDIO.VOICES.values()){v.last=-1e9;v.pend=0;v.n=0;v.bad=0;v.mute=false;}}});
