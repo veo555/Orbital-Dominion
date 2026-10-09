@@ -227,3 +227,6 @@ A section's motif entry sets the instrument (`inst` overrides the default), the 
 * `musicPlay(cue, {section})` (index or name) starts that section at its first bar; the fade is the caller's (the film uses 0.8 s). Without a steer the sections play in order, and a non-looping cue ends after its last section.
 * A steer is safe when the section it cuts would not have ended before the steer. With the lengths of 9.3 (18, 21, 15, 18 and 6 s), the steer points of the current `intro` film (44_story_b_intro.js) work out as follows: section 1 needs no steer at 18.0 s, its natural start (a steer at 18.4 restarts it 0.4 s late); section 2 at 28.2 s (section 1 would end at 39.0); section 1 again at 41.1 s (section 2 would end at 43.2); section 3 at 59.9 s (section 1 would end at 62.1); section 4 at 75.5 s (section 3 would end at 77.9). Section 4 then plays 6 s, and the film's title scene ends at 80.7 s.
 * Re-check these inequalities whenever the film or the section lengths change.
+
+## 10. v4.0 additions
+Master chain v4, ducking, spatial low-pass/reverb send, room presets, music level trim, loudness tooling and the optional voice pack are specified and measured in docs/AUDIO_V4.md (they supersede the compressor/soft-clip description in 8.5 and the duck amounts in 5).
