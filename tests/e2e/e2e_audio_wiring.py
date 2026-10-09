@@ -1,6 +1,6 @@
 """Audio wiring gate (Playwright + Chromium). Exit code != 0 on failure.   python3 tests/e2e/e2e_audio_wiring.py     (about 1-2 minutes; OD_URL=file://... points it at a scratch build)
 
-Do the game's events REACH the audio engine, with the right arguments?  (docs/AUDIO_SPEC.md §2/§3/§4, docs/CINEMATIC_SPEC.md §5.11, docs/CAMPAIGN_SPEC.md §3.4)
+Do the game's events REACH the audio engine, with the right arguments?  (docs/AUDIO_SPEC.md §2/§3/§4, docs/CAMPAIGN_SPEC.md §3.4)
 It drives the REAL game code in an instrumented COPY of the build (the source is never touched):
   * every call of musicPlay / musicStop / musicScene / musicStinger / musicDuck / musicMood / speak / speakStop is logged (the function declarations are wrapped in the copy;
     they must therefore stay plain `function name(...){}` declarations - the engine's own sfx family is observed through AUD.log, which records sfx / sfxUnit / sfxBuilding / cineSfx)
@@ -16,8 +16,7 @@ WHAT MUST BE WIRED (each line below is one check; the contract is the spec, the 
                              sting_alarm; the menu plays the `title` cue
   campaign                   a mission's `mood` action reaches the music (musicMood / musicScene({mood}) / musicPlay(<cue>)), its `radio` action is voiced with speak(who,text,{style}), its `strike`
                              action warns through sfx
-  cinematics                 cinePlay starts the film's music cue, plays every scene sfx through cineSfx (voice cine.<name>), speaks every line with speak(who,text,{style}) and ducks the music;
-                             stopping it calls speakStop and musicStop
+  dispatch card              campDispatch starts the dispatch's mood cue with musicPlay; closing it calls musicStop (v4.0: the text card replaced the cinematic player)
 CONTROLS (CLAUDE.md rule 15: a check that cannot fail is worthless):
   * NEGATIVE: in a copy where the sfx wrapper drops its 4th argument, every `who` check MUST fail
   * POSITIVE: in a copy with the minimal reference wiring (additive one-line patches, listed in REF_PATCHES) every check whose patch applied MUST pass.  A patch whose target text no longer exists
@@ -91,7 +90,7 @@ NOWHO = ("function sfx(name,x,y,who){return AUDIO.sfx(name,x,y,who);}", "functio
 
 
 def story_fixture():
-    code = "const m=require(process.argv[1])();process.stdout.write(JSON.stringify({characters:m.characters,cine:m.cine,radio:m.radio,missions:m.missions}))"
+    code = "const m=require(process.argv[1])();process.stdout.write(JSON.stringify({characters:m.characters,dispatch:m.dispatch,radio:m.radio,missions:m.missions}))"
     r = subprocess.run(['node', '-e', code, str(ROOT / 'tests' / 'fixtures' / 'story_min.js')], capture_output=True, text=True, cwd=str(ROOT))
     if r.returncode: sys.exit('node could not load tests/fixtures/story_min.js:\n' + r.stderr)
     return json.loads(r.stdout)
@@ -135,7 +134,7 @@ def run_page(b, html_text, label, track=False):
         S('sting.' + k, "(k)=>OW.stingers(k)", k)
     S('title', "()=>OW.title()")
     S('campaign', "(fx)=>OW.campaign(fx)", FX)
-    S('cine', "(fx)=>OW.cine(fx,'intro')", FX)
+    S('dispatch', "(fx)=>OW.dispatch(fx,'intro')", FX)
     fresh(); S('sting.victory', "()=>OW.stingers('victory')"); obs['win'] = pg.evaluate("()=>__RTS.AUD.log.map(l=>l.name)")
     fresh(); S('sting.defeat', "()=>OW.stingers('defeat')"); obs['lose'] = pg.evaluate("()=>__RTS.AUD.log.map(l=>l.name)")
     pg.close()
@@ -209,17 +208,12 @@ def judge(o):
         ex = cp.get('radioExpect', {}); sp = cp.get('radio', [])
         add('camp', 'camp.radio', any(s['who'] == ex.get('who') and s['text'] == ex.get('text') for s in sp), f"mission action ['radio',id]: speak saw {[(s['who'], (s['text'] or '')[:24]) for s in sp][:2] or 'nothing'}, expected {ex.get('who')}: {(ex.get('text') or '')[:24]} {cp.get('radioError', '')}")
         add('camp', 'strike', 'alert' in cp.get('strike', []), f"mission action strike: sfx saw {cp.get('strike')}")
-    ci = o['cine']
-    if 'error' in ci: add('cine', 'cine.music', False, ci['error'])
+    cd = o['dispatch']
+    if 'error' in cd: add('dispatch', 'dispatch.music', False, cd['error']); add('dispatch', 'dispatch.stop', False, cd['error'])
     else:
-        allc = ci['all']; mp = [e for e in allc if e['f'] == 'musicPlay']
-        add('cine', 'cine.music', any(e['a'][:1] == [ci['music']] for e in mp), f"cinePlay starts the film's cue `{ci['music']}`: musicPlay saw {[e['a'][:1] for e in mp][:3] or 'nothing'}")
-        add('cine', 'cine.sfx', any(l['voice'] == 'cine.' + ci['firstSfx']['name'] for l in ci['midSfx']), f"scene sfx `{ci['firstSfx']['name']}` reaches cineSfx (voice cine.{ci['firstSfx']['name']}): saw {[l['voice'] for l in ci['midSfx']][:4] or 'nothing'}")
-        sp = [e for e in ci['mid'] if e['f'] == 'speak']
-        add('cine', 'cine.line', any(e['a'][0] == ci['firstLine']['who'] and e['a'][1] == ci['firstLine']['text'] for e in sp), f"the first line is spoken with speak(who,text,{{style}}): saw {[(e['a'][0], (e['a'][1] or '')[:20]) for e in sp][:2] or 'nothing'}")
-        dk = [e for e in ci['mid'] if e['f'] == 'musicDuck']
-        add('cine', 'cine.duck', any(abs((e['a'][0] or 0) - 0.45) < 0.01 and (e['a'][1] or 0) > 500 for e in dk), f"each line ducks the music: musicDuck saw {[e['a'] for e in dk][:2] or 'nothing'}")
-        add('cine', 'cine.stop', any(e['f'] == 'speakStop' for e in allc) and any(e['f'] == 'musicStop' for e in allc), "cineStop() calls speakStop and musicStop")
+        allc = cd['all']; mp = [e for e in allc if e['f'] == 'musicPlay']
+        add('dispatch', 'dispatch.music', any(e['a'][:1] == [cd['mood']] for e in mp), f"campDispatch starts the dispatch's mood cue `{cd['mood']}`: musicPlay saw {[e['a'][:1] for e in mp][:3] or 'nothing'}")
+        add('dispatch', 'dispatch.stop', any(e['f'] == 'musicStop' for e in allc), "closing the card calls musicStop")
     return C
 
 
@@ -227,7 +221,7 @@ GROUPS = [('fire', 'sim: a unit that fires passes itself as `who` and reaches it
           ('made', 'sim: a trained unit, a finished building and a placed building pass themselves (done / place -> <type>.ready|done|place.<faction>)'), ('selack', 'ui: selecting a unit plays its select voice, ordering it plays its ack voice'),
           ('skill', 'sim: every active hero skill is cast through sfx(\'skill:<id>\',x,y,hero)'), ('resolve', 'end to end: every wired entity above then plays THEIR OWN voice (<type>.<event>.<faction> / skill.<id>) - needs the voice content of 81_sfx_*.js'), ('glob', 'ui/sim: err, train, click, alert, level, win and lose reach sfx'),
           ('music', 'match -> musicScene carries faction / era / combat intensity / night; the menu plays `title`'), ('sting', 'musicStinger plays sting_victory / defeat / era / hero / alarm'),
-          ('camp', 'campaign: `mood` reaches the music, `radio` is voiced by speak(who,text,{style}), `strike` warns through sfx'), ('cine', 'cinematics: music cue, scene sfx via cineSfx, lines via speak + duck, stop -> speakStop + musicStop')]
+          ('camp', 'campaign: `mood` reaches the music, `radio` is voiced by speak(who,text,{style}), `strike` warns through sfx'), ('dispatch', 'dispatch card: mood cue via musicPlay, close -> musicStop')]
 
 
 def report(C, prefix=''):

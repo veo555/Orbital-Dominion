@@ -1,5 +1,5 @@
 /* =========================================================================
-   CAMPAIGN UI — chapter select, mission briefing, in-match objectives / radio strip / blocking cinematics, debrief, progress save and the Extras gallery.
+   CAMPAIGN UI — chapter select, mission briefing, in-match objectives / radio strip / blocking dispatch cards, debrief, progress save and the dispatch Archive.
    Contract: docs/CAMPAIGN_SPEC.md (§3 data, §4 radio, §7 runtime: events, hold / resume protocol, save helpers).
    This file only reads the story data and the runtime API (the campaign... / camp... functions of 45_campaign.js); it never writes simulation state.
    Everything private is prefixed cu / CU so it cannot collide with other modules in the shared IIFE scope.
@@ -8,13 +8,13 @@
      72_menus.js  showEnd -> campShowEnd (debrief), syncMenu -> campSyncMenu
      70_ui.js     renderObjectives -> campRenderObjectives, hero / era buttons show campLocked reasons
    ========================================================================= */
-const CU={save:null,saveFailed:false,cineBusy:false,holdWatch:0,radio:{cur:null,q:[],left:0,total:0},xp:null,deb:null,confirm:false,brief:null};
+const CU={save:null,saveFailed:false,dispBusy:false,dp:null,holdWatch:0,radio:{cur:null,q:[],left:0,total:0},xp:null,deb:null,confirm:false,brief:null};
 
 /* ------------------------------- small helpers ------------------------------- */
 const cuEsc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':'&#39;');
 const cuS=()=>(typeof STORY!=='undefined'&&STORY)||{};
 function cuMissions(){const m=cuS().missions;return Array.isArray(m)?m.filter(x=>x&&typeof x==='object'&&typeof x.id==='string'&&x.id):[];}
-const cuCine=id=>{const c=cuS().cine;return id&&typeof id==='string'&&c&&typeof c==='object'&&c[id]?c[id]:null;};
+const cuDisp=id=>{const c=cuS().dispatch;return id&&typeof id==='string'&&c&&typeof c==='object'&&c[id]?c[id]:null;};
 const cuChar=id=>{const c=cuS().characters;return id&&typeof id==='string'&&c&&c[id]?c[id]:null;};
 function cuPlace(id){const p=cuS().world&&cuS().world.places;return Array.isArray(p)&&id?p.find(x=>x&&x.id===id)||null:null;}
 const cuDur=s=>{s=Math.max(0,Math.round(+s||0));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
@@ -62,9 +62,9 @@ function cuPortrait(charId,size,expr){
   }catch(e){url='';}
   return cuPortC[k]=url;
 }
-function cuFaceHTML(charId,cls){
+function cuFaceHTML(charId,cls,expr){
   const ch=cuChar(charId);if(!ch)return'';
-  const url=cuPortrait(charId,cls==='cr'?56:44,'neutral'),fc=FACTIONS[ch.faction],col=fc?fc.col.base:cuTok('--raise2');
+  const url=cuPortrait(charId,cls==='cr'?56:44,expr||'neutral'),fc=FACTIONS[ch.faction],col=fc?fc.col.base:cuTok('--raise2');
   return url?'<img class="cu-face" src="'+url+'" alt="'+cuEsc(ch.name||charId)+'">':'<span class="cu-face" style="--c:'+col+'" aria-label="'+cuEsc(ch.name||charId)+'">'+cuEsc((ch.short||ch.name||charId).slice(0,1))+'</span>';
 }
 function cuFacChip(id){
@@ -92,24 +92,72 @@ function cuRestrictText(m){
 
 /* ------------------------------- menu buttons ------------------------------- */
 function campSyncMenu(){
-  const c=cuS().cine;
+  const c=cuS().dispatch;
   $('bCamp').classList.toggle('hidden',cuMissions().length===0);
-  $('bExtras').classList.toggle('hidden',!(c&&typeof c==='object'&&Object.keys(c).length));
+  $('bArchive').classList.toggle('hidden',!(c&&typeof c==='object'&&Object.keys(c).length));
 }
 
-/* ------------------------------- films (marks them seen; never blocks when the engine is missing) ------------------------------- */
-function campFilm(id,done){
-  let called=false;
-  const fin=info=>{if(called)return;called=true;if(info&&info.reason!=='missing'&&info.reason!=='error')cuMarkSeen(id);if(done)done(info||{id,reason:'done'});};
-  if(!cuCine(id)||typeof cinePlay!=='function'){fin({id,reason:'missing'});return false;}
-  try{cinePlay(id,{onEnd:fin});}catch(e){fin({id,reason:'error'});return false;}
-  return true;
+/* ------------------------------- dispatch cards (static text; mark themselves seen; never block when the data is missing) ------------------------------- */
+/* campDispatch(idOrIds,done): shows the card(s) in order over whatever is on screen and restores that screen afterwards. done({reason:'done'|'skip'|'missing'}) runs once, after the last card. */
+const CU_DKIND={intro:'Prologue',briefing:'Briefing',debrief:'Debrief',interlude:'Interlude',ending:'Ending',credits:'Credits',defeat:'Defeat'};
+function campDispatch(ids,done){
+  const q=(Array.isArray(ids)?ids:[ids]).filter((x,i,a)=>cuDisp(x)&&a.indexOf(x)===i);
+  if(!q.length){if(done)done({reason:'missing'});return false;}
+  const P=CU.dp;
+  if(P){P.q.push(...q.filter(x=>!P.q.includes(x)));if(done){const d0=P.done;P.done=info=>{if(d0)d0(info);done(info);};}return true;}   // a card is already open: queue behind it
+  CU.dp={q,i:0,done,prev:currentOverlay(),stack:overlayStack.slice(),mus:null,mood:null};
+  try{if(typeof musicState==='function')CU.dp.mus=musicState();}catch(e){}
+  dpShow();return true;
 }
-function campChain(ids,done){
-  const q=ids.filter((x,i)=>cuCine(x)&&ids.indexOf(x)===i);
-  const next=()=>{const id=q.shift();if(!id){if(done)done();return;}campFilm(id,next);};
-  next();
+function dpShow(){
+  const P=CU.dp,id=P.q[P.i],d=cuDisp(id);cuMarkSeen(id);dpMusic(d);
+  dpRender(P,id,d);showOverlay('campDispatch');
+  const body=$('dpBody');if(body)body.scrollTop=0;cuFocus('dpNext');
 }
+function dpMusic(d){
+  const P=CU.dp;if(!P||!d.mood||P.mood===d.mood)return;P.mood=d.mood;
+  try{if(typeof musicPlay==='function')musicPlay(d.mood,{fade:.6});}catch(e){}
+}
+function dpRender(P,id,d){
+  const last=P.i>=P.q.length-1,credits=d.kind==='credits';
+  let h='<div class="cu-head"><div class="cu-prog">'+cuEsc(CU_DKIND[d.kind]||'Dispatch')+(P.q.length>1?' · '+(P.i+1)+' / '+P.q.length:'')+'</div><h2 class="ttl" id="dpTitle">'+cuEsc(d.title||id)+'</h2></div>';
+  h+='<div class="cu-body dp-body'+(credits?' dp-credits':'')+'" id="dpBody" tabindex="0" role="region" aria-label="'+cuEsc((d.title||id)+' transcript')+'">';
+  let prev=null;
+  for(const l of Array.isArray(d.lines)?d.lines:[]){
+    if(!l||typeof l.text!=='string')continue;
+    if(l.style==='heading'){h+='<div class="dp-h">'+cuEsc(l.text)+'</div>';prev=null;continue;}
+    const ch=cuChar(l.who),st=l.style||'normal',fc=ch&&FACTIONS[ch.faction];
+    const name=ch?(ch.short||ch.name||l.who):(l.who&&l.who!=='narrator'?String(l.who):'');
+    h+='<div class="dp-l '+cuEsc(st)+'">'+(ch?cuFaceHTML(l.who,'dp',l.expr):'')+'<div class="dp-m">'+
+      (name?'<div class="dp-w"><b'+(fc?' style="color:'+fc.col.light+'"':'')+'>'+cuEsc(name)+'</b>'+(st==='radio'?'<em>RADIO</em>':'')+'</div>':'')+
+      '<p class="dp-t">'+cuEsc(l.text)+'</p></div></div>';
+    prev=l.who;
+  }
+  h+='</div><div class="cu-foot">'+(!last?'<button class="btn" id="dpSkip" data-act="skip">Skip all</button>':'')+'<span class="grow"></span><button class="btn big" id="dpNext" data-act="next">Continue</button></div>';
+  $('dpCard').innerHTML=h;
+}
+function dpFinish(reason){
+  const P=CU.dp;if(!P)return;CU.dp=null;
+  if(reason==='skip')for(const x of P.q)cuMarkSeen(x);
+  try{if(P.mood&&typeof musicStop==='function'){musicStop(.6);if(P.mus&&typeof musicRestore==='function')musicRestore(P.mus);}}catch(e){}
+  if(P.prev)showOverlay(P.prev);else hideOverlays();
+  overlayStack=P.stack;
+  if(P.done)P.done({reason});
+}
+function dpAct(a){
+  const P=CU.dp;if(!P)return;
+  if(a==='skip'){dpFinish('skip');return;}
+  if(a==='next'){if(P.i<P.q.length-1){P.i++;dpShow();}else dpFinish('done');}
+}
+function dpKey(e){
+  if(!CU.dp||currentOverlay()!=='campDispatch'||e.defaultPrevented)return;
+  const k=e.key;
+  if(k==='Escape'||k==='Tab'||k.startsWith('Arrow')||k==='PageUp'||k==='PageDown'||k==='Home'||k==='End')return;   // Esc is routed by 90_main -> campEsc; the rest scrolls / moves focus natively
+  if((k==='Enter'||k===' ')&&e.target&&e.target.tagName==='BUTTON'){e.stopPropagation();return;}               // a focused button activates itself (the click handler does the work)
+  e.stopPropagation();                                                                                          // no game hotkey reaches a held match behind the card
+  if(k==='Enter'||k===' '){e.preventDefault();dpAct('next');}
+}
+function campChain(ids,done){campDispatch(ids,done);}
 function campShow(id){if(currentOverlay()!==id)openSub(id);else showOverlay(id);}
 
 /* ------------------------------- chapter select ------------------------------- */
@@ -135,10 +183,10 @@ function campRenderMenu(){
   const S=cuS(),meta=S.meta||{},save=campSaveGet(),ms=cuMissions(),tgt=campContinueTarget();
   $('cmTitle').textContent=meta.title||'Campaign';$('cmTag').textContent=meta.tagline||'';
   const nDone=ms.filter(m=>save.done[m.id]).length,stars=ms.reduce((a,m)=>a+(save.done[m.id]?save.done[m.id].stars:0),0);
-  $('cmProg').textContent=ms.length?(campComplete(save)?'Campaign complete — every cinematic is unlocked in Extras · ':'')+nDone+' / '+ms.length+' missions · '+stars+' / '+ms.length*3+' stars':'';
+  $('cmProg').textContent=ms.length?(campComplete(save)?'Campaign complete — every dispatch is open in the Archive · ':'')+nDone+' / '+ms.length+' missions · '+stars+' / '+ms.length*3+' stars':'';
   const cont=$('cmContinue');cont.disabled=!tgt;
   if(tgt){const started=nDone>0,done=!!save.done[tgt.id];cont.textContent=(done?'Replay':started?'Continue':'Begin')+' — '+(ms.indexOf(tgt)+1)+'. '+(tgt.title||tgt.id);}else cont.textContent='Continue';
-  $('cmIntro').classList.toggle('hidden',!cuCine('intro'));
+  $('cmIntro').classList.toggle('hidden',!cuDisp('intro'));
   for(const b of $('cmDiff').querySelectorAll('[data-act^="diff:"]')){const on=b.dataset.act==='diff:'+save.diff;b.classList.toggle('sel',on);b.setAttribute('aria-pressed',on?'true':'false');}
   $('cmConfirm').classList.toggle('hidden',!CU.confirm);
   /* acts: STORY.acts when present, otherwise grouped by mission.act; missions no act claims are appended to the last group */
@@ -158,9 +206,10 @@ function campRenderMenu(){
 function campPlay(id){
   const m=cuMissions().find(x=>x.id===id);if(!m)return;
   const s=campSaveGet();if(!campaignCanPlay(s,id)){if(typeof toastAny==='function')toastAny('Locked — win the previous mission first');return;}
-  const first=cuMissions()[0]===m;
-  const brief=()=>{if(m.briefing&&cuCine(m.briefing))campFilm(m.briefing,()=>campShowBrief(m));else campShowBrief(m);};
-  if(first&&!s.seen.intro&&cuCine('intro'))campFilm('intro',brief);else brief();
+  const first=cuMissions()[0]===m,ids=[];
+  if(first&&!s.seen.intro)ids.push('intro');
+  if(m.briefing)ids.push(m.briefing);
+  campChain(ids,()=>campShowBrief(m));
 }
 function campLaunch(m){startGame({campaign:m,diff:campSaveGet().diff});}
 function campRestart(){const m=ui.campMission;if(!m)return false;campLaunch(m);return true;}
@@ -169,7 +218,7 @@ function campMenuAct(a){
   if(a==='back'){closeSub();return;}
   if(a==='continue'){const t=campContinueTarget();if(t)campPlay(t.id);return;}
   if(a.startsWith('diff:')){campSetDiff(a.slice(5));campRenderMenu();return;}
-  if(a==='intro'){campFilm('intro',()=>{campRenderMenu();});return;}
+  if(a==='intro'){campDispatch('intro',()=>{campRenderMenu();cuFocus('cmIntro');});return;}
   if(a==='reset'){CU.confirm=true;campRenderMenu();cuFocus('cmResetNo');return;}
   if(a==='reset-no'){CU.confirm=false;campRenderMenu();cuFocus('cmReset');return;}
   if(a==='reset-yes'){campResetProgress();return;}
@@ -195,7 +244,7 @@ function campRenderBrief(m){
   h+='<h3>Stars</h3><ul class="ol"><li class="bonus">Win the mission</li>'+(nBonus?'<li class="bonus">Complete every bonus objective</li>':'')+(par?'<li class="bonus">Win in under '+fmtTime(par)+'</li>':'')+'</ul>';
   if(lock.length)h+='<h3>Locked at the start</h3><p class="cu-note">'+cuEsc(lock.join(' · '))+'. Some may unlock during the mission.</p>';
   h+='</section></div></div>';
-  h+='<div class="cu-foot"><button class="btn" data-act="back">Back</button>'+(m.briefing&&cuCine(m.briefing)?'<button class="btn" data-act="replay">Replay briefing</button>':'')+'<span class="grow"></span><button class="btn big" id="cbStart" data-act="start">Start mission</button></div>';
+  h+='<div class="cu-foot"><button class="btn" data-act="back">Back</button>'+(m.briefing&&cuDisp(m.briefing)?'<button class="btn" data-act="replay">Read briefing</button>':'')+'<span class="grow"></span><button class="btn big" id="cbStart" data-act="start">Start mission</button></div>';
   $('cbCard').innerHTML=h;
 }
 function campBriefAct(a){
@@ -203,17 +252,17 @@ function campBriefAct(a){
   if(a==='back'){closeSub();return;}
   if(!m)return;
   if(a.startsWith('diff:')){campSetDiff(a.slice(5));campRenderBrief(m);cuFocus('cbStart');return;}
-  if(a==='replay'){campFilm(m.briefing,()=>{cuFocus('cbStart');});return;}
+  if(a==='replay'){campDispatch(m.briefing,()=>{cuFocus('cbStart');});return;}
   if(a==='start'){campLaunch(m);return;}
 }
 
 /* ------------------------------- match start / stop ------------------------------- */
 function campMatchStart(m){
-  ui.campMission=m||null;CU.cineBusy=false;CU.holdWatch=0;CU.deb=null;campRadioClear();
+  ui.campMission=m||null;CU.dispBusy=false;CU.holdWatch=0;CU.deb=null;campRadioClear();
   const host=$('objectives');host.classList.toggle('camp',!!m);host.dataset.h='';
   if(m)campRenderObjectives();
 }
-function campMatchStop(){const was=!!ui.campMission;ui.campMission=null;CU.cineBusy=false;campRadioClear();$('objectives').classList.remove('camp');$('objectives').dataset.h='';return was;}
+function campMatchStop(){const was=!!ui.campMission;ui.campMission=null;CU.dispBusy=false;campRadioClear();$('objectives').classList.remove('camp');$('objectives').dataset.h='';return was;}
 
 /* ------------------------------- in-match objectives (replace the tutorial hints) ------------------------------- */
 function campRenderObjectives(){
@@ -280,17 +329,17 @@ function cuPing(tx,ty,kind,dur){
   if(!G||ui.demo)return;const col=kind==='bad'?'rgba(255,90,90,A)':kind==='good'?'rgba(90,230,140,A)':'rgba(120,190,255,A)';
   ui.pings.push({x:(tx+.5)*TILE,y:(ty+.5)*TILE,t:G.time,dur:dur||4,col});while(ui.pings.length>8)ui.pings.shift();
 }
-function campPlayHeld(id){                                 // a blocking `cine` action: the sim is held until campaignResume(id)
-  CU.cineBusy=true;campRadioClear();
-  const resume=()=>{CU.cineBusy=false;CU.holdWatch=0;try{campaignResume(id);}catch(e){}};   // flag first: the resume may deliver the next queued cinematic synchronously
-  if(!campFilm(id,resume))return;                          // campFilm already called resume for a missing film
+function campPlayHeld(id){                                 // a blocking `dispatch` action: the sim is held until campaignResume(id)
+  CU.dispBusy=true;campRadioClear();
+  const resume=()=>{CU.dispBusy=false;CU.holdWatch=0;try{campaignResume(id);}catch(e){}};   // flag first: the resume may deliver the next queued dispatch synchronously
+  campDispatch(id,resume);                                  // a missing dispatch calls resume at once
 }
 function onCampaignEvent(e){
   if(!e||typeof e!=='object')return;
   try{
     switch(e.type){
       case'radio':campRadio(e.id);break;
-      case'cine':if(e.hold)campPlayHeld(e.id);break;
+      case'dispatch':if(e.hold)campPlayHeld(e.id);break;
       case'obj':{
         const oh=$('objectives');if(oh)oh.dataset.h='';          // re-render the tracker on its next pass
         if(!e.init&&!ui.demo){
@@ -317,8 +366,8 @@ function campUiTick(dt){
   const C=G&&G.camp;if(!C)return;
   const R=CU.radio;
   if(R.cur&&!G.paused&&!document.hidden){R.left-=dt;$('crBar').style.transform='scaleX('+Math.max(0,R.left/R.total).toFixed(3)+')';if(R.left<=0)radioNext();}
-  /* safety net: a held mission whose film never reports back must not freeze the game for good */
-  if(C.hold&&!CU.cineBusy&&!(typeof cineActive==='function'&&cineActive())){CU.holdWatch+=dt;if(CU.holdWatch>1.5){CU.holdWatch=0;try{campaignResume();}catch(e){}}}else CU.holdWatch=0;
+  /* safety net: a held mission whose dispatch card never reports back must not freeze the game for good */
+  if(C.hold&&!CU.dispBusy&&!CU.dp){CU.holdWatch+=dt;if(CU.holdWatch>1.5){CU.holdWatch=0;try{campaignResume();}catch(e){}}}else CU.holdWatch=0;
 }
 
 /* ------------------------------- debrief ------------------------------- */
@@ -334,7 +383,7 @@ function campShowEnd(res){
     CU.deb.unlock=nid&&!wasOpen?cuMissions().find(x=>x.id===nid)||null:null;
   }
   const show=()=>{campRenderDeb();overlayStack=['campDebrief'];showOverlay('campDebrief');cuFocus(win?'cdGo':'cdRetry');};   // the stack holds the card itself: a system Back press re-shows it instead of closing it
-  if(!win&&R.reason!=='surrender'&&m.defeat&&cuCine(m.defeat))campFilm(m.defeat,show);else show();
+  if(!win&&R.reason!=='surrender'&&m.defeat&&cuDisp(m.defeat))campDispatch(m.defeat,show);else show();
   return true;
 }
 function campRenderDeb(){
@@ -374,55 +423,35 @@ function campDebAct(a){
   }
 }
 
-/* ------------------------------- Extras: cinematic gallery ------------------------------- */
-const CU_KINDS={intro:'Introduction',briefing:'Mission briefings',debrief:'Mission debriefs',interlude:'Interludes',ending:'Ending',credits:'Credits',defeat:'Defeat scenes'};
-function cuCanExport(){return typeof cineExport==='function'&&typeof MediaRecorder!=='undefined'&&!!(window.HTMLCanvasElement&&HTMLCanvasElement.prototype.captureStream);}
-function campOpenExtras(){
-  const c=cuS().cine;if(!(c&&typeof c==='object'&&Object.keys(c).length))return;   // nothing to show (and the button is hidden) with an empty story
-  CU.xp=null;campRenderExtras();campShow('extrasMenu');cuFocus('exBack');
+/* ------------------------------- Archive: the dispatches the player has seen, re-readable ------------------------------- */
+const CU_KINDS={intro:'Prologue',briefing:'Mission briefings',debrief:'Mission debriefs',interlude:'Interludes',ending:'Ending',credits:'Credits',defeat:'Defeat dispatches'};
+function campOpenArchive(){
+  const c=cuS().dispatch;if(!(c&&typeof c==='object'&&Object.keys(c).length))return;   // nothing to show (and the button is hidden) with an empty story
+  campRenderArchive();campShow('archiveMenu');cuFocus('arBack');
 }
-function campRenderExtras(){
-  const save=campSaveGet(),open=campComplete(save),list=typeof cineGallery==='function'?cineGallery():[],ms=cuMissions(),canX=cuCanExport(),order={};
+function campRenderArchive(){
+  const save=campSaveGet(),open=campComplete(save),all=cuS().dispatch||{},ms=cuMissions(),order={};
   ms.forEach((m,i)=>{if(m.briefing)order[m.briefing]=i*10;if(m.debrief)order[m.debrief]=i*10+1;if(m.after)order[m.after]=i*10+2;if(m.defeat)order[m.defeat]=i*10+3;});
-  const rows=list.filter(x=>x&&x.id).map(x=>({id:x.id,title:x.title||x.id,kind:x.kind||'interlude',len:x.len,seen:!!(save.seen[x.id]||x.seen),o:order[x.id]!==undefined?order[x.id]:1000}));
+  const rows=Object.keys(all).map(id=>({id,title:all[id].title||id,kind:all[id].kind||'interlude',n:(all[id].lines||[]).filter(l=>l&&l.style!=='heading').length,seen:!!save.seen[id],o:order[id]!==undefined?order[id]:1000}));
   const nSeen=rows.filter(r=>r.seen).length;
-  $('exTag').textContent=rows.length?(open?'The campaign is complete — every cinematic is unlocked.':'Cinematics you have seen are listed here; finish the campaign to unlock them all.')+' · '+nSeen+' of '+rows.length+' seen':'No cinematics in this build.';
+  $('arTag').textContent=rows.length?(open?'The campaign is complete — every dispatch is open.':'Dispatches you have read are kept here; finish the campaign to open them all.')+' · '+nSeen+' of '+rows.length+' read':'No dispatches in this build.';
   let h='';
   for(const k of Object.keys(CU_KINDS)){
     const g=rows.filter(r=>r.kind===k).sort((a,b)=>a.o-b.o||(a.id<b.id?-1:1));if(!g.length)continue;
     h+='<section class="xg"><h3>'+CU_KINDS[k]+'</h3>';let nLock=0;
     for(const r of g){
-      const ok=open||r.seen;
-      if(!ok){nLock++;continue;}
-      h+='<div class="xr" data-id="'+cuEsc(r.id)+'"><span class="xk">'+cuEsc(k)+'</span><div class="xt"><b>'+cuEsc(r.title)+'</b><small>'+cuDur(r.len)+'</small></div>'+
-        '<span class="xs'+(r.seen?'':' new')+'">'+(r.seen?'Seen':'New')+'</span><div class="xb"><button class="btn" data-act="film:'+cuEsc(r.id)+'">Play</button>'+(canX?'<button class="btn" data-act="export:'+cuEsc(r.id)+'">Save video (.webm)</button>':'')+'</div><div class="xp hidden"><i></i></div></div>';
+      if(!(open||r.seen)){nLock++;continue;}
+      h+='<div class="xr" data-id="'+cuEsc(r.id)+'"><span class="xk">'+cuEsc(CU_DKIND[k]||k)+'</span><div class="xt"><b>'+cuEsc(r.title)+'</b><small>'+r.n+' line'+(r.n===1?'':'s')+'</small></div>'+
+        '<span class="xs'+(r.seen?'':' new')+'">'+(r.seen?'Read':'New')+'</span><div class="xb"><button class="btn" data-act="read:'+cuEsc(r.id)+'" aria-label="Read '+cuEsc(r.title)+'">Read</button></div></div>';
     }
-    if(nLock)h+='<div class="xr lock" data-locked="'+nLock+'"><span class="xk">'+cuEsc(k)+'</span><div class="xt"><b>'+nLock+' locked cinematic'+(nLock>1?'s':'')+'</b></div><span class="xs">Locked</span></div>';
+    if(nLock)h+='<div class="xr lock" data-locked="'+nLock+'"><span class="xk">'+cuEsc(CU_DKIND[k]||k)+'</span><div class="xt"><b>'+nLock+' unread dispatch'+(nLock>1?'es':'')+'</b></div><span class="xs">Locked</span></div>';
     h+='</section>';
   }
-  $('exBody').innerHTML=h||'<p class="cu-note">No cinematics are available in this build.</p>';
+  $('arBody').innerHTML=h||'<p class="cu-note">No dispatches are available in this build.</p>';
 }
-function campExtrasAct(a,btn){
-  if(a==='back'){campExportStop();closeSub();return;}
-  if(a.startsWith('film:')){const id=a.slice(5);campExportStop();campFilm(id,()=>{campRenderExtras();});return;}
-  if(a.startsWith('export:')){campExport(a.slice(7),btn);return;}
-}
-function campExportStop(){if(CU.xp&&CU.xp.ac){try{CU.xp.ac.abort();}catch(e){}}}
-function campExport(id,btn){
-  if(CU.xp){campExportStop();return;}                                 // a second press on the running export cancels it
-  if(!cuCanExport()){if(typeof toastAny==='function')toastAny('Video export is not supported in this browser');return;}
-  const row=btn.closest('.xr'),bar=row&&row.querySelector('.xp'),fill=bar&&bar.firstElementChild,ac=typeof AbortController!=='undefined'?new AbortController():null;
-  CU.xp={id,ac};
-  for(const b of $('exBody').querySelectorAll('[data-act^="film:"],[data-act^="export:"]'))if(b!==btn)b.disabled=true;
-  btn.textContent='Cancel · 0%';if(bar)bar.classList.remove('hidden');
-  const done=blob=>{
-    CU.xp=null;
-    if(blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=id+'.webm';document.body.appendChild(a);a.click();setTimeout(()=>{try{URL.revokeObjectURL(a.href);a.remove();}catch(e){}},4000);if(typeof toastAny==='function')toastAny('Saved '+id+'.webm');}
-    else if(!ac||!ac.signal.aborted){if(typeof toastAny==='function')toastAny('Video export failed in this browser');}
-    campRenderExtras();
-  };
-  let p;try{p=cineExport(id,{w:1280,h:720,signal:ac?ac.signal:undefined,onProgress:v=>{const pc=Math.round(v*100);if(fill)fill.style.width=pc+'%';btn.textContent='Cancel · '+pc+'%';}});}catch(e){p=null;}
-  Promise.resolve(p).then(done,()=>done(null));
+function campArchiveAct(a){
+  if(a==='back'){closeSub();return;}
+  if(a.startsWith('read:')){const id=a.slice(5);campDispatch(id,()=>{campRenderArchive();});return;}
 }
 
 /* ------------------------------- Esc / system back ------------------------------- */
@@ -430,7 +459,8 @@ function campEsc(cur){
   switch(cur){
     case'campMenu':if(CU.confirm){CU.confirm=false;campRenderMenu();cuFocus('cmReset');}else closeSub();return true;
     case'campBrief':closeSub();return true;
-    case'extrasMenu':campExportStop();closeSub();return true;
+    case'archiveMenu':closeSub();return true;
+    case'campDispatch':if(CU.dp)dpFinish('skip');return true;
     case'campDebrief':if(CU.deb)campDebAct(CU.deb.win?'continue':'back');return true;
   }
   return false;
@@ -439,12 +469,12 @@ function campEsc(cur){
 /* ------------------------------- init ------------------------------- */
 function campInit(){
   const bind=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled||!el.contains(b)||b.id==='campRadio')return;cuAudio();fn(b.dataset.act,b,e);});};
-  bind('campMenu',campMenuAct);bind('campBrief',campBriefAct);bind('campDebrief',campDebAct);bind('extrasMenu',campExtrasAct);
+  bind('campMenu',campMenuAct);bind('campBrief',campBriefAct);bind('campDebrief',campDebAct);bind('archiveMenu',campArchiveAct);bind('campDispatch',dpAct);window.addEventListener('keydown',dpKey,true);
   $('bCamp').addEventListener('click',()=>{cuAudio();campOpen();});
-  $('bExtras').addEventListener('click',()=>{cuAudio();campOpenExtras();});
+  $('bArchive').addEventListener('click',()=>{cuAudio();campOpenArchive();});
   $('campRadio').addEventListener('mousedown',e=>{e.preventDefault();campRadioSkip();});
   const pm=$('pauseMenu');
   if(pm&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(!pm.classList.contains('hidden'))campPauseSync();}).observe(pm,{attributes:true,attributeFilter:['class']});
   campSyncMenu();
-  if(window.__TEST&&window.__RTS)Object.assign(window.__RTS,{CU,campSyncMenu,campOpen,campOpenExtras,campPlay,campShowBrief,campLaunch,campRestart,campShowEnd,campSaveGet,campSavePut,campRadio,campRadioClear,campRenderMenu,campRenderObjectives,campRenderExtras,campExport,campExportStop,campPauseSync,campUiTick,campFilm,campChain,campComplete,campContinueTarget,campMatchStart,campMatchStop,campEsc,cuPortrait,kill,damageEnt,campDo,campEvalCond,campObjectives,campaignSummary,campaignResume,campaignDrainEvents,campaignSaveRead,campaignSaveWrite,campaignSaveUpdate,campaignCanPlay,campaignNextId,emptyCampaignSave});   // test-only hooks (window.__TEST)
+  if(window.__TEST&&window.__RTS)Object.assign(window.__RTS,{CU,campSyncMenu,campOpen,campOpenArchive,campPlay,campShowBrief,campLaunch,campRestart,campShowEnd,campSaveGet,campSavePut,campRadio,campRadioClear,campRenderMenu,campRenderObjectives,campRenderArchive,campDispatch,dpAct,dpFinish,campPauseSync,campUiTick,campChain,campComplete,campContinueTarget,campMatchStart,campMatchStop,campEsc,cuPortrait,kill,damageEnt,campDo,campEvalCond,campObjectives,campaignSummary,campaignResume,campaignDrainEvents,campaignSaveRead,campaignSaveWrite,campaignSaveUpdate,campaignCanPlay,campaignNextId,emptyCampaignSave});   // test-only hooks (window.__TEST)
 }

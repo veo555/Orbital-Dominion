@@ -1,7 +1,7 @@
 /* Campaign RUNTIME fixtures: one compact mission per op family (waves, strikes, restrictions + unlocks, flags / after-timers, objective states, stars,
-   blocking cinematics, AI tuning, malformed data ...). Hand-written for tests/sim/campaign.js; tile coordinates are valid for the seed-1101/1103 maps
+   blocking dispatches, AI tuning, malformed data ...). Hand-written for tests/sim/campaign.js; tile coordinates are valid for the seed-1101/1103 maps
    (player main hub tile (11,72), enemy (73,12); `node tools/map_preview.js 1101` prints the map). Usage:
-     const F=require('./campaign_ops.js')();   F.missions.waves   F.base('id',{triggers:[...]})   F.install(A)   // A = simlib3 instance: puts the fixture cinematics/radio into STORY
+     const F=require('./campaign_ops.js')();   F.missions.waves   F.base('id',{triggers:[...]})   F.install(A)   // A = simlib3 instance: puts the fixture dispatches/radio into STORY
    Every call returns fresh deep objects (tests may mutate them). Missions run with `foe.ai:false` unless they test the AI, so they are fast and fully scripted. */
 module.exports=function makeOps(){
   const clone=o=>o===undefined?undefined:JSON.parse(JSON.stringify(o));
@@ -11,7 +11,7 @@ module.exports=function makeOps(){
     start:{c:500,e:0,era:1,hero:'available',units:[],buildings:[]},restrict:{},foe:{start:{},ai:false,mods:{}},swarm:'off',daylight:'cycle'},over||{});
   /* a mission skeleton: win when flag "done" is set, 60 s par, one primary + one bonus objective */
   const base=(id,over)=>{
-    const m={id,act:1,n:1,title:'Ops '+id,subtitle:'fixture',place:'p1',synopsis:'campaign_ops fixture mission',briefing:'ops_cine',debrief:'ops_cine',defeat:null,after:null,
+    const m={id,act:1,n:1,title:'Ops '+id,subtitle:'fixture',place:'p1',synopsis:'campaign_ops fixture mission',briefing:'ops_dispatch',debrief:'ops_dispatch',defeat:null,after:null,
       setup:setup(),
       objectives:[{id:'p1',kind:'primary',text:'Primary objective',when:null,done:['flag','done'],fail:null},{id:'b1',kind:'bonus',text:'Bonus objective',when:null,done:['flag','bonus'],fail:null}],
       triggers:[],win:['flag','done'],lose:null,stars:{par:60},unlocks:{next:null},hints:[]};
@@ -64,11 +64,11 @@ module.exports=function makeOps(){
       win:['all',['obj','p1','done'],['obj','p2','done']]}),
     /* a primary objective that can fail (=> defeat) */
     objFail:()=>base('ops_objfail',{objectives:[{id:'p1',kind:'primary',text:'Keep it alive',when:null,done:['flag','done'],fail:['flag','p1fail']},{id:'b1',kind:'bonus',text:'Bonus',when:null,done:['flag','bonus'],fail:null}]}),
-    /* blocking cinematics: two in one trigger, more actions after them, a later trigger that must wait */
-    cine:()=>base('ops_cine_m',{triggers:[
-      {id:'c1',when:['time','>=',2],do:[['cine','ops_cine'],['cine','ops_cine2'],['radio','r1'],['flag','after_cine',true]]},
+    /* blocking dispatches: two in one trigger, more actions after them, a later trigger that must wait */
+    dispatch:()=>base('ops_dispatch_m',{triggers:[
+      {id:'c1',when:['time','>=',2],do:[['dispatch','ops_dispatch'],['dispatch','ops_dispatch2'],['radio','r1'],['flag','after_dispatch',true]]},
       {id:'c2',when:['time','>=',3],do:[['flag','t3',true]]},
-      {id:'badcine',when:['time','>=',1],do:[['cine','no_such_cine'],['flag','after_badcine',true]]}]}),
+      {id:'baddispatch',when:['time','>=',1],do:[['dispatch','no_such_dispatch'],['flag','after_baddispatch',true]]}]}),
     /* the enemy AI is on and tuned by `aimod` (absolute, not cumulative) */
     aimod:()=>base('ops_aimod',{setup:{foe:{ai:true,mods:{waveMult:0.05,firstWave:1},start:{units:[{type:'rifleman',n:3}]}}},
       triggers:[{id:'a1',when:['time','>=',5],do:[['aimod',{waveMult:3,intervalMult:2,firstWave:50,hero:false,air:false}]]},
@@ -105,8 +105,8 @@ module.exports=function makeOps(){
       win:['nonsense'],lose:7,stars:{par:'soon'}}),
   };
   const story={
-    cine:{ops_cine:{id:'ops_cine',kind:'briefing',title:'Ops cine',music:'tension',scenes:[]},ops_cine2:{id:'ops_cine2',kind:'briefing',title:'Ops cine 2',music:'tension',scenes:[]}},
+    dispatch:{ops_dispatch:{id:'ops_dispatch',kind:'briefing',title:'Ops dispatch',mood:'tension',lines:[{who:'narrator',text:'Fixture.',style:'narration'}]},ops_dispatch2:{id:'ops_dispatch2',kind:'briefing',title:'Ops dispatch 2',mood:'tension',lines:[{who:'narrator',text:'Fixture two.',style:'narration'}]}},
     radio:{r1:{who:'idris',text:'Ops radio line one.',style:'radio',dur:3},r2:{who:'idris',text:'Ops radio line two.',style:'radio',dur:3}}};
-  const install=A=>{Object.assign(A.STORY.cine,clone(story.cine));Object.assign(A.STORY.radio,clone(story.radio));};
+  const install=A=>{Object.assign(A.STORY.dispatch,clone(story.dispatch));Object.assign(A.STORY.radio,clone(story.radio));};
   return{base,setup,merge,clone,missions:new Proxy(missions,{get:(t,k)=>typeof t[k]==='function'?t[k]():t[k]}),install,story};
 };

@@ -1,0 +1,11 @@
+# Dispatch spec (v4.0: text dispatches replace the v3 films)
+
+A **dispatch** is a static text card that carries one story beat. There is no picture, camera, timing or video; nothing plays.
+
+* Data: `STORY.dispatch[id] = {id, kind, title, mood?, lines:[{who, text, style, expr?}]}`, written in `src/js/44_story_b_dispatch_{intro,act1,act2,act3}.js` (`Object.assign(STORY.dispatch,{...})`). The ids are the v3 film ids, so old saves keep working.
+* `kind` is one of `DISPATCH_KINDS` (43_vocab.js): `intro`, `briefing`, `debrief`, `interlude`, `ending`, `credits`, `defeat`. The campaign has exactly 1 intro, 9 briefings, 9 debriefs, at least 6 interludes, an ending, the credits (the Lamp-Roll, a plain list of names read out) and at least 1 defeat.
+* `who` is a character id or `narrator`; `style` is one of `LINE_STYLES` (`normal radio whisper shout narration thought heading`; a `heading` is a dateline or chapter card and is spoken by `narrator`); `expr` (optional) is a `PORTRAIT_EXPR` name that picks the portrait chip's face. `mood` (optional) is a `MUSIC_CUES` id that the card plays while it is open (the previous music is restored on close).
+* Limits (`DISPATCH_LIMITS`): text at most 150 characters per line, at most 40 lines per dispatch. `tools/validate_story.js` checks the schema, speakers, kinds, counts and that every mission/trigger reference exists; `tests/story/validate_selftest.js` mutation-tests the validator.
+* Where a card appears (76_campaign_ui.js, `campDispatch(idOrIds, done)`): prologue on the first campaign start (and from "Read prologue" in the campaign menu), briefing before each mission, debrief and interlude after the victory screen (Continue), defeat dispatch after a loss, ending then credits after mission 9, a `['dispatch', id]` mission action (blocking: the sim is held until the card closes, see CAMPAIGN_SPEC section 7.4), and the **Archive** (re-read any dispatch already seen).
+* The card is a modal transcript: speaker portrait chip + name + line, all lines at once, scrollable, no animation. Buttons **Continue** (Enter / Space) and **Skip all** (Esc; shown when more cards are queued), 44 px minimum targets, usable in the desktop, compact landscape and compact portrait layouts and by touch.
+* The Overseer's lines are fixed text like every other line (rule-based system, not an LLM).

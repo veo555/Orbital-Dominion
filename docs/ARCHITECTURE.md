@@ -52,12 +52,15 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `26_economy.js` | **Labour market**: wage index W(t), freelancer listings, hiring/firing/notice, payroll, job board, escrow, clients, `colonyClock` | yes |
 | `27_overseer.js` | **The master**: blackboard (`bbUpdate`, `bbHunt`, `bbAssault`, `bbIntel`, `bbDefense`), domain controllers (`ovSupply/Eco/Tech/Buildings/Production/Defense/War/Recon/Trade/Alloc/Labor/Jobs`), propose/approve mechanism (`ovAct`), presets, **rule-based natural-language parser** (`ovCommand`) | yes |
 | `30_systems.js` | Per-tick systems: unit/building update, skills (`castSkill`), gather/build/repair/trade steps, economy (tax/morale/market), `step()`, `endGame` | yes |
+| `43_vocab.js`, `44_story_*.js`, `45_campaign.js`, `46_save.js` | Story vocabulary, story data (characters, missions, radio, `STORY.dispatch` text dispatches), the headless campaign runtime (conditions/actions/events, blocking `dispatch` hold/resume) and match save/resume | yes (data/headless, loaded by the Node harness) |
 | `40_ai.js` | The built-in opponent (`makeAI`, `aiThink`, `aiBuild`, `findSpot`, expansions, hero spells) | yes |
 | `50_art.js`, `51_art_b.js`, `52_terrain.js` | Procedural unit/building/neutral art, glyphs/icons, terrain + decals | no (canvas) |
 | `53_terrain_hd.js` | Sharp 2×/3× terrain tiles near the camera, replayed battle decals (§9) | no |
 | `60_render.js` | Camera, fog, `render()`, minimap, ghost placement, night lighting; **layout classes and measured HUD geometry** (`applyLayoutClasses`, `measureHud`) | no |
 | `62_quality.js` | Graphics tiers (`battery/balanced/high/ultra`) and the adaptive scaler | no |
 | `63_fx.js` | Vignette + grade, additive glows, parallax dust | no |
+| `64_portrait_core.js`, `64_portraits.js` | Character portrait painter (`drawPortrait`, `PORTRAIT_PAINT.actor`) and the shared `cn*` colour/hash/gradient helpers; used by the radio strip, the campaign cards and the dispatch card. v4.0: the cinematic engine (`64_cine_bg_*`, `64_cine_props`, `65_cine_fx`, `66_cine`) was removed | no (rendering only) |
+| `76_campaign_ui.js` | Campaign screens: chapter select, briefing, **dispatch card** (`campDispatch`: modal text transcript with portrait chips; replaces the v3 films), debrief, **Archive** of read dispatches, radio strip, objective tracker, progress save | no |
 | `70_ui.js` | Selection, control groups, orders, command card (`buildCommands`, `runCmd`), toasts | no |
 | `71_hud.js` | HUD/panels (`hudUpdate`, info card, objectives, economy panel, tooltips) | no |
 | `72_menus.js` | Menus, help text (`HELP_HTML`), end screen + chart | no |

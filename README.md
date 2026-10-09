@@ -12,6 +12,15 @@ offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) f
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
 
+## 0. 4.0: videos removed (T1)
+
+The procedural real-time films (the cinematic engine, its backgrounds, props and effects: `64_cine_bg_*`, `64_cine_props`, `65_cine_fx`, `66_cine`, about 0.7 MB of the build) are gone. The story survives as **text dispatches**
+(`STORY.dispatch`, 32 of them, 278 spoken lines plus datelines, none dropped): a modal text card with speaker portrait chips, Continue / Skip all, shown as prologue, briefings, debriefs, interludes, defeats, ending and credits, and re-readable from the new **Archive**
+(replaces the Extras gallery). The `cine` mission action is now `dispatch` (still blocking). The character portrait painter stays (`64_portrait_core.js`, `64_portraits.js`). Spec: `docs/DISPATCH_SPEC.md`. Save format unchanged.
+Build size 2,026,361 to 1,322,454 bytes for `dist/orbital_dominion_v3.html`. The 3.x sections below describe what was true then; their film rows are historical.
+
+---
+
 ## 0a. What changed in 3.3 (8 Oct 2026): first measurements, save/resume, field manual
 
 | Area | Change | Evidence (headless Chromium / Node on Linux; nothing heard, no real phone) |
@@ -38,7 +47,7 @@ the last column before relying on any claim.
 
 Commands: `python3 build.py` (rebuild every variant), `node tools/validate_story.js` (story data), `node tests/story/validate_selftest.js`
 (the validator's own mutation test), `node tests/sim/campaign.js` (campaign runtime), `node tests/sim/smoke.js` (simulation),
-`python3 tools/cine_contact.py` (contact sheets of film frames).
+(3.2 also shipped `tools/cine_contact.py`, removed in 4.0.)
 
 ---
 
@@ -120,10 +129,10 @@ docs/                         all handoff documents (below)
 | `docs/TOUCH_SPEC.md` | Gesture specification mapped to the tests that verify it |
 | `docs/DEPLOY.md` | Release as a file, as a web app, as store apps; checklist |
 | `docs/MONETIZATION.md` | Optional Stripe payments: modes, security model, store rules, setup, what is verified |
-| `docs/story/SCRIPT.md` | The full screenplay of *The Lantern Tithe*: every film, mission, radio line and character, generated from the story data (`node tools/story_to_md.js`); do not edit by hand |
-| `docs/story/BIBLE.md` | The series bible: premise, chronology, characters with voice guides, factions, the nine missions, the cinematic manifest |
+| `docs/story/SCRIPT.md` | The full script of *The Lantern Tithe*: every dispatch, mission, radio line and character, generated from the story data (`node tools/story_to_md.js`); do not edit by hand |
+| `docs/story/BIBLE.md` | The series bible: premise, chronology, characters with voice guides, factions, the nine missions |
 | `docs/CAMPAIGN_SPEC.md` | Mission data format, the condition and action language, runtime semantics, progress save |
-| `docs/CINEMATIC_SPEC.md` | Film format, renderer contract, painter registry, player API |
+| `docs/DISPATCH_SPEC.md` | Text dispatch format, the dispatch card, where it appears |
 | `docs/AUDIO_SPEC.md` | Sound engine, voice language, sound-design matrix, music data format, Sound Lab |
 
 ## 4. What was deliberately dropped — and what changed

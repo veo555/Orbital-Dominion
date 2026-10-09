@@ -1,6 +1,6 @@
 /* =========================================================================
-   CINEMATIC ART (portraits) — CINE_PAINT.actor: one painter that draws EVERY character in EVERY mode from `STORY.characters[id].look`.
-   Contract: docs/CINEMATIC_SPEC.md §5.7. Rendering only (never touches simulation state); a pure function of (look, state, opts):
+   PORTRAITS — PORTRAIT_PAINT.actor: one painter that draws EVERY character in EVERY mode from `STORY.characters[id].look`.
+   Rendering only (never touches simulation state); a pure function of (look, state, opts):
    no Math.random / Date — all variation comes from cnHash(characterSeed, i, j). Everything is vector code in unit space (1 unit = bust box height).
 
    Anatomy of the figure (back to front):  halo -> torso (per armour style) -> back hair / hood lining / cape -> neck -> torso front (gorget, collar, cowl)
@@ -142,7 +142,7 @@ function cptMakeR(g,D,st,o,cx,cy,h,dir,mode,resMul){
 }
 
 /* ------------------------------------ small drawing helpers ------------------------------------ */
-/* idle breathing, a closed form of the scene time: the chest rises and widens a hair, the head follows with less amplitude and a slow sway (the engine adds its own tiny bob on top) */
+/* idle breathing, a closed form of the time: the chest rises and widens a hair, the head follows with less amplitude and a slow sway */
 function cptBreath(R){const D=R.D,a=TAU*(R.t||0)/D.bp+D.bph,k=R.o&&R.o.S&&R.o.S.rm?.4:1;return{b:Math.sin(a)*k,sw:Math.sin(a*.37+D.bph*2.1)*k};}
 const cptBrXf=(g,R,b)=>{g.translate(0,R.B);g.scale(1+.0045*b,1+.006*b);g.translate(0,-R.B);};
 function cptHeadXf(R,fn){const g=R.g,D=R.D,br=R.br;g.save();const sy=D.hs*D.hyk;g.translate(D.dx,D.hy+.2*sy-(br?.0035*br.b:0));g.rotate(R.tilt*(R.sil?.6:1)+(br?.006*br.sw:0));g.translate(0,-.2*sy);g.scale(D.hs*D.hxk,sy);fn();g.restore();}
@@ -939,7 +939,7 @@ function cptSpecial(R,g,cx,cy,h){
 }
 
 /* ------------------------------------ the painter ------------------------------------ */
-CINE_PAINT.actor=function cptActor(g,id,st,cx,cy,h,o){
+PORTRAIT_PAINT.actor=function cptActor(g,id,st,cx,cy,h,o){
   o=o||{};st=st||{};if(!(h>0)||!g)return;
   const D=cptResolve(id),mode=st.mode==='silhouette'||st.mode==='shadow'||st.mode==='hologram'?st.mode:'bust',dir=st.face==='l'?-1:1;
   const R=cptMakeR(g,D,st,o,cx,cy,h,dir,mode,mode==='hologram'?.55:1);R.br=cptBreath(R);

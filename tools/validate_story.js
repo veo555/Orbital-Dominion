@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-/* Story / cinematic / campaign validator.
+/* Story / dispatch / campaign validator.
      node tools/validate_story.js            # report; exit 1 on errors
      node tools/validate_story.js --strict   # warnings fail too
      node tools/validate_story.js --json     # machine-readable result
      node tools/validate_story.js --stats    # also print runtime / word-count statistics
-   Reads the data modules (00_core, 43_vocab, 44_story_*) exactly as the game loads them. Contract: docs/CAMPAIGN_SPEC.md, docs/CINEMATIC_SPEC.md. */
+   Reads the data modules (00_core, 43_vocab, 44_story_*) exactly as the game loads them. Contract: docs/CAMPAIGN_SPEC.md, docs/DISPATCH_SPEC.md. */
 const path=require('path');
 const loadStory=require(path.join(__dirname,'..','tests','sim','storylib.js'));
 const argv=process.argv.slice(2),STRICT=argv.includes('--strict'),JSONOUT=argv.includes('--json'),STATS=argv.includes('--stats');
@@ -21,8 +21,8 @@ const HEX=/^#[0-9a-fA-F]{6}$/;
 const MAXT=V.MW-1;
 
 /* ------------------------------------------------------------- structure */
-for(const k of['meta','world','characters','acts','missions','cine','radio','barks'])if(STORY[k]===undefined)E('STORY.'+k,'missing');
-const chars=STORY.characters||{},cines=STORY.cine||{},radio=STORY.radio||{};
+for(const k of['meta','world','characters','acts','missions','dispatch','radio','barks'])if(STORY[k]===undefined)E('STORY.'+k,'missing');
+const chars=STORY.characters||{},disp=STORY.dispatch||{},radio=STORY.radio||{};
 const charIds=Object.keys(chars);
 
 /* ------------------------------------------------------------- characters */
@@ -68,94 +68,44 @@ if(!charIds.some(i=>['civilian','ally'].includes(chars[i].role)&&chars[i].factio
 if(!charIds.some(i=>chars[i].role==='narrator'))E('characters','a narrator is required');
 {const seen={};for(const i of charIds){const k=JSON.stringify(chars[i].look||{});if(seen[k])E('characters.'+i,'look identical to '+seen[k]+' — every character must be visually distinct');seen[k]=i;}}
 
-/* ------------------------------------------------------------- cinematics */
-const cineRefs=new Set();
-function numRange(spec,x){const m=/^(-?[\d.]+)\.\.(-?[\d.]+)$/.exec(spec);return m?inRange(x,+m[1],+m[2]):true;}
-function checkParams(p,params,spec,what){
-  for(const k in params){
-    if(k==='k')continue;const s=spec[k];
-    if(s===undefined){E(p,what+' unknown param "'+k+'"');continue;}
-    const x=params[k];
-    if(isArr(s)){ for(const y of(isArr(x)?x:[x]))if(!s.includes(y))E(p,what+'.'+k+' = '+JSON.stringify(y)+' not in '+JSON.stringify(s)); }
-    else if(s==='[x,y] 0..1'||/^\[x,y\]/.test(s)){ if(!(isArr(x)&&x.length===2&&x.every(n=>inRange(n,0,1))))E(p,what+'.'+k+' must be [x,y] in 0..1'); }
-    else if(s==='[faction,faction]'){ if(!(isArr(x)&&x.length===2&&x.every(f=>V.FACTION_IDS.includes(f))))E(p,what+'.'+k+' must be [factionA,factionB]'); }
-    else if(/^\[\{x,y,k\}\]/.test(s)){ if(!(isArr(x)&&x.every(m=>m&&inRange(m.x,0,1)&&inRange(m.y,0,1)&&['friendly','enemy','objective','danger'].includes(m.k))))E(p,what+'.'+k+' must be [{x,y,k}] with k in friendly|enemy|objective|danger'); }
-    else if(s==='bool'){ if(typeof x!=='boolean')E(p,what+'.'+k+' must be boolean'); }
-    else if(s==='#rrggbb'){ if(!HEX.test(x||''))E(p,what+'.'+k+' must be #rrggbb'); }
-    else if(/^-?[\d.]+\.\.-?[\d.]+$/.test(s)){ if(!numRange(s,x))E(p,what+'.'+k+' = '+x+' outside '+s); }
-  }
-}
-function checkCine(id,c){
-  const P='cine.'+id;
-  if(c.id!==id)E(P,'id must equal its key');
-  if(!V.CINE_KINDS.includes(c.kind))E(P,'kind must be one of '+V.CINE_KINDS);
-  if(!isStr(c.title))E(P,'title missing');
-  if(!V.MUSIC_CUES[c.music])E(P,'music cue "'+c.music+'" is not in MUSIC_CUES');
-  if(!isArr(c.scenes)||!c.scenes.length){E(P,'no scenes');return 0;}
-  let total=0;const L=V.CINE_LIMITS,spokenBy={};
-  c.scenes.forEach((s,si)=>{
-    const p=P+'.scenes['+si+']'+(s.id?'('+s.id+')':'');
-    if(!isNum(s.dur)||s.dur<L.sceneMin||s.dur>L.sceneMax){E(p,'dur must be '+L.sceneMin+'..'+L.sceneMax+' s');return;}
-    total+=s.dur;
-    if(!s.bg||!V.CINE_BG[s.bg.k])E(p,'bg.k must be one of '+Object.keys(V.CINE_BG));else checkParams(p+'.bg',s.bg,V.CINE_BG[s.bg.k],'bg');
-    if(s.cam){for(const e of['from','to']){const z=s.cam[e];if(!z||!inRange(z.x,0,1)||!inRange(z.y,0,1)||!inRange(z.z,0.5,3)||(z.r!==undefined&&!inRange(z.r,-0.3,0.3)))E(p+'.cam.'+e,'needs x,y in 0..1, z in 0.5..3, r in ±0.3');}
-      if(s.cam.ease&&!V.CINE_EASE.includes(s.cam.ease))E(p+'.cam','bad ease');}
-    const actors=s.actors||[],present=new Set();
-    actors.forEach((a,ai)=>{const q=p+'.actors['+ai+']';
-      if(!chars[a.char])E(q,'unknown character "'+a.char+'"');else present.add(a.char);
-      if(!isArr(a.at)||a.at.length!==2||!a.at.every(x=>inRange(x,-0.2,1.2)))E(q,'at must be [x,y] in -0.2..1.2');
-      if(a.h!==undefined&&!inRange(a.h,0.2,1.3))E(q,'h must be 0.2..1.3');
-      if(a.face&&!['l','r'].includes(a.face))E(q,'face must be l|r');
-      if(a.expr&&!V.CINE_EXPR.includes(a.expr))E(q,'bad expr '+a.expr);
-      if(a.mode&&!V.CINE_ACTOR_MODES.includes(a.mode))E(q,'bad mode '+a.mode);
-      for(const t of['t0','t1'])if(a[t]!==undefined&&!inRange(a[t],0,s.dur))E(q,t+' outside the scene');
-      if(a.move&&(!isArr(a.move.to)||a.move.to.length!==2))E(q,'move.to must be [x,y]');
-    });
-    (s.props||[]).forEach((pr,pi)=>{const q=p+'.props['+pi+']';
-      if(!V.CINE_PROPS[pr.k]){E(q,'prop k must be one of '+Object.keys(V.CINE_PROPS));return;}
-      const spec=Object.assign({},V.CINE_PROPS[pr.k]);
-      for(const k in pr){if(['k','from','to','scale','rot','t0','t1','ease','at','a','col','z'].includes(k))continue;
-        if(spec[k]===undefined)E(q,'unknown param "'+k+'" for '+pr.k);else if(isArr(spec[k])&&!spec[k].includes(pr[k]))E(q,k+' = '+pr[k]+' not allowed');}
-      for(const e of['from','to','at'])if(pr[e]!==undefined&&(!isArr(pr[e])||pr[e].length!==2||!pr[e].every(x=>inRange(x,-1,2))))E(q,e+' must be [x,y] in -1..2');
-      if(pr.ease&&!V.CINE_EASE.includes(pr.ease))E(q,'bad ease');
-    });
-    (s.fx||[]).forEach((f,fi)=>{const q=p+'.fx['+fi+']';if(!V.CINE_FX.includes(f.k))E(q,'fx k must be one of '+V.CINE_FX);
-      if(f.t0!==undefined&&!inRange(f.t0,0,s.dur))E(q,'t0 outside the scene');if(f.t1!==undefined&&!inRange(f.t1,0,s.dur+0.01))E(q,'t1 outside the scene');});
-    let prevEnd=-1,lines=s.lines||[];
-    if(lines.length>L.linesPerSceneMax)W(p,'more than '+L.linesPerSceneMax+' lines in one scene');
-    lines.slice().sort((a,b)=>a.t-b.t).forEach((ln,li)=>{const q=p+'.lines['+li+']';
-      if(ln.who!=='narrator'&&!chars[ln.who])E(q,'unknown speaker "'+ln.who+'"');
-      if(!isStr(ln.text))E(q,'text missing');else{
-        if(ln.text.length>L.lineMax)E(q,'text is '+ln.text.length+' chars (max '+L.lineMax+')');
-        const need=Math.max(1.2,ln.text.length/L.readCps);if(!isNum(ln.dur)||ln.dur<need-0.05)E(q,'dur '+ln.dur+' s is too short to read '+ln.text.length+' chars (need ≥ '+need.toFixed(1)+' s at '+L.readCps+' cps)');
-        if(/\b(as you know|little did|suddenly,)\b/i.test(ln.text))W(q,'stock phrase — rewrite');
-        if(ln.text!==ln.text.trim())W(q,'leading/trailing space');
-        (spokenBy.__texts=spokenBy.__texts||[]).push(ln.text);}
-      if(!isNum(ln.t)||ln.t<0)E(q,'t invalid');else if(ln.t+(ln.dur||0)>s.dur+0.05)E(q,'ends after the scene ('+(ln.t+ln.dur).toFixed(1)+' > '+s.dur+')');
-      if(ln.t<prevEnd-0.01)E(q,'overlaps the previous line');prevEnd=ln.t+(ln.dur||0);
-      if(ln.style&&!V.LINE_STYLES.includes(ln.style))E(q,'bad style');
-      if(ln.expr&&!V.CINE_EXPR.includes(ln.expr))E(q,'bad expr');
-      const st=ln.style||'normal';
-      if(['normal','shout','whisper'].includes(st)&&ln.who!=='narrator'&&!present.has(ln.who))E(q,'"'+ln.who+'" speaks on camera but has no actor in this scene (use style radio/thought, or add the actor)');
-      if(ln.who==='narrator'&&!['narration','thought'].includes(st)&&ln.style!==undefined)W(q,'narrator lines should use style "narration"');
-    });
-    (s.sfx||[]).forEach((x,xi)=>{const q=p+'.sfx['+xi+']';if(!V.CINE_SFX.includes(x.name))E(q,'sfx name must be one of '+V.CINE_SFX);if(!inRange(x.t,0,s.dur))E(q,'t outside the scene');});
-    if(s.music){if(!V.MUSIC_CUES[s.music.cue])E(p+'.music','unknown cue '+s.music.cue);}
-    if(s.title&&(!isStr(s.title.text)||!inRange(s.title.t0,0,s.dur)||!inRange(s.title.t1,0,s.dur+0.01)))E(p+'.title','needs text,t0,t1 inside the scene');
-    if(s.trans){for(const e of['in','out'])if(s.trans[e]&&!V.CINE_TRANS.includes(s.trans[e]))E(p+'.trans.'+e,'bad transition');}
+/* ------------------------------------------------------------- dispatches */
+const dispRefs=new Set();
+function checkDispatch(id,d){
+  const P='dispatch.'+id,L=V.DISPATCH_LIMITS;
+  if(!d||typeof d!=='object'){E(P,'must be an object');return;}
+  if(d.id!==id)E(P,'id must equal its key');
+  if(!V.DISPATCH_KINDS.includes(d.kind))E(P,'kind must be one of '+V.DISPATCH_KINDS);
+  if(!isStr(d.title))E(P,'title missing');
+  if(d.mood!==undefined&&!V.MUSIC_CUES[d.mood])E(P,'mood "'+d.mood+'" is not in MUSIC_CUES');
+  if(!isArr(d.lines)||!d.lines.length){E(P,'no lines');return;}
+  if(d.lines.length>L.linesMax)E(P,'more than '+L.linesMax+' lines ('+d.lines.length+')');
+  let spoken=0;
+  d.lines.forEach((ln,li)=>{const q=P+'.lines['+li+']';
+    if(!ln||typeof ln!=='object'){E(q,'must be an object');return;}
+    if(ln.who!=='narrator'&&!chars[ln.who])E(q,'unknown speaker "'+ln.who+'"');
+    if(!isStr(ln.text)){E(q,'text missing');return;}
+    if(ln.text.length>L.lineMax)E(q,'text is '+ln.text.length+' chars (max '+L.lineMax+')');
+    if(!V.LINE_STYLES.includes(ln.style))E(q,'bad style "'+ln.style+'" (want '+V.LINE_STYLES+')');
+    if(ln.expr!==undefined&&!V.PORTRAIT_EXPR.includes(ln.expr))E(q,'bad expr "'+ln.expr+'"');
+    if(ln.style==='heading'&&ln.who!=='narrator')E(q,'a heading must be spoken by "narrator"');
+    if(ln.style!=='heading')spoken++;
+    if(/\b(as you know|little did|suddenly,)\b/i.test(ln.text))W(q,'stock phrase — rewrite');
+    if(ln.text!==ln.text.trim())W(q,'leading/trailing space');
+    if(ln.who==='narrator'&&!['narration','thought','heading'].includes(ln.style))W(q,'narrator lines should use style "narration" (or thought / heading)');
   });
-  const lim=L.total[c.kind];
-  if(lim&&(total<lim[0]||total>lim[1]))E(P,'total runtime '+total.toFixed(1)+' s outside '+lim[0]+'–'+lim[1]+' s for kind "'+c.kind+'"');
-  c.__runtime=total;return total;
+  if(!spoken)E(P,'a dispatch needs at least one spoken line besides headings');
+  d.__lines=spoken;
 }
-const cineIds=Object.keys(cines);
-for(const id of cineIds)checkCine(id,cines[id]);
-const kindCount=k=>cineIds.filter(i=>cines[i].kind===k).length;
-if(kindCount('intro')!==1)E('cine','exactly one intro cinematic is required (have '+kindCount('intro')+')');
-if(kindCount('interlude')<6)E('cine','at least 6 interludes are required (have '+kindCount('interlude')+')');
-if(kindCount('ending')<1)E('cine','at least one ending is required');
-if(kindCount('credits')<1)E('cine','a credits cinematic is required');
-if(kindCount('defeat')<1)E('cine','at least one defeat cinematic is required');
+const dispIds=Object.keys(disp);
+for(const id of dispIds)checkDispatch(id,disp[id]);
+const kindCount=k=>dispIds.filter(i=>disp[i].kind===k).length;
+if(kindCount('intro')!==1)E('dispatch','exactly one intro dispatch is required (have '+kindCount('intro')+')');
+if(kindCount('briefing')!==V.MISSION_COUNT)E('dispatch','exactly '+V.MISSION_COUNT+' briefings are required (have '+kindCount('briefing')+')');
+if(kindCount('debrief')!==V.MISSION_COUNT)E('dispatch','exactly '+V.MISSION_COUNT+' debriefs are required (have '+kindCount('debrief')+')');
+if(kindCount('interlude')<6)E('dispatch','at least 6 interludes are required (have '+kindCount('interlude')+')');
+if(kindCount('ending')<1)E('dispatch','at least one ending is required');
+if(kindCount('credits')<1)E('dispatch','a credits dispatch is required');
+if(kindCount('defeat')<1)E('dispatch','at least one defeat dispatch is required');
 
 /* ------------------------------------------------------------- radio */
 const radioUsed=new Set();
@@ -164,7 +114,7 @@ for(const id in radio){const r=radio[id],p='radio.'+id;
   if(!isStr(r.text)||r.text.length>140)E(p,'text missing or longer than 140 chars');
   if(r.style&&!V.LINE_STYLES.includes(r.style))E(p,'bad style');
   if(r.dur!==undefined&&(!isNum(r.dur)||r.dur<1.5||r.dur>9))E(p,'dur must be 1.5..9 s');
-  if(isStr(r.text)&&r.dur!==undefined&&r.dur<Math.max(1.5,r.text.length/V.CINE_LIMITS.readCps)-0.05)E(p,'dur too short for the text');}
+  if(isStr(r.text)&&r.dur!==undefined&&r.dur<Math.max(1.5,r.text.length/19)-0.05)E(p,'dur too short for the text');}
 
 /* ------------------------------------------------------------- conditions / actions */
 const sideOK=s=>V.SIDE_REF.includes(s),cmpOK=c=>V.CMP.includes(c),tileOK=x=>isNum(x)&&x>=0&&x<=MAXT;
@@ -201,7 +151,7 @@ function checkAction(p,x,ctx){
   const bad=m=>E(p,op+': '+m+' (expected '+V.ACTION_OPS[op]+')');
   switch(op){
     case'radio':if(!radio[a[0]])bad('unknown radio line '+a[0]);else{radioUsed.add(a[0]);ctx.radioUsed.add(a[0]);}break;
-    case'cine':if(!cines[a[0]])bad('unknown cinematic '+a[0]);else cineRefs.add(a[0]);break;
+    case'dispatch':if(!disp[a[0]])bad('unknown dispatch '+a[0]);else dispRefs.add(a[0]);break;
     case'obj':if(!(isStr(a[0])&&['show','done','fail'].includes(a[1])))bad('bad args');else ctx.objAct.add(a[0]);break;
     case'flag':if(!(isStr(a[0])&&typeof a[1]==='boolean'))bad('bad args');else if(a[1])ctx.flagsSet.add(a[0]);break;
     case'spawn':{const w=a[3];const wOK=w==='base'||(isArr(w)&&tileOK(w[0])&&tileOK(w[1]))||/^edge:[NESW]$/.test(w||'');
@@ -234,8 +184,8 @@ missions.forEach((m,mi)=>{
   for(const f of['title','subtitle','synopsis'])if(!isStr(m[f]))E(p,'missing '+f);
   if(isStr(m.synopsis)&&m.synopsis.length>260)W(p,'synopsis is long');
   for(const[k,kinds]of[['briefing',['briefing','interlude']],['debrief',['debrief']],['defeat',['defeat']],['after',['interlude','ending']]]){
-    const id=m[k];if(id===null||id===undefined){if(k==='briefing'||k==='debrief')E(p,k+' cinematic is required');continue;}
-    if(!cines[id])E(p,k+' → unknown cinematic '+id);else{cineRefs.add(id);if(!kinds.includes(cines[id].kind))E(p,k+' cinematic "'+id+'" has kind '+cines[id].kind+' (want '+kinds.join('|')+')');}}
+    const id=m[k];if(id===null||id===undefined){if(k==='briefing'||k==='debrief')E(p,k+' dispatch is required');continue;}
+    if(!disp[id])E(p,k+' → unknown dispatch '+id);else{dispRefs.add(id);if(!kinds.includes(disp[id].kind))E(p,k+' dispatch "'+id+'" has kind '+disp[id].kind+' (want '+kinds.join('|')+')');}}
   const s=m.setup||{};
   if(!V.FACTION_IDS.includes(s.faction))E(p+'.setup','faction invalid');if(!V.FACTION_IDS.includes(s.enemy))E(p+'.setup','enemy invalid');if(s.faction===s.enemy)E(p+'.setup','enemy must differ from faction');
   if(!V.DIFF[s.diff])E(p+'.setup','diff invalid');if(!Number.isInteger(s.seed))E(p+'.setup','seed must be an integer');
@@ -277,23 +227,21 @@ missions.forEach((m,mi)=>{
 /* ------------------------------------------------------------- story-level checks */
 const last=missions[missions.length-1];
 if(last&&villains.length){const vf=chars[villains[0]].faction;if(!['neutral','none'].includes(vf)&&last.setup&&last.setup.enemy!==vf)W('missions['+(missions.length-1)+']','final mission enemy "'+last.setup.enemy+'" is not the villain\'s faction "'+vf+'"');}
-const endings=cineIds.filter(i=>cines[i].kind==='ending');
-for(const id of endings){const actors=new Set();for(const s of cines[id].scenes||[])for(const a of s.actors||[])actors.add(a.char);
-  const must=['idris','kaz','lyra'].concat(villains.slice(0,1));const miss=must.filter(x=>!actors.has(x));if(miss.length)W('cine.'+id,'the ending does not show '+miss.join(', ')+' on screen (closure)');}
-const intro=cineIds.find(i=>cines[i].kind==='intro');
-if(intro){const a=new Set();for(const s of cines[intro].scenes||[])for(const x of s.actors||[])a.add(x.char);if(!villains.some(v=>a.has(v)))W('cine.'+intro,'the villain is not shown in the intro (establish the evil early)');
-  const t=JSON.stringify(cines[intro].scenes||[]);if(!/"title":/.test(t))W('cine.'+intro,'no title card in the intro');}
-for(const id of cineIds){const kind=cines[id].kind;if(['intro','ending','credits'].includes(kind))cineRefs.add(id);}
-for(const id of cineIds)if(!cineRefs.has(id)&&cines[id].kind!=='defeat')W('cine.'+id,'is not referenced by any mission, trigger or kind-based slot');
-for(const id of cineIds)if(cines[id].kind==='defeat'&&!missions.some(m=>m.defeat===id)&&kindCount('defeat')===1)cineRefs.add(id);
-{const seen={};for(const id of cineIds)for(const t of(cines[id].scenes||[]).flatMap(s=>(s.lines||[]).map(l=>l.text)))if(t&&t.length>24){if(seen[t])W('cine.'+id,'line repeated verbatim from '+seen[t]+': "'+t.slice(0,48)+'…"');else seen[t]=id;}}
+const speakersOf=id=>new Set((disp[id].lines||[]).map(l=>l.who));
+const intro=dispIds.find(i=>disp[i].kind==='intro');
+if(intro){if(!villains.some(v=>speakersOf(intro).has(v)))W('dispatch.'+intro,'the villain does not speak in the intro (establish the evil early)');
+  if(!(disp[intro].lines||[]).some(l=>l.style==='heading'))W('dispatch.'+intro,'no heading (dateline / title) in the intro');}
+for(const id of dispIds)if(['intro','ending','credits'].includes(disp[id].kind))dispRefs.add(id);
+for(const id of dispIds)if(!dispRefs.has(id)&&disp[id].kind!=='defeat')W('dispatch.'+id,'is not referenced by any mission, trigger or kind-based slot');
+for(const id of dispIds)if(disp[id].kind==='defeat'&&!missions.some(m=>m.defeat===id))W('dispatch.'+id,'defeat dispatch is not used by any mission');
+{const seen={};for(const id of dispIds)for(const t of(disp[id].lines||[]).filter(l=>l.style!=='heading').map(l=>l.text))if(t&&t.length>24){if(seen[t])W('dispatch.'+id,'line repeated verbatim from '+seen[t]+': "'+t.slice(0,48)+'…"');else seen[t]=id;}}
 for(const id of charIds)if(chars[id].role!=='narrator'){
-  const used=cineIds.some(c=>(cines[c].scenes||[]).some(s=>(s.actors||[]).some(a=>a.char===id)||(s.lines||[]).some(l=>l.who===id)))||Object.values(radio).some(r=>r.who===id);
-  if(!used)W('characters.'+id,'never appears in a cinematic or radio line');}
+  const used=dispIds.some(c=>(disp[c].lines||[]).some(l=>l.who===id))||Object.values(radio).some(r=>r.who===id);
+  if(!used)W('characters.'+id,'never appears in a dispatch or radio line');}
 for(const c of Object.keys(STORY.barks||{}))if(!chars[c])E('barks.'+c,'unknown character');
 
 
-const stats={charIds,cineIds,cines,missions,good,evil,radio};
+const stats={charIds,dispIds,disp,missions,good,evil,radio};
 return{errs,warns,stats};
 }
 module.exports={validate,checkMaps:(S,V,e,w)=>checkMaps(S,V,e,w)};
@@ -322,17 +270,17 @@ function checkMaps(STORY,V,extraErrs,extraWarns){
 /* ------------------------------------------------------------- CLI */
 if(require.main===module){
 const V=loadStory();if(STORY===null)STORY=V.STORY;
-const R=validate(STORY,V),errs=R.errs,warns=R.warns,{charIds,cineIds,cines,missions,good,evil,radio}=R.stats;
+const R=validate(STORY,V),errs=R.errs,warns=R.warns,{charIds,dispIds,disp,missions,good,evil,radio}=R.stats;
 if(!argv.includes('--no-maps')&&sf<0)checkMaps(STORY,V,errs,warns);
-if(JSONOUT){console.log(JSON.stringify({errors:errs,warnings:warns,characters:charIds.length,cinematics:cineIds.length,missions:missions.length,radio:Object.keys(radio).length},null,1));}
+if(JSONOUT){console.log(JSON.stringify({errors:errs,warnings:warns,characters:charIds.length,dispatches:dispIds.length,missions:missions.length,radio:Object.keys(radio).length},null,1));}
 else{
   if(STATS){
-    const by={};for(const id of cineIds){const c=cines[id];(by[c.kind]=by[c.kind]||[]).push([id,Math.round(c.__runtime||0)]);}
-    console.log('characters:',charIds.length,'(good '+good.length+', evil '+evil.length+')   missions:',missions.length,'  radio lines:',Object.keys(radio).length,'  cinematics:',cineIds.length);
-    for(const k in by)console.log('  '+k.padEnd(10),by[k].map(x=>x[0]+' '+x[1]+'s').join(', '));
-    let words=0,lines=0,secs=0;for(const id of cineIds){secs+=cines[id].__runtime||0;for(const s of cines[id].scenes||[])for(const l of s.lines||[]){lines++;words+=(l.text||'').split(/\s+/).length;}}
+    const by={};for(const id of dispIds){const c=disp[id];(by[c.kind]=by[c.kind]||[]).push([id,c.__lines||0]);}
+    console.log('characters:',charIds.length,'(good '+good.length+', evil '+evil.length+')   missions:',missions.length,'  radio lines:',Object.keys(radio).length,'  dispatches:',dispIds.length);
+    for(const k in by)console.log('  '+k.padEnd(10),by[k].map(x=>x[0]+' '+x[1]).join(', '));
+    let words=0,lines=0;for(const id of dispIds)for(const l of disp[id].lines||[]){if(l.style==='heading')continue;lines++;words+=(l.text||'').split(/\s+/).length;}
     for(const r of Object.values(radio)){lines++;words+=(r.text||'').split(/\s+/).length;}
-    console.log('  total film runtime '+Math.round(secs)+' s, '+lines+' spoken lines, '+words+' words');}
+    console.log('  total '+lines+' spoken lines, '+words+' words');}
   const gi=argv.indexOf('--grep'),gr=gi>=0?argv[gi+1]:null,keep=x=>!gr||x.includes(gr);   // --grep <substr>: only report findings whose path/message contains it (agents validate their own file)
   for(const w of warns.filter(keep))console.log('WARN  '+w);for(const e of errs.filter(keep))console.log('ERROR '+e);
   console.log('\n'+(errs.length?errs.length+' ERROR(S)':'0 errors')+', '+warns.length+' warning(s)'+(gr?'  (listing filtered by "'+gr+'"; counts are for the whole story)':''));
