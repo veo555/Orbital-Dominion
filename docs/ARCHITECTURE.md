@@ -52,7 +52,10 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `26_economy.js` | **Labour market**: wage index W(t), freelancer listings, hiring/firing/notice, payroll, job board, escrow, clients, `colonyClock` | yes |
 | `27_overseer.js` | **The master**: blackboard (`bbUpdate`, `bbHunt`, `bbAssault`, `bbIntel`, `bbDefense`), domain controllers (`ovSupply/Eco/Tech/Buildings/Production/Defense/War/Recon/Trade/Alloc/Labor/Jobs`), propose/approve mechanism (`ovAct`), presets, **rule-based natural-language parser** (`ovCommand`) | yes |
 | `30_systems.js` | Per-tick systems: unit/building update, skills (`castSkill`), gather/build/repair/trade steps, economy (tax/morale/market), `step()`, `endGame` | yes |
-| `40_ai.js` | The built-in opponent (`makeAI`, `aiThink`, `aiBuild`, `findSpot`, expansions, hero spells) | yes |
+| `40_ai.js` | The **legacy v3 opponent** (`makeAIV3`, `aiThinkV3`, `aiBuild`, `findSpot`, expansions, hero spells): wave AI that reads hidden state; drives **campaign missions** (balanced against it) and is the league anchor | yes |
+| `41_ai_lib.js` | **T2 opponent maths** (pure functions): Bayesian occupancy update, hazard prior, mass-conserving diffusion, pheromone step, Lanchester ODE + closed-form combat predictor, Ideal Free Distribution, value-function evaluation, boids / arc / potential-field geometry (`docs/AI_DESIGN.md`) | yes |
+| `41_ai_params.js` | **Generated** by `tools/league/export_params.js`: theta per difficulty tier, faction-style priors, value-function weights, combat link constants | yes |
+| `42_ai_agent.js` | **T2 opponent** (`makeAI`/`aiThink` dispatch, `makeAIT2`, `aiThinkT2`): fog-honest perception + memory, belief grid, strategy postures with V(s), macro priority list, IFD workers, tactics (engage/retreat, focus, kite, concave, formation), APM token bucket | yes |
 | `50_art.js`, `51_art_b.js`, `52_terrain.js` | Procedural unit/building/neutral art, glyphs/icons, terrain + decals | no (canvas) |
 | `53_terrain_hd.js` | Sharp 2×/3× terrain tiles near the camera, replayed battle decals (§9) | no |
 | `60_render.js` | Camera, fog, `render()`, minimap, ghost placement, night lighting; **layout classes and measured HUD geometry** (`applyLayoutClasses`, `measureHud`) | no |

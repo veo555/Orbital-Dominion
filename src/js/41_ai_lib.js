@@ -121,7 +121,8 @@ function cmbSimulate(A,B,opts){
   return{win:A1>0&&B1<=0?1:B1>0&&A1<=0?0:(remA>remB?1:remA<remB?0:0.5),remA,remB,margin,t};
 }
 /* closed-form Lanchester fighting strength  S = (sum dps)(sum hp)  — the coarse estimate (also used by 25_agents.js lanch()) */
-function cmbStrength(S,E){let dps=0,hp=0;for(const s of S){let d=0,w=0;for(const e of E){const x=cmbDmg(s,e);if(x>0){d+=x/s.cd*e.n;w+=e.n;}}dps+=s.n*(w?d/w:0);hp+=s.n*s.hp;}return dps*hp;}
+function cmbStrength(S,E){const det=S.some(s=>s.detect);let dps=0,hp=0;
+  for(const s of S){let d=0,w=0;for(const e of E){if(e.cloak&&!det)continue;const x=cmbDmg(s,e);if(x>0){d+=x/s.cd*e.n;w+=e.n;}}dps+=s.n*(w?d/w:0);hp+=s.n*s.hp;}return dps*hp;}
 /* P(A wins) = sigmoid(kOde * ODE margin + kL * ln(S_A / S_B)): a logistic blend of the ODE and the closed-form Lanchester strength
    ratio, fitted on real-sim skirmishes (tools/league/calib_combat.js; held-out log-loss 0.147 vs 0.166 Lanchester-only, 0.239 ODE-only) */
 function cmbPredict(A,B,k){

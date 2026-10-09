@@ -41,9 +41,12 @@ function playGame(o) {
   pin(S, o.rs === undefined ? (o.seed * 7919 + 13) : o.rs);
   // the value function in use: o.vf (league phases differ; null -> V = 0.5) or, when absent, the one shipped in 41_ai_params.js
   if (run('typeof AI_PARAMS') !== 'undefined') run(`AI_PARAMS.vf=${JSON.stringify(o.vf === undefined ? S.__vf0 : o.vf)}`);
-  S.newGame({ seed: o.seed, faction: o.f0, enemy: o.f1, diff: 'normal', aiBoth: true });
+  // {kind:'autopilot'} (team 0 only): the player's side is run by the v3 Overseer in Autopilot mode (swarm on, no makeAI) - a human proxy
+  const auto = o.a0.kind === 'autopilot';
+  S.newGame({ seed: o.seed, faction: o.f0, enemy: o.f1, diff: 'normal', aiBoth: !auto });
   const G = S.G;
-  G.ais[0] = makeAgent(S, o.a0, 0); G.ais[1] = makeAgent(S, o.a1, 1);
+  if (auto) { G.ais[0] = null; S.ovPreset('autopilot'); } else G.ais[0] = makeAgent(S, o.a0, 0);
+  G.ais[1] = makeAgent(S, o.a1, 1);
   const cap = (o.cap || 540) * 30, every = (o.logEvery || 15) * 30, feats = [];
   for (let i = 0; i < cap; i++) {
     S.step(); if (G.over) break;

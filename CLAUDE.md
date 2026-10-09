@@ -16,7 +16,7 @@ App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `d
    alphabetical order (`00_core` … `90_main`). Add new modules with the right numeric prefix. The browser gate asserts
    zero network requests — keep it that way. The only deliberate exceptions are the **opt-in** payment calls (`77_support.js`, off unless `src/support.config.json` enables them, only after a player action)
    and the PWA service-worker registration (`BUILD.variant==='pwa'`, http(s) only).
-2. **The simulation is headless-testable.** Modules `00,10,20,25,26,27,30,40` must not touch DOM, canvas or audio
+2. **The simulation is headless-testable.** Modules `00,10,20,25,26,27,30,40,41,42` must not touch DOM, canvas or audio
    directly (the Node harness loads only these, stubbing `toast/sfx/say/uiDirty/onVision/onStepEnd/onGameOver`).
    UI code lives in `50+`. If you add a sim → UI call, add a stub for it in `tests/sim/simlib3.js`.
 3. **Fixed timestep:** the sim advances in `TICK = 1/30` s steps (`step()`); rendering interpolates nothing — keep

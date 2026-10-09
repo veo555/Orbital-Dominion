@@ -222,4 +222,4 @@ function hudUpdate(dt){
   infoTimer-=dt;if(ui.infoDirty||infoTimer<=0){infoTimer=0.22;renderInfo();}
   if(ui.cmdDirty)renderCmdCard();else{cmdTimer-=dt;if(cmdTimer<=0){cmdTimer=0.12;refreshCmdState();}}
 }
-const DIFF_NAMES={easy:'Easy',normal:'Normal',hard:'Hard'};
+const DIFF_NAMES={easy:'Easy',normal:'Normal',hard:'Hard',master:'Master'};

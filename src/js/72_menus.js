@@ -1,7 +1,7 @@
 /* =========================================================================
    MENUS — main menu, pause, settings, help and the post-game report
    ========================================================================= */
-const DIFF_DESC={easy:'Relaxed pace. No air units, no hero, no creeping.',normal:'A capable opponent: hero, air, expansions and counters.',hard:'Fast, efficient, relentless — and it reads your army.'};
+const DIFF_DESC={easy:'Slow reactions, loose macro, no unit micro.',normal:'Scouts, expands and counters what it has seen.',hard:'Quick reactions, focus fire and kiting.',master:'Strongest setting, tuned by self-play. Same fog, rules and income as you.'};
 const HELP_HTML=`
 <h3>Goal</h3><p>Destroy <b>every enemy structure</b>. Both sides play by the same rules: fog of war, supply, eras, upgrades. Lose all of your structures and you are out.</p>
 <h3>Touch controls <small>(phones &amp; tablets)</small></h3><div class="keys">
@@ -80,7 +80,7 @@ function buildMenus(){
     h+='<div class="fac" data-f="'+id+'" style="--c:'+F.col.base+';--g:'+F.col.glow+';--cr:'+hexRgb(F.col.base)+'"><div class="fic"><img src="'+iconURL('u:'+F.hero+':'+id)+'"><img src="'+iconURL('u:'+F.unique+':'+id)+'"><img src="'+iconURL('b:hub:'+id)+'"></div><b>'+F.name+'</b><i>'+F.tag+'</i><ul>'+F.bonus.map(x=>'<li>'+x+'</li>').join('')+'</ul><p>'+F.blurb+'</p></div>';}
   fr.innerHTML=h;
   $('enemyRow').innerHTML=['random'].concat(FACTION_IDS).map(id=>'<button class="btn" data-e="'+id+'">'+(id==='random'?'Random':FACTIONS[id].name.split(' ')[0])+'</button>').join('');
-  $('diffRow').innerHTML=['easy','normal','hard'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
+  $('diffRow').innerHTML=['easy','normal','hard','master'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
   $('helpBody').innerHTML=HELP_HTML;
   syncMenu();
 }

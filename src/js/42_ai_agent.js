@@ -332,7 +332,7 @@ function aiMacro(ai,R){
   const hold=(c)=>{reserve.c+=c.c;reserve.e+=c.e;};
   const threatened=(ai.thrV||0)>150;
   // tax (Caesar II rule kept from v3)
-  if(T.morale<36&&T.tax>0)T.tax--;else if(T.morale>74&&T.tax<2)T.tax++;
+  if(T.morale<36&&T.tax>0){if(aiAct(ai))setTax(team,T.tax-1);}else if(T.morale>74&&T.tax<2){if(aiAct(ai))setTax(team,T.tax+1);}
   // stage point: in front of the most forward hub, towards the map centre
   const anchor=hubs.length?hubs.reduce((a,h)=>hyp(h.x-WW/2,h.y-WH/2)<hyp(a.x-WW/2,a.y-WH/2)?h:a,hubs[0]):B[0];
   if(!ai.stage||ai.stageHub!==anchor.id){const dx=WW/2-anchor.x,dy=WH/2-anchor.y,l=hyp(dx,dy)||1;
@@ -352,7 +352,7 @@ function aiMacro(ai,R){
   let wantW=Math.min(th.wMax,hubs.length*th.wBase+sip*th.wEther+2);if(ai.eco==='mass')wantW=Math.min(wantW,Math.max(14,hubs.length*12+sip*2));
   for(const h of hubs){if(h.queue.length<1&&wq<wantW&&canSpend(uCost(team,'hauler'))&&reqUnit(team,'hauler').ok&&aiAct(ai)&&queueUnit(h,'hauler'))wq++;}
   if(wq<wantW&&ai.eco!=='mass')hold({c:50,e:0});
-  const hero=R.hero;if(hero){while(skillPoints(team)>0){let ok=false;for(const i of[2,1,0])if(learnSkill(team,i)){ok=true;break;}if(!ok)break;}}
+  const hero=R.hero;if(hero&&skillPoints(team)>0&&ai.apm.tok>=1){for(const i of[2,1,0])if(learnSkill(team,i)){aiAct(ai);break;}}
   // 4. era advancement (theta timings; deferred while a real attack is on unless overdue)
   const eraDue=T.era===1?th.era2:T.era===2?th.era3:1e9;
   if(T.era<3&&now>=eraDue&&(!threatened||now>eraDue+60)&&!B.some(x=>x.queue.some(q=>q.k==='era'))){
@@ -415,7 +415,7 @@ function aiMacro(ai,R){
     const s=spendable();if(s.c<50)break;
     const id=aiUnitPick(ai,R,b,s);if(!id)continue;
     if(aiAct(ai))queueUnit(b,id);
-    if(ai.stage&&(!b.rally||hyp(b.rally.x-ai.stage.x,b.rally.y-ai.stage.y)>90)){b.rally={x:ai.stage.x,y:ai.stage.y};}}
+    if(ai.stage&&(!b.rally||hyp(b.rally.x-ai.stage.x,b.rally.y-ai.stage.y)>90)&&aiAct(ai)){b.rally={x:ai.stage.x,y:ai.stage.y};}}
   void sp;
 }
 
