@@ -11,3 +11,8 @@ server/**/.wrangler/
 *.pem
 __pycache__/
 .claude/worktrees/
+/voicepack_work/
+/voicepack/
+tools/voicepack/lines.json
+tools/voicepack/plan.json
+tools/voicepack/voice_ids.json
