@@ -15,12 +15,12 @@ const STORY={
   characters:{ idris:{...}, ... },     // §2
   acts:[{id:'act1',title,summary,missions:['m01','m02','m03']}, ...],   // 3 acts × 3 missions (MISSION_COUNT / ACT_COUNT)
   missions:[ ... ],                    // §3 (declared in 44_story_c_*.js with STORY.missions.push)
-  cine:{ id:{...} },                   // cinematics, docs/CINEMATIC_SPEC.md (declared in 44_story_b_*.js: Object.assign(STORY.cine,{...}))
+  dispatch:{ id:{id,kind,title,mood?,lines:[{who,text,style,expr?}]} },   // text dispatches, docs/DISPATCH_SPEC.md (declared in 44_story_b_dispatch_*.js: Object.assign(STORY.dispatch,{...}))
   radio:{ id:{who,text,style?,dur?} }, // in-mission comm lines (§4)
   barks:{ charId:{select:[..],ack:[..],levelup:[..],fall:[..]} }   // optional hero voice lines (spoken via 84_voice)
 };
 ```
-Other `44_story_*.js` files only `Object.assign(STORY.cine,{...})`, `STORY.missions.push(...)`, `Object.assign(STORY.radio,{...})` — so authors work in separate files without conflicts.
+Other `44_story_*.js` files only `Object.assign(STORY.dispatch,{...})`, `STORY.missions.push(...)`, `Object.assign(STORY.radio,{...})` — so authors work in separate files without conflicts.
 Files load alphabetically (`44_story_a` < `44_story_b_*` < `44_story_c_*` < `44_story_d_*`).
 
 ## 2. Characters
@@ -41,17 +41,17 @@ idris:{
 ```
 Required characters (ids fixed): `idris`, `kaz`, `lyra` (the three heroes — their `hero` field names the unit), at least **one main villain** (`role:'villain'`, `side:'evil'`),
 **one villain lieutenant**, a **worker-class everyman** (a Hauler pilot — the heart of the colony story; `role:'civilian'|'ally'`), and a `narrator`.
-Total ≥ 12 characters, ≥ 4 `good`, ≥ 3 `evil`. Every `motif` is in `MOTIFS`; every character used in a cinematic / radio / bark exists here.
+Total ≥ 12 characters, ≥ 4 `good`, ≥ 3 `evil`. Every `motif` is in `MOTIFS`; every character used in a dispatch / radio / bark exists here.
 The **Overseer** is a rule-based colony dispatcher (CLAUDE.md rule 5): if it appears, it speaks in terse, procedural, non-sentient status lines and is never presented as understanding language.
 
 ## 3. Missions
 
 ```js
 { id:'m01', act:1, n:1, title, subtitle, place:'place id', synopsis:'1–2 sentences for the chapter card',
-  briefing:'cineId'  // a CINE of kind 'briefing' (or 'interlude'): characters set up the objective
-  debrief:'cineId'   // kind 'debrief' — played after victory
-  defeat:'cineId'|null,  // optional kind 'defeat' short scene, otherwise the generic retry screen
-  after:'cineId'|null,   // optional interlude played after the debrief (kind 'interlude'/'ending')
+  briefing:'dispatchId'  // a dispatch of kind 'briefing' (or 'interlude'): characters set up the objective, shown as a text card before the briefing screen
+  debrief:'dispatchId'   // kind 'debrief' — shown after the victory screen (Continue)
+  defeat:'dispatchId'|null,  // optional kind 'defeat' short text, otherwise the generic retry screen
+  after:'dispatchId'|null,   // optional interlude shown after the debrief (kind 'interlude'/'ending'); the ending is followed by the credits
   setup:{
     faction:'meridian', enemy:'obsidian', diff:'normal', seed:1101,        // seed FIXED per mission (the map is part of the level design)
     start:{c:400,e:0,era:1,hero:'none'|'available'|'start',units:[{type:'rifleman',n:4}],buildings:[{type:'turret',tx:20,ty:20}],supplyBonus:0},
@@ -73,25 +73,25 @@ Player is always **team 0**, the enemy team 1; `me`/`enemy` resolve to those. Cr
 
 ### Runtime semantics (45_campaign.js — headless-safe, no DOM, no wall clock, no `Math.random`)
 * `newGame(opts)` with `opts.campaign=<mission>` calls `campaignInit(mission)` at the end of `newGame` (hook already in place): applies `setup` (resources, era, units, extra buildings, restrictions, AI mods, hero availability, swarm on/off, daylight), creates `G.camp={m,flags:{},flagT:{},obj:{},fired:{},t:0,log:[],radio:[],pendingCine:null,...}`.
-* `campaignStep(dt)` is called once per sim tick from `step()` (hook in place). Conditions are evaluated every 6th tick (5 Hz); `radio`/`cine` actions enqueue UI events in `G.camp.events` (drained by the UI through `onCampaignEvent`), they never touch the DOM.
+* `campaignStep(dt)` is called once per sim tick from `step()` (hook in place). Conditions are evaluated every 6th tick (5 Hz); `radio`/`dispatch` actions enqueue UI events in `G.camp.events` (drained by the UI through `onCampaignEvent`), they never touch the DOM.
 * The default “destroy all enemy structures” rule still applies unless the mission sets `noDefaultWin:true`; the default “you lost all structures” rule unless `noDefaultLose:true`.
 * `win` / `lose` conditions and the `win`/`lose` actions call `endGame('victory'|'defeat')` once; `G.camp.result={res,reason,t,stars}` is stored for the debrief.
 * Everything is deterministic: scripted spawns use `G.rng`; for a fixed seed + same player input the mission evolves identically (tests re-run a mission twice and compare a state hash).
 * Restrictions (`restrict`) are enforced in the same functions that already check `era`/`req` (reqBuild/reqUnit): a locked item returns the reason `'Locked in this mission'`.
 
 ### Progress save (UI side, 76_campaign_ui.js)
-`localStorage[CAMP_SAVEKEY]={v:1,done:{m01:{stars:2,best:812,diff:'normal'}},seen:{cineId:true},last:'m03',diff:'normal'}`; reads/writes are wrapped in try/catch; a corrupt value is discarded, never thrown on.
-A mission is playable when its predecessor is `done` (or `last` flows); the whole campaign is replayable; “Cinematics” gallery lists every `seen` cinematic (all unlocked after the credits).
+`localStorage[CAMP_SAVEKEY]={v:1,done:{m01:{stars:2,best:812,diff:'normal'}},seen:{dispatchId:true},last:'m03',diff:'normal'}`; reads/writes are wrapped in try/catch; a corrupt value is discarded, never thrown on.
+A mission is playable when its predecessor is `done` (or `last` flows); the whole campaign is replayable; the **Archive** (main menu) lists every `seen` dispatch and re-opens it as a text card (all open after the credits). Save format unchanged since 3.3: the v3 film ids are the dispatch ids, so old `seen` maps keep working.
 
 ## 4. In-mission dialogue (“radio”)
 `STORY.radio[id]={who:'charId',text:'≤ 140 chars',style:'radio'|'normal'|'shout'|'whisper',dur:4}` — shown as a portrait + caption strip (DOM, near the top-centre, never over the minimap or command card), voiced by `speak()`; the `radio` action queues them (at most one visible; a queue of ≤ 3, newer lines for the same speaker replace stale ones). A mission needs ≥ 4 radio lines.
 
 ## 5. Structure & quantity gates (enforced by tools/validate_story.js)
-* exactly 3 acts × 3 missions; every mission has `briefing` + `debrief` cinematics of the right `kind` and ≥ 2 primary objectives or one primary + one bonus.
-* ≥ 1 `intro` (55–95 s), ≥ 6 `interlude`s, ≥ 1 `ending` (70–130 s) + 1 `credits`, ≥ 1 `defeat`; every id reachable from some mission/menu.
+* exactly 3 acts × 3 missions; every mission has `briefing` + `debrief` dispatches of the right `kind` and ≥ 2 primary objectives or one primary + one bonus.
+* exactly 1 `intro`, 9 `briefing`s, 9 `debrief`s, ≥ 6 `interlude`s, ≥ 1 `ending` + 1 `credits`, ≥ 1 `defeat`; every id reachable from some mission/menu.
 * Good vs evil is explicit: the final mission’s enemy side is the villain’s; the ending resolves the villain, the three heroes, and the worker everyman.
-* Every referenced id exists (characters, cine, radio, objectives, flags set somewhere, music cues, sfx names, unit/building types); every coordinate is inside the map; every `faction`/`enemy` is valid and `enemy !== faction`.
-* Timing: scene durations, line readability (`dur ≥ chars/CINE_LIMITS.readCps`), no overlapping lines in a scene, scene lines inside the scene, totals within `CINE_LIMITS.total[kind]`.
+* Every referenced id exists (characters, dispatch, radio, objectives, flags set somewhere, music cues, sfx names, unit/building types); every coordinate is inside the map; every `faction`/`enemy` is valid and `enemy !== faction`.
+* Dispatch lines: every `who` is a character id or `narrator`, `style` ∈ `LINE_STYLES`, `expr` ∈ `PORTRAIT_EXPR`, text ≤ `DISPATCH_LIMITS.lineMax` (150) chars, ≤ `linesMax` lines per dispatch, headings are spoken by `narrator`.
 * Content: original fictional setting, PG-13 (no gratuitous gore), no real-world groups/brands, no slurs.
 
 ## 6. Authoring checklist for the mission designer
@@ -109,7 +109,7 @@ The runtime is **headless** (no DOM, canvas, audio, wall clock or `Math.random`)
 2. **Setup order** (fixed, so the result is reproducible; everything random uses `G.rng`): difficulty → `setup.flags` → player `start.c/e/era` → `start.buildings` (placed `done:true`; they are placed **before** any unit so nothing spawns inside a footprint; an unplaceable tile logs an error and is skipped) → hero policy → `start.units` (ring around the Hub, ground units only on walkable ground connected to the main base; haulers go mining) → `start.supplyBonus` → restrictions → `foe.start` (`c`,`e`,`era`, then `buildings`, then `units`; the enemy extras are an addition to the spec) → `foe.ai:false` ⇒ `G.ais[1]=null` → `foe.mods` → swarm → daylight → fog refresh. After `campaignInit` the objectives that are visible at the start have already been announced (`obj` events with `init:true`, delivered **synchronously inside `newGame`**).
 3. **Every sim tick** `step()` calls `campaignStep()`. `G.camp.t` (mission seconds) = `G.time − t0` is updated every tick; **conditions are evaluated every 6th tick (5 Hz, i.e. at mission times 0.2 k s)**. One evaluation = *objectives → triggers (array order) → objectives again → win → lose → failed-primary-objective → default wipe-out rule*. Effects of a trigger (flags, spawns, locks…) are visible to later triggers in the same pass and to earlier ones on the next pass.
 4. **End:** `endGame(res)` (from a `win` / `lose` condition or action, a failed primary objective, the default rules, or the UI's Surrender button) calls `campaignEnd(res)` **before** `onGameOver(res)`, which fills `G.camp.result` and emits the `end` event. After that `campaignStep` is inert.
-5. `autoResume:true` (headless tests only) lets cinematics pass without holding the game (§7.4). Do **not** set it in the shipped game.
+5. `autoResume:true` (headless tests only) lets dispatch cards pass without holding the game (§7.4). Do **not** set it in the shipped game.
 
 ### 7.2 `G.camp` (exact fields)
 | field | meaning |
@@ -120,9 +120,9 @@ The runtime is **headless** (no DOM, canvas, audio, wall clock or `Math.random`)
 | `obj` `{id:{state,kind,t}}` | `state` ∈ `hidden` (not revealed yet) · `active` · `done` · `failed`; `t` = time of the last change · `objs` = the valid objective definitions in mission order |
 | `fired` `{triggerId:count}` · `fireT` `{triggerId:lastFireTime}` · `trig[i]` `{n,due,last}` | trigger bookkeeping (`due` = pending delayed firing time or −1); triggers without an `id` are keyed `'#<index>'` |
 | `events` | bounded backlog (newest 300) of the events delivered to `onCampaignEvent` · `evSeq` next event number · `campaignDrainEvents()` returns and clears it |
-| `log` | `[{t,k,…}]` bookkeeping trail (kinds `init`, `flag`, `trigger`, `cine`, `cine-end`, `end`), newest 400 |
+| `log` | `[{t,k,…}]` bookkeeping trail (kinds `init`, `flag`, `trigger`, `dispatch`, `dispatch-end`, `end`), newest 400 |
 | `radio` | `[{id,t}]` radio lines emitted (newest 200) · `mood` last mood (`'calm'` at start) |
-| `hold` · `pendingCine` · `cineQ` | blocking-cinematic state (§7.4) · `autoResume` |
+| `hold` · `pendingDispatch` · `dispQ` | blocking-dispatch state (§7.4) · `autoResume` |
 | `result` | `null` until the mission ends, then `{res:'victory'\|'defeat', win, reason, t, stars, diff, par, bonusDone, bonusTotal, objectives:[{id,kind,text,state}]}` |
 | `errors` | one string per distinct data problem (`"where: message"`), logged once (≤ 200) — a valid mission has `errors.length===0` (the validator should be the first line of defence; the runtime never throws on bad data) |
 | `locks` `{building:{id:true},unit:{id:true}}` · `maxEra` (1..3, eras above it are locked) · `heroPolicy` (`'available'`\|`'none'`) | restrictions (§7.7) |
@@ -139,7 +139,7 @@ Delivered **synchronously** from inside the sim (during `step()` or `newGame`), 
 | `type` | extra fields | emitted by |
 |---|---|---|
 | `radio` | `id` — look the line up in `STORY.radio[id]` (`who,text,style,dur`) | `radio` action |
-| `cine` | `id`, `hold` (`true` = the game is held until you call `campaignResume(id)`; `false` = autoResume) | `cine` action, and again for each queued cinematic when its turn comes |
+| `dispatch` | `id`, `hold` (`true` = the game is held until you call `campaignResume(id)`; `false` = autoResume) | `dispatch` action, and again for each queued dispatch when its turn comes |
 | `obj` | `id`, `state` (`'active'` = just became visible, `'done'`, `'failed'`), `kind`, `text`, `init` (`true` for the ones visible at mission start; show the list, not a toast) | objective changes, `obj` action |
 | `mood` | `mood` (`calm\|tension\|battle\|dread\|victory`) | `mood` action |
 | `ping` | `tx`,`ty`,`kind` (`good\|bad\|info`) — a map ping fx (`G.fx` kind `ping`) is already created; UI: minimap blip / camera hint | `ping` action |
@@ -150,14 +150,15 @@ Delivered **synchronously** from inside the sim (during `step()` or `newGame`), 
 | `unlock` | `kind` (`building\|unit\|era`), `id`, `locked` (`false` = unlocked, `true` = locked) — toast; the runtime calls `uiDirty()` | `unlock` / `lock` |
 | `herolevel` | `level` | `herolevel` action |
 | `end` | `res`,`reason`,`stars`,`t` — `G.camp.result` is complete | `campaignEnd` |
-There are no events for `flag`, `aimod`, `heal`, `win`, `lose` (use `end`). An `end` event can arrive while a cinematic is still held (a trigger `[['cine',x],['win']]`): play the queued cinematics first, then show the end screen.
+There are no events for `flag`, `aimod`, `heal`, `win`, `lose` (use `end`). An `end` event can arrive while a dispatch is still held (a trigger `[['dispatch',x],['win']]`): show the queued cards first, then the end screen (90_main.js does not call `showEnd` while `G.camp.hold`).
 
-### 7.4 Blocking cinematic protocol (`cine` action)
-* `cine` queues the id on `cineQ`. If the queue was empty: `hold=true`, `pendingCine=id`, event `{type:'cine',id,hold:true}`. The rest of that trigger's actions still run (they are instantaneous); evaluation of the other triggers in the same pass continues.
+### 7.4 Blocking dispatch protocol (`dispatch` action; was `cine` in 3.x)
+* `dispatch` queues the id on `dispQ`. If the queue was empty: `hold=true`, `pendingDispatch=id`, event `{type:'dispatch',id,hold:true}`. The rest of that trigger's actions still run (they are instantaneous); evaluation of the other triggers in the same pass continues.
 * **While `G.camp.hold` is true `step()` returns immediately** (guard at the top of `step()` in `30_systems.js`: no tick, no `G.time`, no AI, no campaign evaluation). The UI frame loop **should also** skip the stepping loop and zero its accumulator while hold is set (`if(G.camp&&G.camp.hold){acc=0;}`), otherwise a burst of up to 14 catch-up steps runs right after the resume.
-* The UI plays the cinematic, then calls **`campaignResume(id)`** (the id from the event; with no argument it resumes the current one). It returns `true` if it resumed, `false` if nothing was held or `id` is not the pending one (a stale resume is harmless). If more cinematics are queued, the next one becomes `pendingCine`, its `cine` event is delivered **during that call**, and `hold` stays true; otherwise `hold=false` and the world runs again.
+* The UI shows the dispatch card (`campDispatch` in 76_campaign_ui.js: Continue / Skip all / Esc all close it), then calls **`campaignResume(id)`** (the id from the event; with no argument it resumes the current one). It returns `true` if it resumed, `false` if nothing was held or `id` is not the pending one (a stale resume is harmless). If more cinematics are queued, the next one becomes `pendingDispatch`, its `dispatch` event is delivered **during that call**, and `hold` stays true; otherwise `hold=false` and the world runs again.
 * Calling `campaignResume` synchronously from inside `onCampaignEvent` is supported (skip / auto-play).
-* A `cine` whose id is not in `STORY.cine` is logged to `errors` and **skipped** (never a soft-lock).
+* The card itself is a modal DOM overlay (`#campDispatch`): a static, scrollable transcript with portrait chips, no animation. While it is open the game keyboard is swallowed (Enter / Space continue, Esc skips the whole chain).
+* A `dispatch` whose id is not in `STORY.dispatch` is logged to `errors` and **skipped** (never a soft-lock).
 * Headless tests: `newGame({campaign:m, autoResume:true})` (or `G.camp.autoResume=true`): the event is delivered with `hold:false`, nothing is held.
 
 ### 7.5 Condition semantics (all numbers compared with ±1e−6; `cmp` ∈ `< <= == >= > !=`)
@@ -188,7 +189,7 @@ Sides: `me`=team 0 (the player), `enemy`=team 1; creeps (team 2) are never a sid
 | action | exact effect |
 |---|---|
 | `radio id` | event `radio` (+ `G.camp.radio` history). Existence of the line is not checked here (the validator does) |
-| `cine id` | §7.4 |
+| `dispatch id` | §7.4 |
 | `obj id show\|done\|fail` | `show`: hidden → active. `done` / `fail`: hidden or active → that state. **Done and failed are sticky** (the first outcome wins). Failing a *primary* objective loses the mission (`objective:<id>`); a failing bonus / hidden objective does not |
 | `flag name bool` | set / clear (silent) |
 | `spawn side type n where [{order}]` | `n` (cap 60) units around `where`: `'base'` = ring around that side's Hub · `[tx,ty]` = around that tile · `'edge:N\|E\|S\|W'` = around the **midpoint of that map edge**, 3.5 tiles inside it. Placement uses `G.rng` only (ground units only on walkable ground connected to the main base). `order`: `'idle'` (default; workers start mining) · `'hold'` · `'attack'` = attack-move on the opposing Hub (nearest enemy building if none), **speed-capped to the slowest unit ×1.12 exactly like an AI wave** (workers / unarmed units just move). Creep types are refused; a hero type only for a side of its own faction that has no hero in play (n forced to 1). With the enemy AI on, scripted enemy units are part of its army (it may reassign idle ones): use `foe.ai:false` for a fully scripted foe. Player units are auto-enrolled in the swarm exactly like trained ones |
@@ -221,13 +222,13 @@ Sides: `me`=team 0 (the player), `enemy`=team 1; creeps (team 2) are never a sid
 | `campaignResume(id?)` | §7.4 · returns boolean |
 | `campaignDrainEvents()` | returns and clears `G.camp.events` (use when polling instead of / in addition to the callback) |
 | `campObjectives(all?)` | `[{id,text,kind,state,t}]` for the HUD (visible objectives; `all` also returns `state:'hidden'` ones) |
-| `campaignSummary()` | JSON-able snapshot `{id,title,t,hold,pendingCine,mood,over,result,flags,objectives,fired,locks:{buildings,units,maxEra,hero},supplyBonus,daylight,aiMods,campsCleared,built,trained,errors,events}` or `null` without a campaign |
+| `campaignSummary()` | JSON-able snapshot `{id,title,t,hold,pendingDispatch,mood,over,result,flags,objectives,fired,locks:{buildings,units,maxEra,hero},supplyBonus,daylight,aiMods,campsCleared,built,trained,errors,events}` or `null` without a campaign |
 | `campEvalCond(c)` · `campDo(a)` | evaluate one condition / run one action against the live game (tools, tests, debug); malformed ⇒ `false` and logged. `campDo` returns whether the action ran |
 | `campNote` `campCreepKilled` `campReveal` `campDaylight` | internal sim hooks |
 The only sim → UI call the runtime makes is `onCampaignEvent(e)` (stubbed in `tests/sim/simlib3.js` and `76_campaign_ui.js`); `toast`/`sfx`/`uiDirty` are the existing stubs.
 
 ### 7.10 Progress save (pure helpers, no I/O except the two wrappers)
-`localStorage[CAMP_SAVEKEY] = {v:1, done:{missionId:{stars:0..3,best:seconds|null,diff}}, seen:{cineId:true}, last:missionId|null, diff:'easy'|'normal'|'hard'}`.
+`localStorage[CAMP_SAVEKEY] = {v:1, done:{missionId:{stars:0..3,best:seconds|null,diff}}, seen:{dispatchId:true}, last:missionId|null, diff:'easy'|'normal'|'hard'}`.
 * `emptyCampaignSave()` → a fresh `{v:1,done:{},seen:{},last:null,diff:'normal'}`.
 * `campaignSaveSanitize(raw)` → a **valid** save from any input (non-object / wrong `v` ⇒ empty; bad entries dropped; stars clamped 0..3, best rounded, unknown difficulty ⇒ `'normal'`, ids must match `[A-Za-z0-9_-]{1,48}`). Total: never throws.
 * `campaignSaveUpdate(save, missionId, result, story?)` → **new** save (input untouched). `result` = `G.camp.result`. Defeats and invalid results change nothing. Victory: `done[id].stars = max(old, new, 1)`, `best = min(old best, round(t))`, the difficulty of the best-starred run is kept, and the next mission is unlocked: `last` = `campaignNextId(id)` unless `last` is already further along (replaying an old mission never moves it back); the last mission leaves `last` on itself. `seen` is never touched (the UI owns it).

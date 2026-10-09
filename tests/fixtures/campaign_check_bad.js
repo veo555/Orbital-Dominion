@@ -1,7 +1,7 @@
 /* DEFECTIVE missions for tools/mission_check.js (the static checker): each one is wrong in exactly one way (plus `ok_clean`, which must produce no finding at all), so every
    check can be shown to fire (CLAUDE.md rule 15). Seed 1101: player Hub tile (11,72), enemy Hub (73,12); tile (34,4) is deep rock (all tiles within 4 are blocked) and
    tile (3,5) is a sealed 4-tile pocket in the top-left corner (not connected to the base).  Usage:
-     const S = require('./campaign_check_bad.js')();   // {missions, cine, radio, expect}
+     const S = require('./campaign_check_bad.js')();   // {missions, dispatch, radio, expect}
      node tools/mission_check.js all --story tests/fixtures/campaign_check_bad.js
    expect[id] = {error:[rule ids that MUST appear as ERROR], warn:[rule ids that MUST appear as WARN], msgs:[substrings that must each be found in some finding]}; ok_clean: {clean:true}. */
 module.exports = function makeBad() {
@@ -75,5 +75,5 @@ module.exports = function makeBad() {
     bad_supply: { warn: ['setup'], msgs: ['the start army uses 46 supply but the cap is 10'] }
   };
 
-  return { missions, cine: clone(ctl.cine), radio, expect };
+  return { missions, dispatch: clone(ctl.dispatch), radio, expect };
 };

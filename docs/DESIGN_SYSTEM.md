@@ -129,3 +129,29 @@ favicons, 1200 × 630 share card). The PNGs are committed so the build needs no 
 2. `python3 tools/design_check.py --write` — it fails (exit 1) if a text colour drops below its contrast requirement or the colour-blind
    pair loses separation.
 3. `python3 tools/shots.py --tag mychange` renders the menu and HUD on desktop, tablet and phone profiles into `tests/out/shots/`.
+
+## 9. The Google approach (v4): Material 3 for the app shell, PAIR for the AI, Play-style onboarding
+
+What was adopted from Google's design guidance, and where it lives. (Sources: Material 3 specifications and Android/Compose guidance for the
+48 dp target, state layers and motion tokens; the YouTube Playables best-practices page for games: 48 x 48 dp targets with 8 dp spacing, a distinct
+style per button state, keyboard support for all controls, a minimal onboarding, a clear "paused" state with Resume. I could not open the Google Play Games
+or PAIR pages themselves from this environment, so the PAIR points below come from the published guidebook as I remember it.)
+
+| Principle | Where | Notes |
+|---|---|---|
+| **Colour roles** | `style.css` section 12: `--md-primary`, `--md-surface-container-*`, `--md-on-surface`, `--md-error-container` ... | aliases of the existing tokens; the faction accent replaces *primary* at run time (Material You style dynamic colour, driven by the chosen faction) |
+| **Shape scale** | `--md-shape-xs..full` (4, 8, 12, 16, 28 px, pill) | dialogs use `clamp(16px, 3vw, 28px)`; primary actions are pills |
+| **State layers** | `.btn::after` in the element's own colour: hover 8 %, focus 10 %, press 10 %, disabled content 38 % | hover only on `(hover:hover)` devices; a ripple (`79_m3.js`, CSS animation from the pointer position) on press; off under Reduce motion |
+| **Motion** | emphasized-decelerate `cubic-bezier(.05,.7,.1,1)`, 300 ms dialog entry; standard `cubic-bezier(.2,0,0,1)` 150 ms for state changes | `html.rm` / `prefers-reduced-motion` zero every duration |
+| **Touch targets** | 48 px minimum on touch devices when there is room (`html.touch:not(.compact)`), 44 px in the dense phone layouts | the 8 dp spacing rule is met in dialogs; the command card trades it for density and says so |
+| **Window size classes** | `html.wc-compact` < 600 px, `wc-medium` 600-839, `wc-expanded` >= 840 (set by `79_m3.js`) | orthogonal to the HUD's own `compact/portrait/touch` classes; the expanded class widens the menu card |
+| **Pause pattern** | one filled *Resume*, three tonal secondary actions, quick toggles as a pill row, the destructive action visually separate and confirmed | follows the "paused label + resume, few options" guidance |
+| **Onboarding** | no tutorial level: the first mission shows a two-line *Field manual* (Settings > Hints turns it off); the radio strip teaches in context | "minimal, optional, learn by playing" |
+
+**People + AI Research (PAIR) guidebook applied to the Overseer.** The Overseer is a rule-based advisor, so the guidance maps directly: it only *proposes*
+(the player approves or dismisses, never surprised); every proposal states what it will do; its limits are stated in the help text ("rule-based, not a
+language model"); the player can switch it off completely (Swarm off is bit-identical to the v2 game); and the AI opponent is described by what it can
+and cannot do (it plays under the same fog of war, with an action-rate cap) instead of by a handicap.
+
+What was **not** done: a full Material component library, a dynamic-colour extraction from wallpapers, adaptive navigation rail / drawer (the game has no
+navigation hierarchy that needs it), and haptics beyond the existing setting. Nothing here was tested on a real Android device.

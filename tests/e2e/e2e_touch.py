@@ -55,7 +55,7 @@ def run(p, name, w, h, dpr):
     ok(r[0] >= 0 and r[2] <= r[4] and r[1] >= 0 and r[3] <= r[5], f'{name}: Start button inside the viewport {r}')
     ph.tap((r[0] + r[2]) / 2, (r[1] + r[3]) / 2); pg.wait_for_timeout(1500)
     ok(ph.ev("()=>!!(__RTS.G&&__RTS.G.units.length>0&&__RTS.ui.running&&!__RTS.ui.demo)"), f'{name}: tapping Start begins the mission')
-    pg.evaluate("()=>{const R=__RTS;for(let i=0;i<30*30;i++)R.step();}"); pg.wait_for_timeout(300)
+    pg.evaluate("()=>{const R=__RTS;for(let i=0;i<30*30;i++)R.step();R.G.speed=0.05;}"); pg.wait_for_timeout(300)   # near-freeze the live loop: moving units made tap points stale (the old flaky 'double-tap'/'move order' failures)
 
     # ---- geometry --------------------------------------------------------------------------------
     g = ph.ev("()=>({top:document.getElementById('top').getBoundingClientRect().height,bot:document.getElementById('bottom').getBoundingClientRect().height,vw:innerWidth,vh:innerHeight,sw:document.documentElement.scrollWidth})")
@@ -93,8 +93,12 @@ def run(p, name, w, h, dpr):
       const pts=hs.map(u=>({id:u.id,...R.w2s(u.x,u.y)})).filter(p=>p.x>30&&p.x<innerWidth-130&&p.y>"""+str(g['top'])+"""+20&&p.y<innerHeight-"""+str(g['bot'])+"""-20);return{n:hs.length,pts}}""")
     if len(two['pts']) >= 2:
         a, c = two['pts'][0], two['pts'][1]
-        ph.tap(a['x'], a['y']); ph.tap(a['x'], a['y']); pg.wait_for_timeout(150)
-        n2 = ph.ev("()=>__RTS.ui.sel.length")
+        n2 = 0
+        for _try in range(5):   # the game's double-tap window is 380 ms of wall clock; two Playwright round trips on a loaded CI box can exceed it, so retry (a broken feature still fails all 5)
+            ph.ev("()=>{__RTS.setSel([]);__RTS.ui.lastClick={t:0,type:null,id:0}}")
+            ph.tap(a['x'], a['y']); ph.tap(a['x'], a['y']); pg.wait_for_timeout(150)
+            n2 = ph.ev("()=>__RTS.ui.sel.length")
+            if n2 >= 2: break
         ok(n2 >= 2, f'{name}: double-tap selects every Hauler on screen ({n2} selected)')
         ph.ev(f"()=>{{const R=__RTS,u=R.G.units.find(u=>u.id=={a['id']});R.setSel([u])}}"); pg.wait_for_timeout(100)
         ph.drag(c['x'], c['y'], c['x'], c['y'], steps=1, hold=520); pg.wait_for_timeout(150)

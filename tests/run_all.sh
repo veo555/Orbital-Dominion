@@ -18,7 +18,6 @@ python3 tests/e2e/e2e_terrain.py
 python3 tests/e2e/e2e_platform.py
 python3 tests/e2e/e2e_resume.py
 python3 tests/e2e/e2e_campaign.py
-python3 tests/e2e/e2e_cine.py
 python3 tests/e2e/e2e_portraits.py
 python3 tests/e2e/e2e_audio_engine.py
 python3 tests/e2e/e2e_audio_wiring.py

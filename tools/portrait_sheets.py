@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Portrait review sheets and the perceptual distinctness metric for the cinematic portrait painter (src/js/64_cine_portraits.js).
+"""Portrait review sheets and the perceptual distinctness metric for the character portrait painter (src/js/64_portraits.js).
 
-Renders busts straight through drawPortrait() (no film engine involved) in ONE Chromium page and lays the results out as PNG sheets in tests/out/cine/portraits_*.png.
+Renders busts straight through drawPortrait() (no other engine involved) in ONE Chromium page and lays the results out as PNG sheets in tests/out/portraits/portraits_*.png.
 Look at them with the Read tool; the same module is imported by tests/e2e/e2e_portraits.py for the numeric checks.
 
   python3 tools/portrait_sheets.py                       # every sheet for the 13 fixture characters (+ the real story characters)
@@ -22,7 +22,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-OUT = ROOT / 'tests' / 'out' / 'cine'
+OUT = ROOT / 'tests' / 'out' / 'portraits'
 URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
 EXPR = ['neutral', 'talk', 'angry', 'smirk', 'sad', 'shock', 'smile', 'determined', 'laugh', 'scared', 'cold', 'weary']
 MODES = ['bust', 'silhouette', 'shadow', 'hologram']
@@ -72,7 +72,7 @@ def open_page(p, extra_init=None, fixture=True):
     pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
     pg.on('console', lambda m: errs.append('console.' + m.type + ': ' + m.text) if m.type == 'error' else None)
     pg.add_init_script("window.__TEST='live'")
-    pg.goto(URL); pg.wait_for_function("()=>!!(window.__RTS&&window.__RTS.drawPortrait&&window.__RTS.CINE_PAINT)", timeout=15000)
+    pg.goto(URL); pg.wait_for_function("()=>!!(window.__RTS&&window.__RTS.drawPortrait&&window.__RTS.PORTRAIT_PAINT)", timeout=15000)
     if fixture:
         ch = load_chars('min')
         pg.evaluate("(c)=>{for(const k in c){const o=c[k];o.id='fx_'+k;__RTS.STORY.characters['fx_'+k]=o;}}", ch)
@@ -87,7 +87,7 @@ def fixture_ids(pg):
 
 def render(pg, jobs):
     out = pg.evaluate("(j)=>__PS.many(j)", jobs)
-    errs = pg.evaluate("()=>__RTS.CINE_PAINT.errors.slice()")
+    errs = pg.evaluate("()=>__RTS.PORTRAIT_PAINT.errors.slice()")
     if errs: raise RuntimeError('portrait painter threw: ' + '; '.join(errs[:3]))
     return [Image.open(io.BytesIO(base64.b64decode(u.split(',', 1)[1]))).convert('RGB') for u in out]
 

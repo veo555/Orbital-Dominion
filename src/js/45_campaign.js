@@ -4,7 +4,7 @@
      • one `G.camp` object holds all mission state (flags, objectives, trigger bookkeeping, locks, event queue, result);
      • conditions are evaluated at 5 Hz (every 6th tick); malformed data never throws — it is logged once to G.camp.errors and evaluates false;
      • UI-facing effects are EVENTS: pushed to G.camp.events and delivered to onCampaignEvent(e) (76_campaign_ui.js);
-     • `cine` is blocking: G.camp.hold=true until the UI calls campaignResume(id); step() in 30_systems.js does not advance while hold is set.
+     • `dispatch` is blocking: G.camp.hold=true until the UI calls campaignResume(id); step() in 30_systems.js does not advance while hold is set.
    Hooks called from the sim: campaignOpts (newGame), campaignInit (end of newGame), campaignStep (once per tick), campaignEnd (endGame),
    campLocked (reqBuild/reqUnit/queueEra/queueHero/orderBuild), campNoDefaultEnd (building-death rule), campNote (trained/built counters),
    campCreepKilled (camp tracking), campReveal (updateVision), campDaylight (dayNight).
@@ -251,7 +251,7 @@ const CR=(function(){
   function init(m,opts){
     opts=opts||{};
     const C=G.camp={m:isObj(m)?m:{},id:isObj(m)?m.id:undefined,flags:{},flagT:{},obj:{},fired:{},fireT:{},t:0,t0:G.time,tick:0,events:[],evSeq:1,log:[],radio:[],errors:[],errSeen:{},
-      hold:false,pendingCine:null,cineQ:[],autoResume:!!opts.autoResume,result:null,endReason:null,pendingLose:null,mood:'calm',
+      hold:false,pendingDispatch:null,dispQ:[],autoResume:!!opts.autoResume,result:null,endReason:null,pendingLose:null,mood:'calm',
       locks:{building:{},unit:{}},maxEra:3,heroPolicy:'available',supplyBonus:0,daylight:'cycle',reveals:[],aiBase:null,aiMods:{},
       cnt:{built:[{},{},{}],trained:[{},{},{}]},trig:[],objs:[]};
     K=C;
@@ -326,11 +326,11 @@ const CR=(function(){
     const op=a[0],T0=G.teams[0];
     switch(op){
       case'radio':{nm(a[1]);K.radio.push({id:a[1],t:K.t});if(K.radio.length>200)K.radio.shift();emit('radio',{id:a[1]});break;}
-      case'cine':{nm(a[1]);
-        if(!(typeof STORY!=='undefined'&&STORY&&STORY.cine&&has(STORY.cine,a[1])))bad('unknown cinematic '+short(a[1]));
-        if(K.autoResume){note('cine',{id:a[1],auto:true});emit('cine',{id:a[1],hold:false});break;}
-        K.cineQ.push(a[1]);
-        if(K.cineQ.length===1){K.hold=true;K.pendingCine=a[1];note('cine',{id:a[1]});emit('cine',{id:a[1],hold:true});}
+      case'dispatch':{nm(a[1]);
+        if(!(typeof STORY!=='undefined'&&STORY&&STORY.dispatch&&has(STORY.dispatch,a[1])))bad('unknown dispatch '+short(a[1]));
+        if(K.autoResume){note('dispatch',{id:a[1],auto:true});emit('dispatch',{id:a[1],hold:false});break;}
+        K.dispQ.push(a[1]);
+        if(K.dispQ.length===1){K.hold=true;K.pendingDispatch=a[1];note('dispatch',{id:a[1]});emit('dispatch',{id:a[1],hold:true});}
         break;}
       case'obj':{nm(a[1]);if(!has(K.obj,a[1]))bad('unknown objective '+short(a[1]));
         const o=K.objs.find(x=>x.id===a[1]),st=K.obj[a[1]];
@@ -391,10 +391,10 @@ const CR=(function(){
   }
   function resume(id){
     const C=G&&G.camp;if(!C||!C.hold)return false;K=C;
-    if(id!==undefined&&id!==null&&id!==C.pendingCine)return false;       // a stale / wrong resume is ignored
-    const done=C.cineQ.shift();note('cine-end',{id:done});
-    if(C.cineQ.length){C.pendingCine=C.cineQ[0];emit('cine',{id:C.pendingCine,hold:true});}
-    else{C.hold=false;C.pendingCine=null;}
+    if(id!==undefined&&id!==null&&id!==C.pendingDispatch)return false;       // a stale / wrong resume is ignored
+    const done=C.dispQ.shift();note('dispatch-end',{id:done});
+    if(C.dispQ.length){C.pendingDispatch=C.dispQ[0];emit('dispatch',{id:C.pendingDispatch,hold:true});}
+    else{C.hold=false;C.pendingDispatch=null;}
     return true;
   }
 
@@ -413,7 +413,7 @@ const CR=(function(){
   }
   function summary(){
     const C=G&&G.camp;if(!C)return null;
-    return{id:C.id,title:C.m.title,t:C.t,hold:C.hold,pendingCine:C.pendingCine,mood:C.mood,over:!!G.over,result:C.result?JSON.parse(JSON.stringify(C.result)):null,
+    return{id:C.id,title:C.m.title,t:C.t,hold:C.hold,pendingDispatch:C.pendingDispatch,mood:C.mood,over:!!G.over,result:C.result?JSON.parse(JSON.stringify(C.result)):null,
       flags:Object.assign({},C.flags),objectives:objectives(true),fired:Object.assign({},C.fired),
       locks:{buildings:Object.keys(C.locks.building),units:Object.keys(C.locks.unit),maxEra:C.maxEra,hero:C.heroPolicy},supplyBonus:C.supplyBonus,daylight:C.daylight,
       aiMods:Object.assign({},C.aiMods),campsCleared:(G.camps?G.camps.filter(c=>c.cleared&&c.clearedBy===0).length:0),
@@ -457,7 +457,7 @@ function campaignOpts(o){
 }
 
 /* ------------------------------ API for the UI, tools and tests ------------------------------ */
-/* cinematic protocol: the UI plays the cinematic named in the 'cine' event, then calls campaignResume(id). Returns true if it resumed. */
+/* dispatch protocol: the UI shows the dispatch card named in the 'dispatch' event, then calls campaignResume(id). Returns true if it resumed. */
 function campaignResume(id){return CR.resume(id);}
 function campaignDrainEvents(){const C=G&&G.camp;if(!C)return[];const e=C.events;C.events=[];return e;}
 function campaignSummary(){return CR.summary();}
@@ -466,7 +466,7 @@ function campEvalCond(c){return CR.evalCond(c);}                          // eva
 function campDo(a){return CR.doAction(a);}                                // run ONE action now (tests, debug)
 
 /* ------------------------------- progress save (pure helpers) ------------------------------- */
-/* localStorage[CAMP_SAVEKEY]={v:1,done:{m01:{stars:2,best:812,diff:'normal'}},seen:{cineId:true},last:'m03',diff:'normal'} — see docs/CAMPAIGN_SPEC.md §7.5 */
+/* localStorage[CAMP_SAVEKEY]={v:1,done:{m01:{stars:2,best:812,diff:'normal'}},seen:{dispatchId:true},last:'m03',diff:'normal'} — see docs/CAMPAIGN_SPEC.md §7.5 */
 function emptyCampaignSave(){return{v:1,done:{},seen:{},last:null,diff:'normal'};}
 function campaignSaveSanitize(raw){                                      // total: any input -> a valid save object (corrupt parts are dropped, never thrown on)
   const s=emptyCampaignSave();

@@ -1,7 +1,7 @@
 // Campaign runtime tests (src/js/45_campaign.js + its hooks in 20_sim.js / 30_systems.js). Headless, no browser.
 //   node tests/sim/campaign.js [group-filter]      e.g.  node tests/sim/campaign.js cond    (substring of a group title)
 //   SRC=<dir> node tests/sim/campaign.js           run against another source tree (the mutation checks use this)
-// One focused test per condition op and per action op against tests/fixtures/campaign_ops.js, plus: restrictions block queueing, the blocking-cinematic
+// One focused test per condition op and per action op against tests/fixtures/campaign_ops.js, plus: restrictions block queueing, the blocking-dispatch
 // hold/resume protocol, malformed data, determinism (state hash incl. G.camp; spawn placement independent of Math.random), swarm-off inertness and the
 // progress-save helpers. Exit code != 0 on any failure. A test that cannot fail is worthless (CLAUDE.md rule 15): see tests/out/campaign/mutation_report.txt.
 const load = require('./simlib3.js');
@@ -482,27 +482,27 @@ group('stars: 1 win, +1 all bonus objectives, +1 under par', () => {
   const A = game(mk('s2', {})); ok(K(A).result === null, 'no result while playing'); A.campDo(['flag', 'done', true]); run(A, 0.4); const ev = A.__run('globalThis.__campEv').filter(e => e.type === 'end'); ok(ev.length === 1 && ev[0].res === 'victory' && ev[0].stars >= 1, 'an end event is delivered');
 });
 
-/* ================================================== CINEMATICS (hold/resume) */
-group('cine: blocking hold / resume protocol', () => {
-  const A = game(F.missions.cine, { opts: { autoResume: false } }), c = K(A), G = A.G;
-  run(A, 1.3); ok(c.errors.some(e => /unknown cinematic "no_such_cine"/.test(e)) && !c.hold && flag(A, 'after_badcine'), 'an unknown cinematic id is logged and skipped: it never freezes the game');
+/* ================================================== DISPATCHES (hold/resume) */
+group('dispatch: blocking hold / resume protocol', () => {
+  const A = game(F.missions.dispatch, { opts: { autoResume: false } }), c = K(A), G = A.G;
+  run(A, 1.3); ok(c.errors.some(e => /unknown dispatch "no_such_dispatch"/.test(e)) && !c.hold && flag(A, 'after_baddispatch'), 'an unknown dispatch id is logged and skipped: it never freezes the game');
   A.__run('globalThis.__campEv=[]'); run(A, 1);
-  ok(c.hold === true && c.pendingCine === 'ops_cine', 'cine: hold is set and the first cinematic is pending');
-  const ev = A.__run('globalThis.__campEv'); ok(ev.filter(e => e.type === 'cine').length === 1 && ev[0].id === 'ops_cine' && ev[0].hold === true, 'only the first cine event is delivered; the second waits for the resume');
-  ok(flag(A, 'after_cine') && c.radio.some(r => r.id === 'r1'), 'the other actions of that trigger already ran');
+  ok(c.hold === true && c.pendingDispatch === 'ops_dispatch', 'dispatch: hold is set and the first dispatch is pending');
+  const ev = A.__run('globalThis.__campEv'); ok(ev.filter(e => e.type === 'dispatch').length === 1 && ev[0].id === 'ops_dispatch' && ev[0].hold === true, 'only the first dispatch event is delivered; the second waits for the resume');
+  ok(flag(A, 'after_dispatch') && c.radio.some(r => r.id === 'r1'), 'the other actions of that trigger already ran');
   const tk = G.tick, tm = G.time, ct = c.t; ticks(A, 90);
   ok(G.tick === tk && G.time === tm && c.t === ct, 'the world stands still while held (step() returns at once): tick, time and mission time unchanged');
   ok(A.campaignResume('wrong') === false && c.hold === true, 'a resume for another id is ignored');
-  ok(A.campaignResume('ops_cine') === true && c.hold === true && c.pendingCine === 'ops_cine2', 'resume: the second cinematic of the queue becomes pending and is announced');
-  ok(A.__run('globalThis.__campEv').filter(e => e.type === 'cine').map(e => e.id).join() === 'ops_cine,ops_cine2', 'the second cine event is delivered on the first resume');
-  ok(A.campaignResume() === true && c.hold === false && c.pendingCine === null, 'resume() without an id resumes the current one: hold released');
+  ok(A.campaignResume('ops_dispatch') === true && c.hold === true && c.pendingDispatch === 'ops_dispatch2', 'resume: the second dispatch of the queue becomes pending and is announced');
+  ok(A.__run('globalThis.__campEv').filter(e => e.type === 'dispatch').map(e => e.id).join() === 'ops_dispatch,ops_dispatch2', 'the second dispatch event is delivered on the first resume');
+  ok(A.campaignResume() === true && c.hold === false && c.pendingDispatch === null, 'resume() without an id resumes the current one: hold released');
   ok(A.campaignResume() === false, 'resume when nothing is held returns false');
   ticks(A, 12); ok(G.tick === tk + 12 && !flag(A, 't3'), 'time runs again'); run(A, 1); ok(flag(A, 't3'), 'later triggers (time >= 3) fire only after the hold');
-  const B = game(F.missions.cine, { opts: { autoResume: true } }); run(B, 2.4);
-  ok(B.G.camp.hold === false && B.__run('globalThis.__campEv').filter(e => e.type === 'cine').length === 2 && B.G.camp.fired.c1 === 1, 'autoResume (headless tests): cine events are delivered but nothing is held');
-  const C = game(F.missions.cine, { opts: { autoResume: false } }); let seen = 0;
-  C.__run('onCampaignEvent=function(e){globalThis.__campEv.push(e);if(e.type==="cine")campaignResume(e.id);}'); C.__run('globalThis.__campEv=[]'); run(C, 3.5);
-  ok(!C.G.camp.hold && flag(C, 't3') && C.__run('globalThis.__campEv').filter(e => e.type === 'cine').length === 2, 'a UI that resumes synchronously from inside onCampaignEvent works (re-entrancy)');
+  const B = game(F.missions.dispatch, { opts: { autoResume: true } }); run(B, 2.4);
+  ok(B.G.camp.hold === false && B.__run('globalThis.__campEv').filter(e => e.type === 'dispatch').length === 2 && B.G.camp.fired.c1 === 1, 'autoResume (headless tests): dispatch events are delivered but nothing is held');
+  const C = game(F.missions.dispatch, { opts: { autoResume: false } }); let seen = 0;
+  C.__run('onCampaignEvent=function(e){globalThis.__campEv.push(e);if(e.type==="dispatch")campaignResume(e.id);}'); C.__run('globalThis.__campEv=[]'); run(C, 3.5);
+  ok(!C.G.camp.hold && flag(C, 't3') && C.__run('globalThis.__campEv').filter(e => e.type === 'dispatch').length === 2, 'a UI that resumes synchronously from inside onCampaignEvent works (re-entrancy)');
 });
 
 /* ======================================================= MALFORMED DATA */
@@ -587,7 +587,7 @@ group('integration: hero training counts as trained; summary shape; aiBoth keeps
 group('integration: story_min missions play out with the built-in AI on both sides', () => {
   const S = makeStory(), out = [];
   for (const idx of [0, 3]) {
-    const m = S.missions[idx]; process.env.RS = '7'; const A = load(SRC); Object.assign(A.STORY.cine, S.cine); Object.assign(A.STORY.radio, S.radio);
+    const m = S.missions[idx]; process.env.RS = '7'; const A = load(SRC); Object.assign(A.STORY.dispatch, S.dispatch); Object.assign(A.STORY.radio, S.radio);
     A.newGame({ campaign: m, aiBoth: true, autoResume: true }); let exc = null;
     try { for (let i = 0; i < 30 * 60 * 8 && !A.G.over; i++) A.step(); } catch (e) { exc = e; }
     const c = K(A);

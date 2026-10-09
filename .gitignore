@@ -10,3 +10,4 @@ server/**/.wrangler/
 .dev.vars
 *.pem
 __pycache__/
+.claude/worktrees/
