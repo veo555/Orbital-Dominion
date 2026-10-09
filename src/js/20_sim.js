@@ -24,6 +24,7 @@ function newGame(opts){
   if(f1===f0)f1=FACTION_IDS.find(f=>f!==f0);
   do{G=mkG(seed+att*131,diff,f0,f1);genMap();att++;}while(!mapConnected()&&att<30);
   G.mapAttempts=att;
+  G.aiKind=opts.aiKind||(opts.campaign?'v3':'t2');   // skirmish: T2 opponent (42_ai_agent.js); campaign missions keep the v3 wave AI they were balanced with
   for(let t=0;t<2;t++){
     const s=G.sites[t],hub=addBuilding('hub',t,s.tx,s.ty,true);
     for(let i=0;i<6;i++){const a=i/6*TAU+0.3,u=addUnit('hauler',t,s.cx*TILE+Math.cos(a)*92,s.cy*TILE+Math.sin(a)*92);

@@ -73,7 +73,8 @@ for (const seed of [3, 4, 5, 11, 12, 13]) {
     const a = loadV2(); a.newGame({ seed, diff: 'normal', faction: facsE[seed % 3], enemy: facsE[(seed + 1) % 3] });
     for (let i = 0; i < 300 * 30; i++) a.step();
     process.env.RS = '5';
-    const b = load(); b.newGame({ seed, diff: 'normal', faction: facsE[seed % 3], enemy: facsE[(seed + 1) % 3] });
+    // aiKind 'v3': the comparison needs the same (legacy) enemy AI on both sides of the diff; the T2 opponent is tested in ai_*.js
+    const b = load(); b.newGame({ seed, diff: 'normal', faction: facsE[seed % 3], enemy: facsE[(seed + 1) % 3], aiKind: 'v3' });
     b.__run('G.sw&&(G.sw.on=false)');
     for (let i = 0; i < 300 * 30; i++) b.step();
     ok(sig(a) === sig(b), `swarm OFF == v2 baseline on seed ${seed} after 300 s (enemy c,e,used,cap,kills,lost,units,buildings: ${sig(b)})`);

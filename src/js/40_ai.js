@@ -1,7 +1,8 @@
 /* =========================================================================
-   AI — personality-driven opponent that uses every system the player has
+   AI v3 (legacy) — personality-driven wave opponent. Drives campaign missions and is the league anchor;
+   skirmish uses the T2 opponent (41_ai_*.js, 42_ai_agent.js). makeAI / aiThink dispatch in 42_ai_agent.js.
    ========================================================================= */
-function makeAI(team,P){
+function makeAIV3(team,P){
   const T=G.teams[team];T.mult=P.mult;
   const style=FACTIONS[T.faction].style;
   const ai={team,P:Object.assign({},P),style,next:3,wave:0,attacking:false,group:new Set(),initN:0,stage:null,stageHub:0,saving:false,saveSince:0,
@@ -93,7 +94,7 @@ function aiHeroCast(ai,h){
       let allies=0;forNear(h.x,h.y,s.radius,a=>{if(a.team===team&&!a.dead&&!a.def.worker)allies++;});
       if(allies>=5&&en.length>=3){castSkill(h,i,h.x,h.y);return;}}}
 }
-function aiThink(ai){
+function aiThinkV3(ai){
   const team=ai.team,T=G.teams[team],P=ai.P,time=G.time,style=ai.style;
   const B=[],U=[],enemyU=[];
   for(const b of G.buildings)if(!b.dead&&b.team===team)B.push(b);

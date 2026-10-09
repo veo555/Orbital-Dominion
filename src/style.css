@@ -188,7 +188,7 @@ h3{margin:14px 0 6px;font-size:11px;letter-spacing:2px;color:var(--acc2);text-tr
 .btn.sel{border-color:var(--acc2);background:linear-gradient(rgba(var(--acc-rgb),.55),#0f2139);box-shadow:0 0 12px rgba(var(--acc-rgb),.5)}
 .btn.big{padding:12px 30px;font-size:16px;font-weight:700;letter-spacing:2px;background:linear-gradient(rgba(var(--acc-rgb),.7),rgba(var(--acc-rgb),.4));border-color:var(--acc2);box-shadow:0 0 20px rgba(var(--acc-rgb),.35),var(--hi)}
 .btn.danger{border-color:#a04545;background:linear-gradient(#4a1d1d,#2a1111)}
-.diffrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.diffrow .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 11px}.diffrow .btn span{font-size:11px;color:var(--dim);font-weight:400;text-align:left}
+.diffrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.diffrow .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 11px}.diffrow .btn span{font-size:11px;color:var(--dim);font-weight:400;text-align:left}
 #seedIn{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r2);background:#07101c;color:var(--txt);font:inherit;font-size:16px;-webkit-user-select:text;user-select:text}
 .card{width:min(680px,96vw);max-height:94vh;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:22px 28px;border:1px solid var(--line2);border-radius:var(--r3);background:linear-gradient(#0e1c33,#09121f);box-shadow:0 0 60px rgba(var(--acc-rgb),.3)}
 .card.narrow{width:min(400px,94vw)}.card.wide{width:min(920px,96vw)}
@@ -387,7 +387,7 @@ html.compact h3{margin:6px 0 4px}
 html.compact .fac{padding:6px 8px}html.compact .fac ul,html.compact .fac p{display:none}html.compact .fac .fic img{width:30px;height:30px}html.compact .fac b{font-size:12.5px}html.compact .fac i{margin-bottom:0;font-size:10.5px}
 html.compact .facrow{grid-template-columns:repeat(3,1fr);gap:6px}
 html.compact .two{grid-template-columns:1fr;gap:0}
-html.compact .diffrow{grid-template-columns:repeat(3,1fr);gap:6px}html.compact .diffrow .btn span{display:none}html.compact .diffrow .btn{padding:7px 8px}
+html.compact .diffrow{grid-template-columns:repeat(4,1fr);gap:6px}html.compact .diffrow .btn span{display:none}html.compact .diffrow .btn{padding:7px 8px}
 html.compact .row.actions{position:static;margin:8px 0 0;padding:0;background:none;flex-wrap:wrap;gap:6px}html.compact .row.actions .btn{padding:10px 11px;font-size:13px;white-space:nowrap}html.compact .row.actions .btn.big{padding:10px 14px;font-size:14px;letter-spacing:1px}
 html.compact .btn.big{padding:11px 20px;font-size:15px}
 html.compact .card{max-height:100%;padding:12px 16px}
