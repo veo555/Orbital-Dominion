@@ -350,7 +350,7 @@ function aiMacro(ai,R){
   // 3. workers (Ideal Free Distribution target: theta's per-base saturation; capped while we must out-produce an army we have seen)
   const sip=doneN('siphon');let wq=workers.length;for(const h of hubs)for(const q of h.queue)if(q.id==='hauler')wq++;
   let wantW=Math.min(th.wMax,hubs.length*th.wBase+sip*th.wEther+2);if(ai.eco==='mass')wantW=Math.min(wantW,Math.max(14,hubs.length*12+sip*2));
-  for(const h of hubs){if(h.queue.length<1&&wq<wantW&&canSpend(uCost(team,'hauler'))&&reqUnit(team,'hauler').ok&&aiAct(ai)&&queueUnit(h,'hauler'))wq++;}
+  for(const h of hubs){if(cfg.macro<1&&airand(ai)>cfg.macro)continue;if(h.queue.length<1&&wq<wantW&&canSpend(uCost(team,'hauler'))&&reqUnit(team,'hauler').ok&&aiAct(ai)&&queueUnit(h,'hauler'))wq++;}
   if(wq<wantW&&ai.eco!=='mass')hold({c:50,e:0});
   const hero=R.hero;if(hero&&skillPoints(team)>0&&ai.apm.tok>=1){for(const i of[2,1,0])if(learnSkill(team,i)){aiAct(ai);break;}}
   // 4. era advancement (theta timings; deferred while a real attack is on unless overdue)
