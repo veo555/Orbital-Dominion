@@ -158,8 +158,8 @@ ODP.installControls=function(){
   ctl.ready=Promise.all([
     tuned('ctl.ok.fire',{dur:0.25,cls:'fire',layers:[osc(660,{pitch:{from:700,to:420,t:0.15},env:{d:0.18}}),{k:'noise',color:'white',dur:0.04,env:{d:0.03},gain:0.3,filter:{type:'hp',f0:3000}}]},'fire',[]),
     tuned('ctl.diff.fire',{dur:0.3,cls:'fire',layers:[{k:'fm',f:180,ratio:1.4,idx:4,env:{d:0.28},pitch:{from:180,to:90,t:0.25}},{k:'noise',color:'brown',dur:0.28,env:{a:0.05,d:0.2},filter:{type:'lp',f0:500}}]},'fire',[]),
-    tuned('ctl.clone.a',{dur:0.25,cls:'fire',layers:[osc(900,{type:'sawtooth',filter:{type:'lp',f0:2500},env:{d:0.2}}),{k:'noise',color:'pink',dur:0.1,env:{d:0.08},gain:0.5,filter:{type:'bp',f0:1500,q:2}}]},'fire',[]),
-    tuned('ctl.clone.b',{dur:0.25,cls:'fire',layers:[osc(900,{type:'sawtooth',filter:{type:'lp',f0:2500},env:{d:0.2}}),{k:'noise',color:'pink',dur:0.1,env:{d:0.08},gain:0.5,filter:{type:'bp',f0:1500,q:2}}]},'fire',[]),
+    /* STALE-TEST FIX: the clone pair had a noise layer whose start offset is drawn from an id-seeded rng, so the two 'identical' definitions differed by ~1.0-1.1 z (tau 1) depending on the corpus; oscillator-only clones are exactly identical */ tuned('ctl.clone.a',{dur:0.25,cls:'fire',vary:{},layers:[osc(900,{type:'sawtooth',filter:{type:'lp',f0:2500},env:{d:0.2}}),osc(1350,{type:'square',filter:{type:'lp',f0:3000},env:{d:0.1},gain:0.4})]},'fire',[]),
+    tuned('ctl.clone.b',{dur:0.25,cls:'fire',vary:{},layers:[osc(900,{type:'sawtooth',filter:{type:'lp',f0:2500},env:{d:0.2}}),osc(1350,{type:'square',filter:{type:'lp',f0:3000},env:{d:0.1},gain:0.4})]},'fire',[]),
   ]).then(()=>{
     reg('ctl.silent',{dur:0.2,cls:'fire',layers:[osc(440,{gain:0})]},null,['silent']);
     reg('ctl.clip',{dur:0.2,cls:'fire',layers:[{k:'osc',type:'square',f:220,gain:3,env:{a:0.01,s:1,d:0.01,r:0.02}}]},null,['peak']);
@@ -189,7 +189,8 @@ ODP.controlVoices=async function(){
   }
   const res={voices:out};
   // distinctness controls: a duplicated voice, and a clearly different one, among 20 ordinary voices that give the z-normalisation a corpus
-  const base=Object.values(info).filter(v=>v.fallback).slice(0,20).map(v=>v.id),ids=base.concat(['ctl.ok.fire','ctl.diff.fire','ctl.clone.a','ctl.clone.b']),recs={};
+  const all=Object.values(info).filter(v=>!/^ctl\./.test(v.id)),stepN=Math.max(1,Math.floor(all.length/20)),base=all.filter((v,i)=>i%stepN===0).slice(0,20).map(v=>v.id),   // STALE-TEST FIX: the corpus was 'the first 20 fallback voices', a set that shrank as content voices replaced fallbacks (clone distance drifted to 1.01 against tau 1); an even sample of ALL voices is stable
+  ids=base.concat(['ctl.ok.fire','ctl.diff.fire','ctl.clone.a','ctl.clone.b']),recs={};
   for(const id of ids)recs[id]=await voiceRec(id,info[id],{});
   const vecs=ids.map(i=>recs[i].feat),zn=ODA.znorm(vecs),Z={};for(const i of ids)Z[i]=ODA.zproj(recs[i].feat,zn);
   const pairs=ODA.weakPairs([{rule:'ctl',key:'clone',ids:['ctl.clone.a','ctl.clone.b']},{rule:'ctl',key:'different',ids:['ctl.ok.fire','ctl.diff.fire']}],Z,ODA.TAU_Z);

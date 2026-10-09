@@ -411,7 +411,7 @@ with sync_playwright() as p:
     ok(pg.evaluate("()=>__RTS.SET.voiceVol")== 0.37 and pg.evaluate("()=>JSON.parse(localStorage.getItem('orbital_dominion_v3_settings')).voiceVol")== 0.37, 'moving #setVoice sets SET.voiceVol and saves it')
     pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=55;e.dispatchEvent(new Event('input',{bubbles:true}));}"); pg.wait_for_timeout(300)
     v = pg.evaluate("()=>__RTS.AUD.stats().buses")
-    ok(abs(v['voice'] - 0.55) < 0.02 and abs(v['sfx'] - 0.8) < 0.02 and abs(v['music'] - 0.45) < 0.02, f"voice bus follows #setVoice, sfx/music buses follow their own sliders {v}")
+    ok(abs(v['voice'] - 0.55 * 1.8) < 0.02 and abs(v['sfx'] - 0.8) < 0.02 and abs(v['music'] - 0.45) < 0.02, f"voice bus follows #setVoice (x1.8 mix trim VBOOST, docs/AUDIO_V4.md), sfx/music buses follow their own sliders {v}")
     pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=90;e.dispatchEvent(new Event('input',{bubbles:true}));}")
     pg.evaluate("()=>__RTS.showOverlay('menu')")
     pg.click('#bStart'); pg.wait_for_timeout(1200)

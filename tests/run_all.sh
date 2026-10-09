@@ -22,6 +22,10 @@ python3 tests/e2e/e2e_portraits.py
 python3 tests/e2e/e2e_audio_engine.py
 python3 tests/e2e/e2e_audio_wiring.py
 python3 tests/e2e/e2e_soundlab.py
+node tests/audio/bs1770_test.js
+python3 tests/e2e/e2e_audio_mix.py
+python3 tests/audio/voicepack_pipeline.py
+python3 tests/e2e/e2e_audio_voicepack.py
 python3 tests/e2e/e2e_pwa.py
 python3 tests/e2e/e2e_support.py
 (cd server/stripe-worker && node --test test/worker.test.mjs)
