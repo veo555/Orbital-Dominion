@@ -21,7 +21,7 @@ def main():
     ap.add_argument('--size', default='1366x768'); ap.add_argument('--frames', type=int, default=60)
     ap.add_argument('--quality', default=None)
     a = ap.parse_args()
-    url = a.url or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+    url = a.url or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
     w, h = map(int, a.size.split('x'))
     rows = []
     with sync_playwright() as p:

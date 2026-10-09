@@ -1,4 +1,4 @@
-# Orbital Dominion v3 — project handoff package
+# Orbital Dominion v4 — project handoff package
 
 A real-time strategy game (three factions, three eras, fog of war, heroes, a Caesar-style colony economy, a
 Patrizier-style market) with a **swarm-agent layer**: every unit can be an autonomous agent with a role, a wallet and
@@ -6,18 +6,31 @@ XP; a master AI ("the Overseer") directs the colony; a labour marketplace lets y
 five billing cadences (minute / hour / day / month / per task).
 
 It ships three ways from one source tree (`python3 build.py`): a **single self-contained HTML file**
-(`dist/orbital_dominion_v3.html`, ≈ 2 MB since 3.2, no external requests, no libraries) to download and share; an **installable,
+(`dist/orbital_dominion_v4.html`, ≈ 1.4 MB since 4.0 (2.0 MB with the 3.x films), no external requests, no libraries) to download and share; an **installable,
 offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) for Capacitor wrappers. See `docs/DEPLOY.md`.
 
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
+
+## 00. What changed in 4.0 (9 Oct 2026): no video, new graphics, new AI, new audio chain, Material 3 shell
+
+| Area | What is in the build | Evidence (Chromium headless / Node, software raster; nothing heard, nothing on a real phone) | Not verified |
+|---|---|---|---|
+| **No video** | All films removed; the story is 32 text dispatches + Archive (section 0 below). Build 2.03 MB to about 1.4 MB | `e2e_campaign.py`, story validator (0 errors, 59 mutations caught) | readability of dispatch cards on real phones |
+| **Graphics** | Light buffer with a real day/night ramp, sun-direction shadows, rim/edge occlusion on sprites, damage soot/cracks, construction scaffolds, particles (trails, sparks, smoke, embers), terrain macro-variation, softer fog edge, bloom on the *ultra* tier only, redesigned bars/rings/minimap. Details, maths, tier table, perf: `docs/GRAPHICS_V4.md`; before/after in `docs/img/v4/` | `tests/e2e/e2e_visual.py` (pixel assertions with mutation proofs); perf, software raster: high tier +26 to +29 % frame time, battery about +8 to 10 %, game start 100-300 ms slower | any GPU, WebKit/iOS (`shadowBlur`, `multiply`, `lighter` blends), real phone frame times |
+| **Google design** | Material 3 layer: colour roles mapped onto the tokens (faction accent = primary), shape scale, state layers, ripple, dialog motion, window size classes, 48 px targets where room, regrouped pause menu; People+AI guidance for the Overseer. `docs/DESIGN_SYSTEM.md` section 9 | design check, `e2e_campaign.py` layouts at 5 viewports, screenshots looked at (desktop, iPhone landscape, Pixel portrait) | a real Android device; no adaptive navigation rail (nothing to navigate) |
+| **AI** | A new fog-honest opponent for skirmish and the menu demo (campaign missions keep the v3 AI they were balanced against): Bayesian belief grid + stigmergic scouting, Lanchester-blend fight predictor, boids formations, Ideal-Free-Distribution workers, APM cap and reaction delay per tier, a learned value function V(s), parameters tuned by a headless **league** (CMA-ES, PFSP, main + exploiters, Bradley-Terry Elo). Four tiers, income x1.0 on all. `docs/AI_DESIGN.md`, `docs/AI_LEAGUE_RESULTS.md`, research note `docs/RESEARCH_ALPHASTAR_AND_SWARMS.md` | 24 mirrored games per pairing with Wilson CIs: Master beats the old Hard AI **at equal income** 85 % [66, 95] and loses to it with its +25 % income cheat (45 %); Normal 77 % and Easy 98 % vs their old counterparts; adjacent new tiers Master>Hard 56 % [37, 74], Hard>Normal 65 % [45, 81], Normal>Easy 73 % [53, 87] (**not significant individually**); value function AUC 0.825, Brier 0.106; fight predictor accuracy about 90-95 %; CPU +6 % of tick time; no-peek, determinism, APM-bound and save round-trip tests | **no human has played against it**; bot-vs-bot Elo is not human Elo; the league ran 118 of 150 planned minutes and plateaued after about 15 generations; Master is not clearly separated from Hard; Aurora is weak against the old Hard AI |
+| **Audio** | New master chain (glue compressor, trim, limiter, soft clip), BS.1770 loudness meter in the tests, voice-over ducking, distance low-pass and reverb send for positioned voices, equalised music cue loudness and intensity layers; **optional offline ElevenLabs voice-pack pipeline** (`tools/voicepack/`, loader default off, no network). `docs/AUDIO_V4.md` | offline-renderer measurements (battle -15.1 LUFS-I / -2.2 dBTP, calm -24.1 LUFS-I, voice line +4 LU over a dense fight), engine/wiring/Sound Lab/voice-pack tests with mutations | **nothing was heard by a person**; `world_gate.py` and `voice_gate.py --quick` still have failing checks (listed in `docs/AUDIO_V4.md`); ElevenLabs was never called: its free plan has no commercial licence, about 10 000 credits/month and the script needs about 20 000 characters |
+| **Process** | `docs/MASTER_PROMPT.md` is a prompt to rebuild the whole project; `tests/run_all.sh` now includes every gate above (about 20 minutes) | `bash tests/run_all.sh` | |
+
+---
 
 ## 0. 4.0: videos removed (T1)
 
 The procedural real-time films (the cinematic engine, its backgrounds, props and effects: `64_cine_bg_*`, `64_cine_props`, `65_cine_fx`, `66_cine`, about 0.7 MB of the build) are gone. The story survives as **text dispatches**
 (`STORY.dispatch`, 32 of them, 278 spoken lines plus datelines, none dropped): a modal text card with speaker portrait chips, Continue / Skip all, shown as prologue, briefings, debriefs, interludes, defeats, ending and credits, and re-readable from the new **Archive**
 (replaces the Extras gallery). The `cine` mission action is now `dispatch` (still blocking). The character portrait painter stays (`64_portrait_core.js`, `64_portraits.js`). Spec: `docs/DISPATCH_SPEC.md`. Save format unchanged.
-Build size 2,026,361 to 1,322,454 bytes for `dist/orbital_dominion_v3.html`. The 3.x sections below describe what was true then; their film rows are historical.
+Build size 2,026,361 to 1,322,454 bytes for `dist/orbital_dominion_v4.html`. The 3.x sections below describe what was true then; their film rows are historical.
 
 ---
 
@@ -71,8 +84,8 @@ New commands: `bash tests/run_all.sh` now runs every gate (≈ 5 min); `python3 
 
 ```bash
 # requirements: Python 3.9+, Node 18+ (tested with Node 22), for browser tests: pip install playwright && playwright install chromium
-python3 build.py                 # src/  ->  dist/orbital_dominion_v3.html   (pure concatenation, no dependencies)
-open dist/orbital_dominion_v3.html   # or double-click; it runs from file://
+python3 build.py                 # src/  ->  dist/orbital_dominion_v4.html   (pure concatenation, no dependencies)
+open dist/orbital_dominion_v4.html   # or double-click; it runs from file://
 
 bash tests/run_all.sh            # build + simulation smoke (~40 s) + browser smoke (~40 s)
 ```
@@ -102,7 +115,7 @@ src/
   body.html                   HUD / menu / panel markup (ids referenced from JS)
   style.css                   all styling (responsive breakpoints at 1180 / 900 / 760 px)
   js/                         the game, 18 modules, numeric prefix = load order (see docs/ARCHITECTURE.md)
-dist/orbital_dominion_v3.html the built single-file game (identical to what build.py produces)
+dist/orbital_dominion_v4.html the built single-file game (identical to what build.py produces)
 tests/
   sim/                        headless Node harness (vm sandbox) + smoke / match / eco / equivalence scripts
   e2e/                        Playwright scripts (e2e_smoke.py is the gate; the rest are exploratory)

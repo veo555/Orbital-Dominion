@@ -7,7 +7,7 @@ import os, sys, json, time, pathlib, shutil, hashlib, zipfile, importlib.util
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 spec = importlib.util.spec_from_file_location('vpp', ROOT / 'tests' / 'audio' / 'voicepack_pipeline.py')
 vpp = importlib.util.module_from_spec(spec); spec.loader.exec_module(vpp)
 fails = []; T0 = time.time()

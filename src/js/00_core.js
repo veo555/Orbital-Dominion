@@ -1,6 +1,6 @@
 'use strict';
 /* =========================================================================
-   ORBITAL DOMINION v3 — core constants, helpers and data tables
+   ORBITAL DOMINION v4 — core constants, helpers and data tables
    ========================================================================= */
 const TILE=32,MW=88,MH=88,WW=MW*TILE,WH=MH*TILE,NN=MW*MH,TICK=1/30,CS=64,CW=Math.ceil(WW/CS),CH=Math.ceil(WH/CS);
 const TAU=Math.PI*2,MAXSUP=120;
@@ -21,7 +21,7 @@ const tg=(...a)=>{const o={};for(const k of a)o[k]=1;return o;};
 const fmtTime=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');};
 
 /* ------------------------------ settings ----------------------------- */
-const SETKEY='orbital_dominion_v3_settings';
+const SETKEY='orbital_dominion_v4_settings';
 const SET={music:0.45,sfx:0.8,voiceVol:0.9,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',theme:'',cb:false,rm:false,haptics:true,wake:true,fps:false};
 try{const s=JSON.parse(localStorage.getItem(SETKEY)||'null');if(s)Object.assign(SET,s);}catch(e){}
 function saveSettings(){try{localStorage.setItem(SETKEY,JSON.stringify(SET));}catch(e){}}

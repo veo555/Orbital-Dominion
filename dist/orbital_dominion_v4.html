@@ -1033,11 +1033,11 @@ html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
 
 <script>
 (function(){
-const BUILD={"variant": "standalone", "id": "ba8baa7c2d", "version": "3.1.0"};
+const BUILD={"variant": "standalone", "id": "2417a748ce", "version": "4.0.0"};
 const SUPPORT_CFG={"enabled":false,"_help":"Optional 'support the game' payments through Stripe. OFF by default. See docs/MONETIZATION.md. Everything here is PUBLIC (it ships in the page): never put a Stripe secret key in this file.","title":"Support Orbital Dominion","blurb":"Orbital Dominion is free to play. If you enjoy it you can chip in, which pays for development. Payments are handled by Stripe on its own page; the game never sees your card details. Supporting unlocks cosmetic extras only: no gameplay advantage, and in-game currency is never sold.","tiers":[{"id":"coffee","label":"Coffee","amount":"$3","paymentLink":""},{"id":"backer","label":"Backer","amount":"$9","paymentLink":""},{"id":"founder","label":"Founder","amount":"$25","paymentLink":""}],"checkoutEndpoint":"","verifyEndpoint":"","entitlementEndpoint":"","perks":["Supporter badge on the title screen","Three extra interface colour themes"]};
 'use strict';
 /* =========================================================================
-   ORBITAL DOMINION v3 — core constants, helpers and data tables
+   ORBITAL DOMINION v4 — core constants, helpers and data tables
    ========================================================================= */
 const TILE=32,MW=88,MH=88,WW=MW*TILE,WH=MH*TILE,NN=MW*MH,TICK=1/30,CS=64,CW=Math.ceil(WW/CS),CH=Math.ceil(WH/CS);
 const TAU=Math.PI*2,MAXSUP=120;
@@ -1058,7 +1058,7 @@ const tg=(...a)=>{const o={};for(const k of a)o[k]=1;return o;};
 const fmtTime=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');};
 
 /* ------------------------------ settings ----------------------------- */
-const SETKEY='orbital_dominion_v3_settings';
+const SETKEY='orbital_dominion_v4_settings';
 const SET={music:0.45,sfx:0.8,voiceVol:0.9,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',theme:'',cb:false,rm:false,haptics:true,wake:true,fps:false};
 try{const s=JSON.parse(localStorage.getItem(SETKEY)||'null');if(s)Object.assign(SET,s);}catch(e){}
 function saveSettings(){try{localStorage.setItem(SETKEY,JSON.stringify(SET));}catch(e){}}
@@ -4718,7 +4718,7 @@ function fieldDir(p,home,threats,wHome){
    (all with income x1.0). vf = value function V(s) (tools/league/train_value.py); combat = predictor link (tools/league/calib_combat.js).
    See docs/AI_DESIGN.md and docs/AI_LEAGUE_RESULTS.md.
    ========================================================================= */
-const AI_PARAMS={"version":"league-1 (M@30)","theta0":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5],"styles":{"rush":{"firstAtk":-0.2,"atkSup":-0.1,"aggr":-0.08,"cMelee":0.25,"expandAt":0.1,"era2":0.1,"turret":-0.2,"harass":0.2},"turtle":{"turret":0.35,"firstAtk":0.12,"cHeavy":0.2,"cArt":0.2,"aggr":0.05,"expandAt":-0.05},"trader":{"trade":0.4,"expandAt":-0.12,"era2":-0.08,"tech":0.15,"cAir":0.1}},"tiers":{"easy":{"think":0.6,"apm":50,"delay":0.45,"micro":0,"focus":0,"kite":0,"macro":0.6,"useV":1,"theta":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5]},"normal":{"think":0.45,"apm":90,"delay":0.3,"micro":0,"focus":1,"kite":0,"macro":0.85,"useV":1,"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628]},"hard":{"think":0.33,"apm":150,"delay":0.2,"micro":1,"focus":1,"kite":1,"macro":1,"useV":1,"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628]},"master":{"think":0.25,"apm":240,"delay":0.15,"micro":1,"focus":1,"kite":1,"macro":1,"useV":1,"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628]}},"vf":{"kind":"mlp","W1":[[0.34264,0.47832,0.09304,-0.05393,0.46297,-0.22938,0.21981,0.02573,0.00851,0.20147,-0.02082],[-0.06285,0.11858,0.01612,0.0775,0.20465,-0.04423,-0.00686,0.05723,0.02033,-0.24088,0.09347],[0.04047,0.04464,0.0392,-0.01466,-0.00363,0.00175,0.03137,-0.01071,-0.00767,0.02737,-0.01449],[0.07176,-0.21808,-0.00921,0.06703,-0.40424,0.36626,0.00644,0.1822,0.0646,-0.38284,0.23784],[-0.20243,0.18238,0.13847,0.11068,0.65819,0.13614,0.12098,0.11162,-0.45468,-0.17051,-0.17239],[0.23781,0.08674,0.28554,0.15095,0.53018,0.05909,0.13524,0.04532,-0.15209,-0.23228,0.0463],[0.02414,0.02859,0.02505,-0.01206,-0.00729,0.00939,0.02043,-0.00814,0.00189,0.02126,-0.0057],[0.0196,0.07645,0.10659,0.06132,-0.60759,0.27382,0.302,-0.01812,-0.01634,-0.23863,0.20165],[-0.13692,0.10114,-0.21775,-0.01433,0.0388,-0.10425,-0.18081,-0.05098,-0.57138,-0.21428,0.00594],[-0.06584,0.18984,0.02371,0.09735,0.284,-0.07786,-0.0106,0.06843,0.08051,-0.3421,0.10899],[0.05784,0.09793,-0.04222,-0.1281,0.16234,-0.12668,-0.04631,-0.13761,0.01512,0.38083,-0.21312],[0.092,0.24728,0.28343,-0.03082,-0.24593,0.31916,0.4483,-0.05213,0.05571,0.22957,-0.02892],[0.02384,0.02643,0.0245,-0.01098,-0.00581,0.00796,0.01964,-0.0076,0.00302,0.02015,-0.00578],[-0.0991,-0.09236,-0.11719,-0.0629,-0.15392,-0.00165,-0.07192,-0.01906,0.00414,0.0682,-0.02194],[0.05788,-0.00556,0.00335,-0.03563,-0.09775,-0.02185,0.00354,-0.03162,0.07588,0.07351,-0.03103],[-0.00873,0.04017,-0.06248,-0.02242,-0.26506,-0.07814,0.01727,0.43829,0.16973,0.11392,-0.18493]],"b1":[-0.37768,0.45705,-0.03296,-0.78462,-0.36818,-1.78383,0.17299,0.87757,2.08581,0.50984,0.20455,1.3461,0.07966,0.85533,-0.11887,-0.00655],"w2":[0.75092,-0.34035,0.1103,-0.68557,-0.89497,0.72189,0.06897,0.77048,-0.71688,-0.47429,0.4795,0.77941,0.06753,-0.24685,0.16514,0.47953],"b2":0.09028,"mu":[0.42791,0.98797,0.78035,0.10944,0.4119,0.28858,0.35919,1.3811,-0.24376,0.07007,1.51075],"sd":[1.01382,0.45569,0.81556,0.37698,0.23056,0.77728,0.22149,0.43672,1.96833,0.98022,0.45077],"feats":["logArmyRatio","logWorkerRatio","baseDiff","eraDiff","time","armyDiffK","supply","logBank","heroDiff","killDiff","logStructRatio"],"n":125424},"combat":{"kOde":2.109,"kL":2.222},"meta":{"league":{"generations":30,"minutes":118,"games":2160},"masterFrom":"M@30","easyFrom":"M@0 (theta0)"}};
+const AI_PARAMS={"version":"league-1 ladder-2 (Master/Hard: M@30, Normal/Easy: theta0)","theta0":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5],"styles":{"rush":{"firstAtk":-0.2,"atkSup":-0.1,"aggr":-0.08,"cMelee":0.25,"expandAt":0.1,"era2":0.1,"turret":-0.2,"harass":0.2},"turtle":{"turret":0.35,"firstAtk":0.12,"cHeavy":0.2,"cArt":0.2,"aggr":0.05,"expandAt":-0.05},"trader":{"trade":0.4,"expandAt":-0.12,"era2":-0.08,"tech":0.15,"cAir":0.1}},"tiers":{"easy":{"theta":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5],"think":0.6,"apm":45,"delay":0.5,"micro":0,"focus":0,"kite":0,"macro":0.5,"useV":1},"normal":{"theta":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5],"think":0.45,"apm":80,"delay":0.35,"micro":0,"focus":1,"kite":0,"macro":0.7,"useV":1},"hard":{"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628],"think":0.45,"apm":90,"delay":0.3,"micro":0,"focus":1,"kite":0,"macro":0.65,"useV":1},"master":{"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628],"think":0.25,"apm":240,"delay":0.15,"micro":1,"focus":1,"kite":1,"macro":1,"useV":1}},"vf":{"kind":"mlp","W1":[[0.34264,0.47832,0.09304,-0.05393,0.46297,-0.22938,0.21981,0.02573,0.00851,0.20147,-0.02082],[-0.06285,0.11858,0.01612,0.0775,0.20465,-0.04423,-0.00686,0.05723,0.02033,-0.24088,0.09347],[0.04047,0.04464,0.0392,-0.01466,-0.00363,0.00175,0.03137,-0.01071,-0.00767,0.02737,-0.01449],[0.07176,-0.21808,-0.00921,0.06703,-0.40424,0.36626,0.00644,0.1822,0.0646,-0.38284,0.23784],[-0.20243,0.18238,0.13847,0.11068,0.65819,0.13614,0.12098,0.11162,-0.45468,-0.17051,-0.17239],[0.23781,0.08674,0.28554,0.15095,0.53018,0.05909,0.13524,0.04532,-0.15209,-0.23228,0.0463],[0.02414,0.02859,0.02505,-0.01206,-0.00729,0.00939,0.02043,-0.00814,0.00189,0.02126,-0.0057],[0.0196,0.07645,0.10659,0.06132,-0.60759,0.27382,0.302,-0.01812,-0.01634,-0.23863,0.20165],[-0.13692,0.10114,-0.21775,-0.01433,0.0388,-0.10425,-0.18081,-0.05098,-0.57138,-0.21428,0.00594],[-0.06584,0.18984,0.02371,0.09735,0.284,-0.07786,-0.0106,0.06843,0.08051,-0.3421,0.10899],[0.05784,0.09793,-0.04222,-0.1281,0.16234,-0.12668,-0.04631,-0.13761,0.01512,0.38083,-0.21312],[0.092,0.24728,0.28343,-0.03082,-0.24593,0.31916,0.4483,-0.05213,0.05571,0.22957,-0.02892],[0.02384,0.02643,0.0245,-0.01098,-0.00581,0.00796,0.01964,-0.0076,0.00302,0.02015,-0.00578],[-0.0991,-0.09236,-0.11719,-0.0629,-0.15392,-0.00165,-0.07192,-0.01906,0.00414,0.0682,-0.02194],[0.05788,-0.00556,0.00335,-0.03563,-0.09775,-0.02185,0.00354,-0.03162,0.07588,0.07351,-0.03103],[-0.00873,0.04017,-0.06248,-0.02242,-0.26506,-0.07814,0.01727,0.43829,0.16973,0.11392,-0.18493]],"b1":[-0.37768,0.45705,-0.03296,-0.78462,-0.36818,-1.78383,0.17299,0.87757,2.08581,0.50984,0.20455,1.3461,0.07966,0.85533,-0.11887,-0.00655],"w2":[0.75092,-0.34035,0.1103,-0.68557,-0.89497,0.72189,0.06897,0.77048,-0.71688,-0.47429,0.4795,0.77941,0.06753,-0.24685,0.16514,0.47953],"b2":0.09028,"mu":[0.42791,0.98797,0.78035,0.10944,0.4119,0.28858,0.35919,1.3811,-0.24376,0.07007,1.51075],"sd":[1.01382,0.45569,0.81556,0.37698,0.23056,0.77728,0.22149,0.43672,1.96833,0.98022,0.45077],"feats":["logArmyRatio","logWorkerRatio","baseDiff","eraDiff","time","armyDiffK","supply","logBank","heroDiff","killDiff","logStructRatio"],"n":125424},"combat":{"kOde":2.109,"kL":2.222},"meta":{"league":{"generations":30,"minutes":118,"games":2160},"masterFrom":"M@30","ladder":"tests/out/final/l1,l2,l3"}};
 
 /* =========================================================================
    42_AI_AGENT — the T2 computer opponent (SIM-SIDE: headless, deterministic, no Math.random, no DOM, no wall clock).
@@ -5072,7 +5072,7 @@ function aiMacro(ai,R){
   // 3. workers (Ideal Free Distribution target: theta's per-base saturation; capped while we must out-produce an army we have seen)
   const sip=doneN('siphon');let wq=workers.length;for(const h of hubs)for(const q of h.queue)if(q.id==='hauler')wq++;
   let wantW=Math.min(th.wMax,hubs.length*th.wBase+sip*th.wEther+2);if(ai.eco==='mass')wantW=Math.min(wantW,Math.max(14,hubs.length*12+sip*2));
-  for(const h of hubs){if(h.queue.length<1&&wq<wantW&&canSpend(uCost(team,'hauler'))&&reqUnit(team,'hauler').ok&&aiAct(ai)&&queueUnit(h,'hauler'))wq++;}
+  for(const h of hubs){if(cfg.macro<1&&airand(ai)>cfg.macro)continue;if(h.queue.length<1&&wq<wantW&&canSpend(uCost(team,'hauler'))&&reqUnit(team,'hauler').ok&&aiAct(ai)&&queueUnit(h,'hauler'))wq++;}
   if(wq<wantW&&ai.eco!=='mass')hold({c:50,e:0});
   const hero=R.hero;if(hero&&skillPoints(team)>0&&ai.apm.tok>=1){for(const i of[2,1,0])if(learnSkill(team,i)){aiAct(ai);break;}}
   // 4. era advancement (theta timings; deferred while a real attack is on unless overdue)
@@ -5471,7 +5471,7 @@ const ACTION_OPS={
 };
 const MOODS=['calm','tension','battle','dread','victory'];
 const MISSION_COUNT=9,ACT_COUNT=3;
-const CAMP_SAVEKEY='orbital_dominion_v3_campaign';
+const CAMP_SAVEKEY='orbital_dominion_v4_campaign';
 
 /* =========================================================================
    STORY (1/n) - THE LANTERN TITHE. The campaign data root. Authored by the story workflow; see docs/CAMPAIGN_SPEC.md and docs/story/BIBLE.md.
@@ -10615,7 +10615,7 @@ const DIFF_NAMES={easy:'Easy',normal:'Normal',hard:'Hard',master:'Master'};
 /* =========================================================================
    MENUS — main menu, pause, settings, help and the post-game report
    ========================================================================= */
-const DIFF_DESC={easy:'Slow reactions, loose macro, no unit micro.',normal:'Scouts, expands and counters what it has seen.',hard:'Quick reactions, focus fire and kiting.',master:'Strongest setting, tuned by self-play. Same fog, rules and income as you.'};
+const DIFF_DESC={easy:'Slow reactions, loose macro, no focus fire. A good first opponent.',normal:'Scouts, expands, counters what it sees and focuses fire.',hard:'Self-play-tuned strategy and timings, focus fire, no fine micro.',master:'Strongest setting: full micro (kiting, concave, retreats). Same fog, rules and income as you.'};
 const HELP_HTML=`
 <h3>Goal</h3><p>Destroy <b>every enemy structure</b>. Both sides play by the same rules: fog of war, supply, eras, upgrades. Lose all of your structures and you are out.</p>
 <h3>Touch controls <small>(phones &amp; tablets)</small></h3><div class="keys">
@@ -12120,7 +12120,7 @@ function campInit(){
                      verifyEndpoint turns the session into a signed token, entitlementEndpoint re-validates it (refunds revoke it)
    ========================================================================= */
 const SUP={on:false,tier:null,token:null,honor:false,cfg:SUPPORT_CFG||{}};
-const SUPKEY='orbital_dominion_v3_supporter';
+const SUPKEY='orbital_dominion_v4_supporter';
 const STRIPE_LINK=/^https:\/\/(buy|checkout|donate)\.stripe\.com\//;
 const THEMES={gold:{base:'#e0a526',glow:'#ffd566'},magenta:{base:'#d94fb0',glow:'#ff84dc'},ice:{base:'#4fd0e8',glow:'#a6f0ff'}};
 
@@ -12206,7 +12206,7 @@ function supInit(){
    One slot (skirmish or campaign mission). Written every RESUME_EVERY seconds of real time while a match runs, whenever the app is sent to the
    background (autoPause) and never during a blocking dispatch card; erased when the match ends. localStorage only: nothing leaves the device.
    ========================================================================= */
-const RESUMEKEY='orbital_dominion_v3_resume',RESUME_EVERY=30;
+const RESUMEKEY='orbital_dominion_v4_resume',RESUME_EVERY=30;
 const RS={t:0,metaOK:false};
 function resumeMeta(){try{const m=JSON.parse(localStorage.getItem(RESUMEKEY+'_meta')||'null');return m&&m.v===1&&typeof m.camp!=='undefined'?m:null;}catch(e){return null;}}
 function resumeWrite(){

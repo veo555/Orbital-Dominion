@@ -23,7 +23,7 @@ Limits: Chromium software raster; audio is a stub / not exercised; no real phone
 import json, os, pathlib, subprocess, sys, time
 from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 WANT = set(filter(None, os.environ.get('E2E_SECTIONS', '').split(',')))
 fails = []; errs = []; reqs = []; T0 = time.time()
 def ok(c, m):
@@ -35,7 +35,7 @@ def want(s): return not WANT or s in WANT
 r = subprocess.run(['node', '-e', "process.stdout.write(JSON.stringify(require(process.argv[1])()))", str(ROOT / 'tests' / 'fixtures' / 'story_min.js')], capture_output=True, text=True)
 if r.returncode: sys.exit('node could not load the story fixture:\n' + r.stderr)
 FIX = json.loads(r.stdout)
-NDISP = len(FIX['dispatch']); KEY = 'orbital_dominion_v3_campaign'
+NDISP = len(FIX['dispatch']); KEY = 'orbital_dominion_v4_campaign'
 MERGE = "(d)=>{Object.assign(__RTS.STORY,{meta:d.meta,world:d.world,characters:d.characters,acts:d.acts,missions:d.missions,dispatch:d.dispatch,radio:d.radio,barks:d.barks});__RTS.campSyncMenu();return __RTS.STORY.missions.length;}"
 
 def open_page(b, w=1366, h=768, dpr=1, mobile=False, ctx=None, fresh=True):

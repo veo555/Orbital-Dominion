@@ -8,7 +8,7 @@ this package; line counts are approximate (5,900 lines of JS in 18 modules, 27 K
 ## 1. Build and runtime shape
 
 * `build.py` reads `src/js/*.js` **in alphabetical order**, concatenates them into **one IIFE**, wraps them with
-  `src/style.css` and `src/body.html`, and writes `dist/orbital_dominion_v3.html`. There is no bundler, no
+  `src/style.css` and `src/body.html`, and writes `dist/orbital_dominion_v4.html`. There is no bundler, no
   transpiler, no dependency. The HTML head already carries `viewport … user-scalable=no`.
 * All modules therefore share one lexical scope (`const`/`function` at top level are visible everywhere). Order matters
   only for *top-level statements that execute at load* (data tables in `00_core.js`, `boot()` in `90_main.js`).

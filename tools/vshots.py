@@ -60,7 +60,7 @@ if __name__ == '__main__':
     a = ap.parse_args()
     out = pathlib.Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    url = a.url or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+    url = a.url or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
     sc = [s for s in SCEN if not a.only or s[0] in a.only.split(',')]
     with sync_playwright() as p:
         for n in a.names or ['desktop']:

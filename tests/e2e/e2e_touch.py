@@ -10,7 +10,7 @@ Limits: this is Chromium emulating a phone. It is not WebKit/iOS Safari and not 
 import os, sys, pathlib
 from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 fails = []; errs = []; reqs = []
 def ok(c, m):
     print(('ok    ' if c else 'FAIL  ') + m, flush=True)

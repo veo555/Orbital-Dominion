@@ -96,4 +96,4 @@ const ACTION_OPS={
 };
 const MOODS=['calm','tension','battle','dread','victory'];
 const MISSION_COUNT=9,ACT_COUNT=3;
-const CAMP_SAVEKEY='orbital_dominion_v3_campaign';
+const CAMP_SAVEKEY='orbital_dominion_v4_campaign';

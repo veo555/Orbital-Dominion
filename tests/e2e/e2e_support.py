@@ -39,8 +39,8 @@ builds = {
     'links': build('links', cfg(), ('standalone', 'store')),
     'api': build('api', cfg(checkoutEndpoint='https://pay.test/checkout', verifyEndpoint='https://pay.test/verify', entitlementEndpoint='https://pay.test/entitlement')),
 }
-default_html = ROOT / 'dist' / 'orbital_dominion_v3.html'
-FILES = {'links': builds['links'] / 'orbital_dominion_v3.html', 'api': builds['api'] / 'orbital_dominion_v3.html'}
+default_html = ROOT / 'dist' / 'orbital_dominion_v4.html'
+FILES = {'links': builds['links'] / 'orbital_dominion_v4.html', 'api': builds['api'] / 'orbital_dominion_v4.html'}
 
 ALLOWED = ('https://pay.test/', 'https://checkout.stripe.com/', 'https://buy.stripe.com/')
 def new_page(b, **kw):
@@ -61,7 +61,7 @@ with sync_playwright() as p:
     ctx, pg = new_page(b)
     pg.goto(default_html.as_uri() + '?supporter=coffee'); pg.wait_for_timeout(900)
     ok(not vis(pg, 'bSupport'), 'default build: no Support button')
-    ok(pg.evaluate("()=>localStorage.getItem('orbital_dominion_v3_supporter')") is None and not vis(pg, 'supBadge'), 'default build: ?supporter=coffee is ignored (no unlock, nothing stored)')
+    ok(pg.evaluate("()=>localStorage.getItem('orbital_dominion_v4_supporter')") is None and not vis(pg, 'supBadge'), 'default build: ?supporter=coffee is ignored (no unlock, nothing stored)')
     ctx.close()
 
     # ---- payment-link mode ------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ with sync_playwright() as p:
     ok(vis(pg, 'supBadge') and pg.evaluate("()=>getComputedStyle(document.documentElement).getPropertyValue('--acc').trim().toLowerCase()") == '#e0a526', 'badge and theme persist across a reload')
     # cosmetic only (Math.random is pinned: ~30 sim calls are still unseeded, BACKLOG B-20): a match plays identically (same seed -> same state hash with and without the supporter flag)
     h1 = pg.evaluate("()=>{const R=__RTS;let a=12345;Math.random=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296};R.newGame({seed:5,faction:'meridian',enemy:'aurora'});for(let i=0;i<300;i++)R.step();return JSON.stringify([R.G.teams[0].c,R.G.teams[0].used,R.G.units.length])}")
-    pg.evaluate("()=>{localStorage.removeItem('orbital_dominion_v3_supporter')}"); pg.reload(); pg.wait_for_timeout(800)
+    pg.evaluate("()=>{localStorage.removeItem('orbital_dominion_v4_supporter')}"); pg.reload(); pg.wait_for_timeout(800)
     h2 = pg.evaluate("()=>{const R=__RTS;let a=12345;Math.random=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296};R.newGame({seed:5,faction:'meridian',enemy:'aurora'});for(let i=0;i<300;i++)R.step();return JSON.stringify([R.G.teams[0].c,R.G.teams[0].used,R.G.units.length])}")
     ok(not vis(pg, 'supBadge'), 'without the stored flag the badge is gone')
     ok(h1 == h2, f'perks are cosmetic: identical game state with and without them ({h1})')

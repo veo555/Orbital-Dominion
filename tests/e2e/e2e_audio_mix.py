@@ -2,7 +2,7 @@
    python3 tests/e2e/e2e_audio_mix.py                       gates only (voices by class, scenarios through the shipped v4 master chain, ducking, loudness meter)
    python3 tests/e2e/e2e_audio_mix.py --report out.json     also write every measured number (voices per class, cues, scenarios for chains v3 AND v4) to out.json
    python3 tests/e2e/e2e_audio_mix.py --cues theme_meridian,battle --no-voices --no-scen    (subsets; --cues all = every cue, ~12 s of audio each)
-   OD_URL=file:///.../dist/orbital_dominion_v3.html to point it at a scratch build.
+   OD_URL=file:///.../dist/orbital_dominion_v4.html to point it at a scratch build.
 
 What is enforced (all numbers come from tests/audio/bs1770.js, an ITU-R BS.1770-4 meter verified against ffmpeg's ebur128 by tests/audio/bs1770_test.js):
   voices  every voice, rendered raw: finite, DC < 0.01, class-mean active level within 3 dB of the class target, per-voice true peak <= -0.2 dBTP (raw voices; the master chain handles the rest)
@@ -15,7 +15,7 @@ import os, sys, json, time, pathlib, argparse
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 AUDIO = ROOT / 'tests' / 'audio'
 ap = argparse.ArgumentParser()
 ap.add_argument('--report', default=''); ap.add_argument('--cues', default=''); ap.add_argument('--no-voices', action='store_true'); ap.add_argument('--no-scen', action='store_true')

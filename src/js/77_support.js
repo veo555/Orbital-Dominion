@@ -12,7 +12,7 @@
                      verifyEndpoint turns the session into a signed token, entitlementEndpoint re-validates it (refunds revoke it)
    ========================================================================= */
 const SUP={on:false,tier:null,token:null,honor:false,cfg:SUPPORT_CFG||{}};
-const SUPKEY='orbital_dominion_v3_supporter';
+const SUPKEY='orbital_dominion_v4_supporter';
 const STRIPE_LINK=/^https:\/\/(buy|checkout|donate)\.stripe\.com\//;
 const THEMES={gold:{base:'#e0a526',glow:'#ffd566'},magenta:{base:'#d94fb0',glow:'#ff84dc'},ice:{base:'#4fd0e8',glow:'#a6f0ff'}};
 

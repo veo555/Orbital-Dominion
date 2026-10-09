@@ -1,13 +1,13 @@
 # CLAUDE.md — briefing for an AI coding agent working in this repository
 
-Project: **Orbital Dominion v3** — a canvas-based RTS shipped as a single HTML file; goal now is Google Play + Apple
+Project: **Orbital Dominion v4** — a canvas-based RTS shipped as a single HTML file; goal now is Google Play + Apple
 App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `docs/ARCHITECTURE.md`.
 
 ## Commands
-- Build: `python3 build.py` → `dist/orbital_dominion_v3.html`
+- Build: `python3 build.py` → `dist/orbital_dominion_v4.html`
 - Gates (run before every commit): `bash tests/run_all.sh` (~5 min): build, `tools/design_check.py`, `tests/sim/smoke.js`, and the browser gates `e2e_smoke` (desktop), `e2e_touch` (phones),
   `e2e_terrain` (HD tiles), `e2e_platform` (lifecycle), `e2e_pwa` (offline/install/update), `e2e_support` (payments, client), plus `server/stripe-worker` unit tests. Playwright must be **1.56** to match the preinstalled Chromium (`pip install playwright==1.56.0`); never run `playwright install`.
-- Variants: `python3 build.py [standalone|pwa|store]` → `dist/orbital_dominion_v3.html`, `dist/pwa/`, `dist/store/`. Commit `dist/`.
+- Variants: `python3 build.py [standalone|pwa|store]` → `dist/orbital_dominion_v4.html`, `dist/pwa/`, `dist/store/`. Commit `dist/`.
 - Visuals: `python3 tools/shots.py --tag x desktop iphone-land pixel-port` (device screenshots), `python3 tools/perf.py` (render cost; software raster, relative only).
 - Balance/regression probes: see README §1 (`tests/sim/match2.js`, `eco.js`, `off.js`, `tools/ab.sh`)
 
@@ -46,7 +46,9 @@ App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `d
 - While paused, `Escape` toggles pause; with the Swarm panel open the first `Escape` closes the panel.
 - `page.fill()` in Playwright focuses the input — subsequent hotkeys then go into the text box.
 - Headless `fps` numbers come from software rendering; they say nothing about phones.
-- The enemy AI knows where your start corner is (it does not scout). Autopilot's recon is real, the enemy's is not.
+- Skirmish/demo opponent (41_ai_*, 42_ai_agent) is fog-honest: it scouts and uses a belief grid. Campaign missions still use the v3 AI (`aiKind:'v3'`), which knows your start corner. Tests that compare against the old AI must pass `aiKind:'v3'`.
+- Tap tests are load-sensitive: the double-tap window is 380 ms of wall clock; retry, and near-freeze the live loop (`G.speed=0.05`) instead of pausing (touch ignores input while paused).
+- Entry animations that scale/translate dialogs break geometry and 44 px target tests: animate opacity only.
 - A headless pointer sits at (0,0), which **edge-scrolls the camera** away from your base; move the mouse to mid-screen first (`pg.mouse.move`) or use touch emulation (edge scroll is off in touch mode).
 - Don't hold a Playwright `ElementHandle` across a panel re-render (the Swarm panel replaces its `innerHTML` several times a second); click through the selector instead.
 - `imageSmoothingQuality='high'` on the big terrain/fog canvases costs +140 % frame time; it is applied to sprites only.

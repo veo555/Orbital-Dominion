@@ -6,7 +6,7 @@
   python3 tests/audio/voice_gate.py --calibrate     re-fit the LEVEL table VOX_LVL / VOX_LVLK in src/js/84_voice.js (between the /*LVL:BEGIN*/ and /*LVL:END*/ markers) from renders of the story
                                                     characters x 6 styles x 3 sentences, then REBUILD and re-run without the flag to verify
   python3 tests/audio/voice_gate.py --spectro idris,kaz,lyra   also write spectrogram PNGs to tests/out/audio/spectro/
-  OD_URL=file:///.../orbital_dominion_v3.html       points it at a scratch build (never run a bare build.py while other agents share dist/)
+  OD_URL=file:///.../orbital_dominion_v4.html       points it at a scratch build (never run a bare build.py while other agents share dist/)
 
 Nobody can listen here. These are the only claims the gate makes, and every metric has a MUTATION CONTROL (a signal or input that must be rejected, so the check cannot be vacuous):
   instruments   the pitch tracker and the LPC formant tracker are run on synthetic vowels with KNOWN f0 / formants first; level, click, DC, silence, clipping and NaN detectors on deliberately bad signals
@@ -29,7 +29,7 @@ AUDIO = ROOT / 'tests' / 'audio'
 sys.path.insert(0, str(AUDIO))
 import voice_dsp as D
 
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 OUT = ROOT / 'tests' / 'out' / 'audio'
 SRC = ROOT / 'src' / 'js' / '84_voice.js'
 ap = argparse.ArgumentParser()

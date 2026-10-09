@@ -3,6 +3,15 @@
 Purpose: so the next engineer knows exactly what was verified, how, and what was **not**. "Perfect" is not a state a
 game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship".
 
+## 0. Added in 4.0 (read first; the sections below describe 3.x and are kept for history)
+
+* **Never run by a human**: the new opponent AI (bot-vs-bot Elo only), the new audio chain (offline measurements only), the new lighting/shadows (Chromium software raster only), the Material 3 layer (Chromium emulation only), the dispatch cards.
+* **AI tiers**: Easy < Normal < Hard < Master is ordered but each adjacent step is only 56-73 % over 24 games (CI half-width about 18 points); Master vs Hard is the weakest step. More league training is the stated next step. Campaign missions still use the v3 AI.
+* **Graphics**: perf numbers are software raster, relative only; ultra-tier bloom costs about 4 ms in software; WebKit blend modes untested.
+* **Audio**: `tests/audio/world_gate.py` (building die voices of Aurora not distinct enough; one 0.999 peak) and `voice_gate.py --quick` (18 prosody/timing checks) are known failing and were not triaged; they are not part of `run_all.sh`. No Schroeder/FDN reverb was added; `audioRoom()` is not called by gameplay.
+* **ElevenLabs**: never called (egress blocked, no key). Free plan: about 10 000 credits per month, no commercial licence (so not for the store build), API access on it disputed. The pipeline exists, is offline and optional.
+* **Sources**: DeepMind's AlphaStar page, the video, arXiv and gwern were unreachable; the research note says which facts come from search summaries and which from memory.
+
 ## 1. What was verified, and how
 
 | Claim | Evidence | Reproduce |
@@ -89,7 +98,7 @@ What this does and does not say: the missions are completable (the scripted obje
 
 ### 1.4 Added in 4.0 (T1): videos removed, text dispatches (headless Chromium and Node only; read with §3)
 
-* **What was removed:** the cinematic engine and its art (`64_cine_bg_*`, `64_cine_props`, `65_cine_fx`, `66_cine`), the film overlay and CSS, WebM export, the film contact-sheet tools and `e2e_cine.py`. Build size `dist/orbital_dominion_v3.html` went from 2,026,361 to 1,322,454 bytes.
+* **What was removed:** the cinematic engine and its art (`64_cine_bg_*`, `64_cine_props`, `65_cine_fx`, `66_cine`), the film overlay and CSS, WebM export, the film contact-sheet tools and `e2e_cine.py`. Build size `dist/orbital_dominion_v4.html` went from 2,026,361 to 1,322,454 bytes.
 * **Story preserved:** `tools/films_to_dispatch.js` (one-shot, deleted after use) converted the 32 films; a throwaway check against the v3 source compared all 278 spoken lines (text, speaker, style) and the 32 ids / kinds / titles / order: 0 differences. The 39 scene title cards became `heading` lines. `docs/story/SCRIPT.md` was regenerated; a script check found all 430 dispatch and radio lines in it, in order.
 * **Validator:** `node tools/validate_story.js`: 0 errors, 0 warnings on the real story (including the map checks). `node tests/story/validate_selftest.js`: the fixture validates with 0 errors and 59 mutations are each caught with their expected message (the film-only mutations were deleted, dispatch ones added).
 * **Campaign UI:** `e2e_campaign.py` drives prologue, briefing, in-mission blocking dispatch (hold, two queued cards, Esc, hotkeys do not leak), debrief, defeat, archive, reset and reload, Enter / Space / Esc, touch taps and the five layouts (1366x768, 1024x768, 844x390, 390x844, 412x915: no horizontal overflow, 44 px targets on touch, a 34-line dispatch scrolls inside its card). Rule 15: six deliberately broken builds (Enter / Space handler removed, cards not marked seen, previous screen not restored, Skip all not marking cards read, hold not honoured, hotkeys leaking) were each caught by it; a seventh break (debrief shown over a held card) failed four checks before the fix in `90_main.js`.

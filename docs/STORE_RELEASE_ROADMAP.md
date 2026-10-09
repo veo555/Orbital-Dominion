@@ -85,7 +85,7 @@ for the Xcode / Android Studio / minSdk requirements *before* installing; they m
 **Setup sketch (documented workflow; I could not execute it here — the sandbox's npm mirror returned `403` for the
 `@capacitor/*` packages, so treat it as unverified until you run it):**
 ```bash
-npm run www                                   # build + copy dist/orbital_dominion_v3.html -> www/index.html
+npm run www                                   # build + copy dist/orbital_dominion_v4.html -> www/index.html
 npm i @capacitor/core @capacitor/app @capacitor/preferences @capacitor/haptics @capacitor/screen-orientation @capacitor/status-bar
 npm i -D @capacitor/cli @capacitor/android @capacitor/ios
 npx cap init "Orbital Dominion" com.<yourco>.orbitaldominion --web-dir=www     # choose the final bundle/package ID once; it is permanent

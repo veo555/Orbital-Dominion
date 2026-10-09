@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import os, pathlib
 ROOT=pathlib.Path(__file__).resolve().parents[2]
-URL=os.environ.get('OD_URL') or (ROOT/'dist'/'orbital_dominion_v3.html').as_uri()
+URL=os.environ.get('OD_URL') or (ROOT/'dist'/'orbital_dominion_v4.html').as_uri()
 OUT=str(ROOT/'tests'/'out')+os.sep; os.makedirs(OUT,exist_ok=True)
 errs=[];reqs=[]
 def log(*a): print(*a,flush=True)

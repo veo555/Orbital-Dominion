@@ -4,13 +4,13 @@ One source tree, three build outputs (`python3 build.py`):
 
 | Output | What it is | Use it for |
 |---|---|---|
-| `dist/orbital_dominion_v3.html` | **one self-contained file** (≈ 0.6 MB): game, styles, icons (as `data:` URIs). Zero network requests. | double-click to play; upload to itch.io / a blog / a file host; email it; a "Download" button on your site |
+| `dist/orbital_dominion_v4.html` | **one self-contained file** (≈ 0.6 MB): game, styles, icons (as `data:` URIs). Zero network requests. | double-click to play; upload to itch.io / a blog / a file host; email it; a "Download" button on your site |
 | `dist/pwa/` | `index.html`, `manifest.webmanifest`, `sw.js` (offline-first, versioned), `icons/`, `_headers` | host on any HTTPS site → installable on Android/desktop (Add to Home Screen on iPhone), plays offline |
 | `dist/store/index.html` | the game with all payment code configured off | the web directory for Capacitor/Cordova store wrappers (`npm run www` copies it to `www/`) |
 
 ## 1. Share it as a downloadable HTML file
 
-Upload `dist/orbital_dominion_v3.html` anywhere. It runs from `file://` and from any web host, on desktop and on phones (open the file in the phone's browser).
+Upload `dist/orbital_dominion_v4.html` anywhere. It runs from `file://` and from any web host, on desktop and on phones (open the file in the phone's browser).
 Notes: a file opened from disk cannot register a service worker, so it is not installable and has no offline *cache* (it does not need one: it is the cache).
 Browsers also give `file://` pages an opaque origin, so settings stored in `localStorage` may not persist between sessions in some browsers — hosting it (below) fixes that.
 

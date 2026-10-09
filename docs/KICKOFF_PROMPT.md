@@ -21,7 +21,7 @@ docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md, docs/BACKLOG.md, docs/QA_CHECKLIST.m
 STEP 0 — verify the baseline before changing anything:
   python3 build.py && bash tests/run_all.sh
   Both gates must pass (sim smoke ~1 min, browser smoke ~40 s; needs `pip install playwright` + a Chromium).
-  Then confirm dist/orbital_dominion_v3.html is byte-identical to a fresh build (git diff should be empty).
+  Then confirm dist/orbital_dominion_v4.html is byte-identical to a fresh build (git diff should be empty).
 
 RULES
   * Keep zero network requests and zero console errors (the browser gate asserts it).

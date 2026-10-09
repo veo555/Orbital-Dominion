@@ -3,7 +3,7 @@
    One slot (skirmish or campaign mission). Written every RESUME_EVERY seconds of real time while a match runs, whenever the app is sent to the
    background (autoPause) and never during a blocking dispatch card; erased when the match ends. localStorage only: nothing leaves the device.
    ========================================================================= */
-const RESUMEKEY='orbital_dominion_v3_resume',RESUME_EVERY=30;
+const RESUMEKEY='orbital_dominion_v4_resume',RESUME_EVERY=30;
 const RS={t:0,metaOK:false};
 function resumeMeta(){try{const m=JSON.parse(localStorage.getItem(RESUMEKEY+'_meta')||'null');return m&&m.v===1&&typeof m.camp!=='undefined'?m:null;}catch(e){return null;}}
 function resumeWrite(){

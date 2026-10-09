@@ -36,7 +36,7 @@ Truthfulness rules (non-negotiable):
 4. A single-player campaign (9 missions, 3 acts, text dispatches between missions, radio lines in missions, stars, saved progress). No video: the story is text +
    character portraits + radio strip + music.
 5. Procedural everything: no image, audio or font files; vector/canvas art and WebAudio synthesis generated at load.
-6. Distribution: (a) `dist/orbital_dominion_v3.html` single file you can host anywhere or open from disk, (b) `dist/pwa/` installable offline PWA with service
+6. Distribution: (a) `dist/orbital_dominion_v4.html` single file you can host anywhere or open from disk, (b) `dist/pwa/` installable offline PWA with service
    worker, (c) `dist/store/` payment-free build for Capacitor wrappers (Google Play / App Store). Optional cosmetic-only Stripe support (payment links or a
    tiny serverless checkout Worker) that is OFF by default, never sells anything that affects balance, never puts a secret in the page, and is absent from the
    store variant.

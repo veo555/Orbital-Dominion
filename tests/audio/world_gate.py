@@ -2,7 +2,7 @@
 """World sound-design probe: measures every voice of src/js/81_sfx_world.js (buildings, hero skills, UI / economy / alert globals, fanfares, cinematic effects) and writes
 tests/out/audio/world_report.json.
 
-  OD_URL=file:///.../orbital_dominion_v3.html python3 tests/audio/world_gate.py        (build into a scratch dir first: never run a bare build.py next to other agents)
+  OD_URL=file:///.../orbital_dominion_v4.html python3 tests/audio/world_gate.py        (build into a scratch dir first: never run a bare build.py next to other agents)
   python3 tests/audio/world_gate.py --only skill.,cine. --seeds 4 --out /tmp/x.json
 Exit code 1 when a hard criterion fails.
 

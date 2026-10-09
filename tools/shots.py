@@ -67,7 +67,7 @@ def main():
     ap.add_argument('--url')
     ap.add_argument('--states', default='menu,game,select,swarm,eco,pause')
     a = ap.parse_args()
-    url = a.url or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+    url = a.url or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
     outdir = ROOT / 'tests' / 'out' / 'shots'; outdir.mkdir(parents=True, exist_ok=True)
     states = a.states.split(',')
     with sync_playwright() as p:

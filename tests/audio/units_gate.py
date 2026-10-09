@@ -6,7 +6,7 @@
                                                     then re-run with no flag to verify
   python3 tests/audio/units_gate.py --corpus units  z-normalise over the unit voices only (fast iteration); the default `all` z-normalises over every registered voice like tests/e2e/e2e_audio.py does
   python3 tests/audio/units_gate.py --only rifleman.,titan.fire --spectro
-  OD_URL=file:///.../orbital_dominion_v3.html  points it at a scratch build (never run a bare build.py while other agents share dist/).
+  OD_URL=file:///.../orbital_dominion_v4.html  points it at a scratch build (never run a bare build.py while other agents share dist/).
 
 What it measures (nobody can listen here: these are the only claims):
   matrix     every unit type x {select ack ready die hit} + fire|melee (+ mine, deliver for the worker) x the factions that field it exists as an exact, non-fallback voice id
@@ -21,7 +21,7 @@ import numpy as np
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 OUT = ROOT / 'tests' / 'out' / 'audio'
 AUDIO = ROOT / 'tests' / 'audio'
 SRC = ROOT / 'src' / 'js' / '81_sfx_units.js'

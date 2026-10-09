@@ -7,7 +7,7 @@
 import os, pathlib
 from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 fails = []; errs = []; reqs = []
 def ok(c, m):
     print(('ok    ' if c else 'FAIL  ') + m, flush=True)
@@ -53,7 +53,7 @@ with sync_playwright() as p:
 
     # ---- game over erases the slot ----
     pg.evaluate("()=>{__RTS.endGame('defeat')}"); pg.wait_for_timeout(300)
-    ok(pg.evaluate("()=>!localStorage.getItem('orbital_dominion_v3_resume')"), 'the slot is erased when the match ends')
+    ok(pg.evaluate("()=>!localStorage.getItem('orbital_dominion_v4_resume')"), 'the slot is erased when the match ends')
 
     # ---- campaign ----
     ctx.close()
@@ -74,12 +74,12 @@ with sync_playwright() as p:
     ok(pg.evaluate(STATE)['t'] > ca['t'], 'the mission plays on')
 
     # ---- controls ----
-    pg.evaluate("()=>{localStorage.removeItem('orbital_dominion_v3_resume_meta')}"); pg.evaluate("()=>{__RTS.toMenu()}"); pg.wait_for_timeout(300)
+    pg.evaluate("()=>{localStorage.removeItem('orbital_dominion_v4_resume_meta')}"); pg.evaluate("()=>{__RTS.toMenu()}"); pg.wait_for_timeout(300)
     ok(pg.evaluate("()=>document.getElementById('bContinue').classList.contains('hidden')"), 'control: without the slot the button disappears')
-    pg.evaluate("()=>{localStorage.setItem('orbital_dominion_v3_resume','{\"v\":1,\"root\":{\"r\":0},\"nodes\":[{\"o\":{}}]}');localStorage.setItem('orbital_dominion_v3_resume_meta',JSON.stringify({v:1,camp:null,title:'Skirmish',time:5,at:1}))}")
+    pg.evaluate("()=>{localStorage.setItem('orbital_dominion_v4_resume','{\"v\":1,\"root\":{\"r\":0},\"nodes\":[{\"o\":{}}]}');localStorage.setItem('orbital_dominion_v4_resume_meta',JSON.stringify({v:1,camp:null,title:'Skirmish',time:5,at:1}))}")
     pg.evaluate("()=>{document.getElementById('bContinue').classList.remove('hidden')}")
     pg.mouse.move(683, 400); pg.click('#bContinue'); pg.wait_for_timeout(500)
-    ok(pg.evaluate("()=>!localStorage.getItem('orbital_dominion_v3_resume')") and pg.evaluate("()=>!__RTS.ui.running||__RTS.ui.demo"), 'control: a corrupt slot is rejected, cleared, and the app stays on the menu')
+    ok(pg.evaluate("()=>!localStorage.getItem('orbital_dominion_v4_resume')") and pg.evaluate("()=>!__RTS.ui.running||__RTS.ui.demo"), 'control: a corrupt slot is rejected, cleared, and the app stays on the menu')
     ctx.close(); b.close()
 
 bad = [e for e in errs if 'tampered' not in e[1]]

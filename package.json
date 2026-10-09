@@ -1,8 +1,8 @@
 {
   "name": "orbital-dominion",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "private": true,
-  "description": "Orbital Dominion v3 - single-file HTML5 real-time strategy game with a swarm-agent economy. Source tree, build, tests.",
+  "description": "Orbital Dominion v4 - single-file HTML5 real-time strategy game with a swarm-agent economy. Source tree, build, tests.",
   "scripts": {
     "build": "python3 build.py",
     "www": "python3 build.py store && rm -rf www && cp -r dist/store www",

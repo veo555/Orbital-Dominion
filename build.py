@@ -2,7 +2,7 @@
 """Assemble Orbital Dominion from src/ into its three distributions (pure Python, no dependencies).
 
   python3 build.py                 build everything
-  python3 build.py standalone      only dist/orbital_dominion_v3.html
+  python3 build.py standalone      only dist/orbital_dominion_v4.html
   python3 build.py pwa             only dist/pwa/
   python3 build.py store           only dist/store/index.html
 
@@ -98,7 +98,7 @@ def write(path, data, mode='w'):
 
 def build_standalone(build_id):
     html = assemble('standalone', build_id)
-    out = os.path.join(dist, 'orbital_dominion_v3.html')
+    out = os.path.join(dist, 'orbital_dominion_v4.html')
     write(out, html)
     print('wrote', out, len(html.encode('utf-8')), 'bytes')
 

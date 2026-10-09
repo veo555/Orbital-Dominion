@@ -15,7 +15,7 @@ from urllib.parse import unquote, urlparse
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 OUT = ROOT / 'tests' / 'out' / 'audio'
 OUT.mkdir(parents=True, exist_ok=True)
 T0 = time.time()
@@ -408,7 +408,7 @@ with sync_playwright() as p:
     pg.click('#bSet'); pg.wait_for_timeout(200)
     ok(pg.evaluate("()=>{const e=document.getElementById('setVoice');return !!e&&+e.value===90&&__RTS.SET.voiceVol===0.9;}"), '#setVoice slider exists in Settings and shows SET.voiceVol (default 0.9)')
     pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=37;e.dispatchEvent(new Event('input',{bubbles:true}));}")
-    ok(pg.evaluate("()=>__RTS.SET.voiceVol")== 0.37 and pg.evaluate("()=>JSON.parse(localStorage.getItem('orbital_dominion_v3_settings')).voiceVol")== 0.37, 'moving #setVoice sets SET.voiceVol and saves it')
+    ok(pg.evaluate("()=>__RTS.SET.voiceVol")== 0.37 and pg.evaluate("()=>JSON.parse(localStorage.getItem('orbital_dominion_v4_settings')).voiceVol")== 0.37, 'moving #setVoice sets SET.voiceVol and saves it')
     pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=55;e.dispatchEvent(new Event('input',{bubbles:true}));}"); pg.wait_for_timeout(300)
     v = pg.evaluate("()=>__RTS.AUD.stats().buses")
     ok(abs(v['voice'] - 0.55 * 1.8) < 0.02 and abs(v['sfx'] - 0.8) < 0.02 and abs(v['music'] - 0.45) < 0.02, f"voice bus follows #setVoice (x1.8 mix trim VBOOST, docs/AUDIO_V4.md), sfx/music buses follow their own sliders {v}")

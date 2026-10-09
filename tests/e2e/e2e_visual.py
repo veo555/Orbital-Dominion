@@ -1,5 +1,5 @@
 """Visual gate for the v4.0 graphics (Playwright + Chromium). Exit code != 0 on failure.
-   OD_URL=file:///.../dist/orbital_dominion_v3.html python3 tests/e2e/e2e_visual.py     (about 40 s)
+   OD_URL=file:///.../dist/orbital_dominion_v4.html python3 tests/e2e/e2e_visual.py     (about 40 s)
 
 Every assertion compares real canvas pixels and was mutation-checked (see docs/GRAPHICS_V4.md, 'Mutation proof'):
   * night: ground next to a lit hub is brighter than ground far from any light (kills: drawLighting / collectLights)
@@ -14,7 +14,7 @@ Every assertion compares real canvas pixels and was mutation-checked (see docs/G
 import os, pathlib, sys
 from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 BUDGET = float(os.environ.get('OD_VIS_BUDGET', '1.35'))   # software raster: generous; the real budget (+30 %) is checked with tools/perf.py
 fails = []; errs = []; reqs = []
 def ok(c, m):

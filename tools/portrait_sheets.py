@@ -9,7 +9,7 @@ Look at them with the Read tool; the same module is imported by tests/e2e/e2e_po
   python3 tools/portrait_sheets.py --chars fx_idris,kaz  # restrict to characters (fixture ids are prefixed fx_)
   python3 tools/portrait_sheets.py --dist                # print the distinctness matrix (64 px) and exit 1 when a pair is too close
 
-Environment: OD_URL=file://.../orbital_dominion_v3.html points at a scratch build (never rebuild the shared dist/ for this).
+Environment: OD_URL=file://.../orbital_dominion_v4.html points at a scratch build (never rebuild the shared dist/ for this).
 Distinctness metric (see `dist_features` / `pair_distance`): the bust is drawn at 64 px on ONE neutral background (so only the figure differs), then compared
     1. pixel term    mean absolute RGB difference of the 16x16 box-downsampled images (layout / silhouette / big colour masses), also taken mirrored-tolerant for 2 px of shift
     2. colour term   chi-square-like distance of the HSV histograms of the figure pixels (palette: skin, hair, armour, trim, eyes)
@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / 'tests' / 'out' / 'portraits'
-URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v3.html').as_uri()
+URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
 EXPR = ['neutral', 'talk', 'angry', 'smirk', 'sad', 'shock', 'smile', 'determined', 'laugh', 'scared', 'cold', 'weary']
 MODES = ['bust', 'silhouette', 'shadow', 'hologram']
 
