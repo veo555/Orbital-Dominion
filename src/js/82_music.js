@@ -668,7 +668,7 @@ function director(){
   const k=matchKey();
   if(k!==DIR.k){
     DIR.k=k;LIVE.held=false;
-    if(LIVE.manual&&LIVE.manualK!==k&&!(typeof cineActive==='function'&&cineActive())){LIVE.manual=false;}
+    if(LIVE.manual&&LIVE.manualK!==k){LIVE.manual=false;}
     DIR.over=null;DIR.alarmT=-99;
     if(k){const T0=G.teams[0];DIR.era=T0.era||1;DIR.hero=!!(T0.hero&&T0.hero.alive);DIR.alert=G.lastAlertT;}else DIR.era=1;
   }

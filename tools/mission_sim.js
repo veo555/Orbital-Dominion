@@ -10,7 +10,7 @@
    Per mission it reports: win / defeat / stalled (no result by the cap) / crash rates (+ Wilson 95 % interval), win-time median/p10/p90, which triggers fired
    (fraction of runs, median time, lateness against the statically derived schedule), which objectives completed, the stars distribution, G.camp.errors,
    scripted spawns / strikes / unlocks (did they happen, land, take effect) and determinism (run 0 replayed in a second process: identical state hashes).
-   `--story <file>`: a module exporting a story object (or a function returning one) with {missions,cine,radio}, e.g. tests/fixtures/story_min.js. Default: src/js/44_story_*.js.
+   `--story <file>`: a module exporting a story object (or a function returning one) with {missions,dispatch,radio}, e.g. tests/fixtures/story_min.js. Default: src/js/44_story_*.js.
    `SRC=<dir>`: load the simulation from another source tree (the mutation checks use this).
    THE AI IS A PROXY FOR A HUMAN: it plays a plain skirmish and knows nothing about scripted objectives. The numbers are sanity bounds, not a difficulty guarantee.
    Speed: ~1.5-2.5 k ticks/s per worker with --max-semi-space-size=64 (a 900 s mission ~ 15-25 s); the pool uses (CPUs - 1) worker processes. */
@@ -47,21 +47,21 @@ function defaultCap(m) {                                    // game seconds befo
 }
 
 /* ----------------------------------------------------------------------------- story access */
-/* returns {missions,cine,radio,external}. `external` = the story came from --story (it replaces the one in the sandbox); otherwise it is src/js/44_story_*.js */
+/* returns {missions,dispatch,radio,external}. `external` = the story came from --story (it replaces the one in the sandbox); otherwise it is src/js/44_story_*.js */
 function loadStoryData(storyPath, src) {
   if (storyPath) {
     const m = require(path.resolve(storyPath)), s = typeof m === 'function' ? m() : m;
-    return { missions: s.missions || [], cine: s.cine || {}, radio: s.radio || {}, external: true, raw: s };
+    return { missions: s.missions || [], dispatch: s.dispatch || {}, radio: s.radio || {}, external: true, raw: s };
   }
   const L = require(STORYLIB)(src || process.env.SRC || undefined), s = L.STORY;
-  return { missions: s.missions || [], cine: s.cine || {}, radio: s.radio || {}, external: false, raw: s };
+  return { missions: s.missions || [], dispatch: s.dispatch || {}, radio: s.radio || {}, external: false, raw: s };
 }
 function injectStory(A, S) {
   if (!S.external) return;
   const st = A.STORY;
-  for (const k of Object.keys(st.cine)) delete st.cine[k];
+  for (const k of Object.keys(st.dispatch)) delete st.dispatch[k];
   for (const k of Object.keys(st.radio)) delete st.radio[k];
-  Object.assign(st.cine, clone(S.cine)); Object.assign(st.radio, clone(S.radio));
+  Object.assign(st.dispatch, clone(S.dispatch)); Object.assign(st.radio, clone(S.radio));
   st.missions.length = 0; for (const m of S.missions) st.missions.push(clone(m));
 }
 

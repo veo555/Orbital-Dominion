@@ -4,7 +4,7 @@
      window.__WL   every call of musicPlay / musicStop / musicScene / musicStinger / musicDuck / musicMood / speak / speakStop:  {f, a:[args], t}
      window.__EV   (s)=>eval(s): reads any name inside the game's closure (kill, castSkill, setOrder, campDo, ...)
      __RTS.AUD.log every call of sfx / sfxUnit / sfxBuilding / cineSfx (engine ring buffer): {name, voice, who, faction, x, y, r}
-   Each scenario drives the REAL game code (the match loop, the command functions, the campaign runtime, the cinematic player), then reports what reached the audio functions.
+   Each scenario drives the REAL game code (the match loop, the command functions, the campaign runtime, the dispatch card), then reports what reached the audio functions.
    Scenarios never assert; they return plain observations and the Python half judges them (so the same observations can be judged on a deliberately mis-wired build).
    ========================================================================= */
 (function(){
@@ -175,17 +175,16 @@ OW.campaign=async function(fx){
   clear();try{EV('campDo')(['strike',20,20,3,10,2,'alert']);}catch(e){o.strikeError=String(e);}o.strike=sfxLog().map(l=>l.name);
   return o;
 };
-/* ------------------------------------------------------------------ cinematic player */
-OW.cine=async function(fx,id){
-  const c=(fx.cine||{})[id];if(!c)return{error:'no film '+id};
-  Object.assign(R.STORY.characters,fx.characters||{});Object.assign(R.STORY.cine,fx.cine||{});
-  clear();const t0=performance.now();let end=null;
-  R.cinePlay(id,{onEnd:i=>{end=Object.assign({},i,{at:performance.now()-t0});},skippable:true});
-  await sleep(1500);const mid=wl().map(e=>({f:e.f,a:e.a,dt:e.t-Math.round(t0)}));const midSfx=sfxLog();
-  R.cineStop();await sleep(300);
+/* ------------------------------------------------------------------ dispatch card (v4.0: replaces the cinematic player) */
+OW.dispatch=async function(fx,id){
+  const d=(fx.dispatch||{})[id];if(!d)return{error:'no dispatch '+id};
+  Object.assign(R.STORY.characters,fx.characters||{});Object.assign(R.STORY.dispatch,fx.dispatch||{});
+  clear();const t0=performance.now();
+  R.campDispatch(id);
+  await sleep(700);const mid=wl().map(e=>({f:e.f,a:e.a,dt:e.t-Math.round(t0)}));
+  R.dpFinish('skip');await sleep(300);
   const all=wl().map(e=>({f:e.f,a:e.a,dt:e.t-Math.round(t0)}));
-  return{id,music:c.music,lines:c.scenes.reduce((n,s)=>n+(s.lines||[]).length,0),sfxEntries:c.scenes.reduce((n,s)=>n+(s.sfx||[]).length,0),firstSfx:c.scenes[0].sfx&&c.scenes[0].sfx[0],firstLine:c.scenes[0].lines&&c.scenes[0].lines[0],
-    mid,midSfx,all,end};
+  return{id,mood:d.mood,mid,all};
 };
 OW.reset=reset;
 })();

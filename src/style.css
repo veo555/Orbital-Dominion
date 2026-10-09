@@ -534,37 +534,8 @@ html.compact #soundLab .sl-meters{margin-top:6px;gap:4px 12px}
 html.compact #soundLab .sl-body{padding:0 12px 12px}
 html.compact #soundLab .sl-h{margin-top:12px}
 /* AUDIO:END */
-/* CINE:BEGIN (WF-cinematics only) */
-/* cinematic player: full-viewport canvas (66_cine.js draws the picture window, the letterbox bars and the title card); subtitles, hint, skip button and progress hairline are DOM */
-.cine-ov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:200;background:#000;color:var(--txt);touch-action:none;outline:none;cursor:default}
-.cine-ov #cine{position:absolute;left:0;top:0;width:100%;height:100%;display:block;touch-action:none}
-#cineSub{position:absolute;left:0;right:0;display:flex;justify-content:center;pointer-events:none;
-  padding:0 max(16px,calc(var(--sar) + 12px)) 0 max(16px,calc(var(--sal) + 12px));font-size:var(--cs-fs,18px);line-height:1.32}
-#cineSub:empty{display:none}
-.cs-box{max-width:var(--cs-w,820px);text-align:center;font-family:var(--font);font-weight:500;color:var(--txt);text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 10px rgba(0,0,0,.65);padding:.28em .7em;border-radius:var(--r2);animation:csIn .22s var(--ease)}
-@keyframes csIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-.cs-who{display:flex;align-items:center;justify-content:center;gap:.5em;margin-bottom:.12em;font-size:.82em;letter-spacing:.14em;text-transform:uppercase}
-.cs-who b{font-weight:700;color:var(--txt)}
-.cs-chip{display:inline-block;width:.62em;height:.62em;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.35),0 0 8px rgba(255,255,255,.18)}
-.cs-who em{font-style:normal;font-size:.78em;letter-spacing:.2em;padding:.05em .5em;border:1px solid var(--line2);border-radius:var(--r1);color:var(--info)}
-.cs-txt{display:block}
-.cs-radio{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.01em}
-.cs-whisper{opacity:.72;font-weight:400;font-size:.9em;color:var(--txt2)}
-.cs-shout{font-weight:800;font-size:1.22em;letter-spacing:.015em}
-.cs-narration{font-style:italic;font-weight:400;color:var(--txt2)}
-.cs-thought{font-style:italic;font-weight:400;opacity:.82;color:var(--txt2)}
-#cineHint{position:absolute;left:50%;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:6px 14px;border-radius:999px;font-size:12px;letter-spacing:.04em;color:var(--txt2);background:rgba(10,19,34,.78);border:1px solid var(--line);pointer-events:none;white-space:nowrap}
-.cine-skip{position:absolute;right:max(14px,calc(var(--sar) + 10px));bottom:max(14px,calc(var(--sab) + 10px));min-width:96px;min-height:44px;padding:0 18px;border:1px solid var(--line2);border-radius:var(--r3);
-  background:rgba(10,19,34,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--txt);font-size:14px;font-weight:600;letter-spacing:.06em;
-  opacity:0;pointer-events:none;transition:opacity .25s var(--ease),border-color var(--t1)}
-.cine-skip.on,.cine-skip:focus-visible{opacity:1;pointer-events:auto}
-@media (hover:hover){.cine-skip.on:hover{border-color:var(--line3);background:rgba(22,41,74,.88)}}
-#cineProg{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.06);pointer-events:none}
-#cineProg i{display:block;height:100%;background:var(--acc2);opacity:.75;transform-origin:0 50%;transform:scaleX(0)}
-html.rm .cs-box,html.rm .cine-skip{animation:none;transition:none}
-/* CINE:END */
 /* CAMP:BEGIN (WF-campaign only) */
-/* campaign screens (76_campaign_ui.js): chapter select, briefing, debrief, Extras, the in-match radio strip and objective states.
+/* campaign screens (76_campaign_ui.js): chapter select, briefing, dispatch card, debrief, Archive, the in-match radio strip and objective states.
    Colours come from the :root tokens; the faction chips receive their colour from the faction data through --c / --cr. */
 .card.camp{display:flex;flex-direction:column;width:min(1000px,96vw);max-height:min(94vh,880px);padding:0;overflow:hidden}
 .cu-head{flex:none;padding:16px 24px 8px}
@@ -638,7 +609,7 @@ html.rm .cs-box,html.rm .cine-skip{animation:none;transition:none}
 .cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .cd-stat{width:100%;border-collapse:collapse;font-size:12.5px}.cd-stat td{padding:3px 0;border-top:1px solid var(--line)}.cd-stat td:last-child{text-align:right;color:var(--txt)}.cd-stat td:first-child{color:var(--dim)}.cd-stat tr:first-child td{border-top:0}
 .cd-unlock{margin:4px 0 6px;padding:6px 10px;border:1px solid var(--ok);border-radius:var(--r2);color:var(--ok);background:var(--panel)}
-/* Extras gallery */
+/* Archive (seen dispatches) */
 .xg{margin:10px 0 2px}
 .xg>h3{margin:0 0 2px}
 .xr{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line)}
@@ -648,8 +619,25 @@ html.rm .cs-box,html.rm .cine-skip{animation:none;transition:none}
 .xs{flex:none;font-size:11px;color:var(--dim);min-width:46px;text-align:right}.xs.new{color:var(--cry)}
 .xb{display:flex;gap:6px;flex:none}
 .xb .btn{padding:6px 14px}
-.xp{flex:1 0 100%;height:4px;border-radius:2px;background:var(--panel);border:1px solid var(--line);overflow:hidden}.xp i{display:block;height:100%;width:0;background:var(--acc2)}
-.xp.hidden{display:none!important}
+/* dispatch card: a static, scrollable transcript (no animation; nothing to respect in html.rm). Same card/head/foot language as the briefing. */
+.dp .cu-body{padding-top:10px}
+.dp-body{outline:none}.dp-body:focus-visible{box-shadow:inset 0 0 0 1px var(--acc2)}
+.dp-l{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.dp-l:first-child{border-top:0}
+.dp-l .cu-face,.dp-l .dp-nf{flex:none;width:44px;height:44px}.dp-nf{display:block}
+.dp-m{flex:1 1 auto;min-width:0}
+.dp-w{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--txt2)}
+.dp-w b{color:var(--txt);letter-spacing:1.2px}
+.dp-w em{font-style:normal;font-size:9.5px;letter-spacing:1.6px;padding:0 5px;border:1px solid var(--line2);border-radius:var(--r1);color:var(--info)}
+.dp-t{margin:2px 0 0;font-size:14.5px;line-height:1.5;color:var(--txt);overflow-wrap:anywhere}
+.dp-l.radio .dp-t{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px}
+.dp-l.whisper .dp-t{opacity:.75}.dp-l.shout .dp-t{font-weight:800}
+.dp-l.narration .dp-t,.dp-l.thought .dp-t{font-style:italic;color:var(--txt2)}
+.dp-l.narration,.dp-l.thought{border-left:2px solid var(--line2);padding-left:12px;margin-left:2px}
+.dp-h{margin:12px 0 4px;padding:6px 0;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);text-align:center;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--acc2)}.dp-h:first-child{margin-top:2px}
+.dp-credits .dp-l{justify-content:center;text-align:center;border-top:0;border-left:0;padding-left:0;margin-left:0}
+.dp-credits .dp-w{display:none}
+.dp-credits .dp-t{font-size:14px}
+.dp .cu-foot .btn{min-height:44px}
 /* in-match radio strip: portrait chip + speaker + caption, top centre, one line at a time (never over the minimap, command card or touch dock) */
 #campRadio{position:fixed;left:50%;top:calc(var(--tH) + 10px);transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:10px;width:min(540px,calc(100vw - 24px));min-height:64px;padding:8px 12px 11px 8px;border:1px solid var(--line2);border-radius:var(--r3);background:rgba(8,17,31,.95);box-shadow:var(--sh2),var(--hi);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);cursor:pointer;animation:crIn .22s var(--ease)}
 @keyframes crIn{from{opacity:0;margin-top:-8px}to{opacity:1;margin-top:0}}
