@@ -1,7 +1,7 @@
 /* =========================================================================
    STORY (1/n) - THE LANTERN TITHE. The campaign data root. Authored by the story workflow; see docs/CAMPAIGN_SPEC.md and docs/story/BIBLE.md.
-   Later files (44_story_b_* cinematics, 44_story_c_* missions, 44_story_d_* radio/barks) only add to these objects:
-     Object.assign(STORY.cine,{...})  STORY.missions.push(...)  Object.assign(STORY.radio,{...})  Object.assign(STORY.barks,{...})
+   Later files (44_story_b_* dispatches, 44_story_c_* missions, 44_story_d_* radio/barks) only add to these objects:
+     Object.assign(STORY.dispatch,{...})  STORY.missions.push(...)  Object.assign(STORY.radio,{...})  Object.assign(STORY.barks,{...})
    Data only: no functions. Strings avoid double quotes inside text (use single quotes) so the file stays JSON-able.
    ========================================================================= */
 const STORY={
@@ -289,7 +289,7 @@ const STORY={
   ],
 
   missions:[],
-  cine:{},
+  dispatch:{},
   radio:{},
   barks:{}
 };

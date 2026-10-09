@@ -371,6 +371,8 @@ Hero split is 3/3/3: Idris M1, M3, M9; Lyra M2, M5, M7; Kaz M4, M6, M8. All seed
 
 ## 9. Film beat lists
 
+> v4.0: the films were replaced by text dispatches (`docs/DISPATCH_SPEC.md`). Every spoken line and dateline survives, in order; the staging notes below describe the retired visual direction and are kept as story context only.
+
 ### Intro (about 80 s, music `intro`)
 1. Void and stars. Narrator: "Every lamp on Orison is lit for someone who isn't here." (0-9)
 2. Planet, rings, the violet Lantern; three arks arrive. "Year 0." Forty thousand came; the soil would feed thirty-one. They drew lots for the winter. (9-22)
@@ -423,6 +425,8 @@ The Sleepers' roll over the array, read in six groups and answered in chorus: "H
 ---
 
 ## 11. Cinematic manifest
+
+> v4.0: these 32 films are now the 32 `STORY.dispatch` entries (same ids). Runtimes and scene counts below are historical.
 
 32 films: intro, credits, 3 defeats, ending, 9 briefings, 9 debriefs, 8 interludes. Owners: **intro** writes the intro, credits and defeats; **act1** M1-M3 and i01-i03; **act2** M4-M6 and i04-i06; **act3** M7-M9, i07, i08 and the ending. The beat lists are in the structured manifest returned with this bible.
 
