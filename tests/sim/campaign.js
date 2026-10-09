@@ -555,7 +555,7 @@ group('inert: a mission that changes nothing equals a plain newGame with the swa
   for (const seed of [1101, 1102]) {
     const m = F.missions.plain; m.setup.seed = seed;
     const camp = game(m, { rs: 5 }); for (let i = 0; i < 4500; i++) camp.step();
-    process.env.RS = '5'; const plain = load(SRC); plain.newGame({ seed, faction: 'meridian', enemy: 'obsidian', diff: 'normal' }); plain.__run('G.sw&&(G.sw.on=false)'); for (let i = 0; i < 4500; i++) plain.step();
+    process.env.RS = '5'; const plain = load(SRC); plain.newGame({ seed, faction: 'meridian', enemy: 'obsidian', diff: 'normal', aiKind: 'v3' });  /* campaigns keep the v3 AI, so the plain game must use it too */ plain.__run('G.sw&&(G.sw.on=false)'); for (let i = 0; i < 4500; i++) plain.step();
     ok(hash(plain) !== undefined && sig(camp) === sig(plain), `seed ${seed}: campaign(swarm off, no events) == plain game, swarm off, after 150 s (${sig(camp)})`);
     const strip = (A) => { const G = A.G; let h = 0; for (const u of G.units) h = (h * 31 + Math.round(u.x * 10) + Math.round(u.y * 10) * 7 + Math.round(u.hp)) >>> 0; for (const b of G.buildings) h = (h * 31 + Math.round(b.hp)) >>> 0; return h + ':' + G.nextId; };
     ok(strip(camp) === strip(plain), `seed ${seed}: every unit position / hp / building hp is identical too (${strip(camp)})`);

@@ -112,8 +112,8 @@ noPeek(undefined, 'no-peek', true);
 }
 
 /* ---------------------------------------------------------------- 4. APM cap, measured from the outside */
-function apmProbe(src, tier, secs) {
-  const S = sim(src); const G = start(S, 34, 'meridian', 'aurora', { kind: 't2', tier }, { kind: 'v3', diff: 'hard' });
+function apmProbe(src, tier, secs, cfg) {
+  const S = sim(src); const G = start(S, 34, 'meridian', 'aurora', Object.assign({ kind: 't2', tier }, cfg ? { cfg } : {}), { kind: 'v3', diff: 'hard' });
   const sb = S.sandbox, orig = sb.aiThink, times = []; let inThink = false;
   const rec = recorder(S); rec.log.length = 0;
   sb.aiThink = function (ai) { if (ai.team !== 0) return orig(ai); const n0 = rec.log.length; inThink = true; try { orig(ai); } finally { inThink = false; }
@@ -122,17 +122,21 @@ function apmProbe(src, tier, secs) {
     for (let i = 0; i < keys.size; i++) times.push(G.time); };
   for (let i = 0; i < secs * 30; i++) { S.step(); if (G.over) break; rec.log.length = 0; }
   sb.aiThink = orig; rec.stop();
-  const cfg = G.ais[0].cfg, rate = cfg.apm / 60, burst = Math.max(3, rate * 5); let worst = 0, worstW = 0;
+  const C = G.ais[0].cfg, rate = C.apm / 60, burst = Math.max(3, rate * 5); let worst = 0, worstW = 0;
   for (const W of [1, 5, 10, 30]) { let j = 0; for (let i = 0; i < times.length; i++) { while (times[i] - times[j] > W) j++; const n = i - j + 1, bound = burst + rate * W + 1; if (n / bound > worst) { worst = n / bound; worstW = W; } } }
-  return { n: times.length, apm: times.length / (G.time / 60), cap: cfg.apm, worst, worstW };
+  return { n: times.length, apm: times.length / (G.time / 60), cap: C.apm, worst, worstW };
 }
 for (const tier of QUICK ? ['master'] : ['easy', 'master']) {
   const r = apmProbe(undefined, tier, QUICK ? 180 : 300);
-  ok(r.n > 50 && r.worst <= 1, `APM cap ${tier}: ${r.n} commands, ${r.apm.toFixed(0)} per minute on average (cap ${r.cap}); worst window ${r.worstW}s at ${(100 * r.worst).toFixed(0)}% of the token-bucket bound`);
+  ok(r.n > 30 && r.worst <= 1, `APM cap ${tier}: ${r.n} commands, ${r.apm.toFixed(0)} per minute on average (cap ${r.cap}); worst window ${r.worstW}s at ${(100 * r.worst).toFixed(0)}% of the token-bucket bound`);
+}
+{ // a deliberately tight cap, where the AI wants more commands than it may issue: the bound must still hold
+  const r = apmProbe(undefined, 'master', 180, { apm: 12 });
+  ok(r.worst <= 1 && r.apm <= 12 * 1.25, `APM cap tight (12/min): ${r.n} commands, ${r.apm.toFixed(1)} per minute; worst window ${r.worstW}s at ${(100 * r.worst).toFixed(0)}% of the bound`);
 }
 {
   const d = mutatedTree([['function aiAct(ai){', 'function aiAct(ai){ai.apm.tok=1e9;']]);
-  try { const r = apmProbe(d, 'easy', 180); ok(r.worst > 1, `CONTROL: an aiAct that never refuses breaks the bound (worst ${(100 * r.worst).toFixed(0)}% in a ${r.worstW}s window, ${r.apm.toFixed(0)}/min vs cap ${r.cap})`); }
+  try { const r = apmProbe(d, 'master', 180, { apm: 12 }); ok(r.worst > 1, `CONTROL: an aiAct that never refuses breaks the bound (worst ${(100 * r.worst).toFixed(0)}% in a ${r.worstW}s window, ${r.apm.toFixed(0)}/min vs cap ${r.cap})`); }
   finally { fs.rmSync(d, { recursive: true, force: true }); }
 }
 

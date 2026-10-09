@@ -16,7 +16,7 @@ function sim(src) {
 function pin(S, rs) { let s = rs >>> 0; S.sandbox.Math.random = function () { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function makeAgent(S, spec, team) {
   const run = S.__run;
-  if (spec.kind === 'v3') return run(`makeAIV3(${team},DIFF[${JSON.stringify(spec.diff || 'normal')}])`);
+  if (spec.kind === 'v3') { const ai = run(`makeAIV3(${team},DIFF[${JSON.stringify(spec.diff || 'normal')}])`); if (spec.mult !== undefined) S.G.teams[team].mult = spec.mult; return ai; }   // mult: override v3's income multiplier (e.g. hard without its +25 %)
   const o = { tier: spec.tier || 'normal' };
   if (spec.theta) o.theta = spec.theta; if (spec.cfg) o.cfg = spec.cfg; if (spec.noV) o.noV = true; if (spec.handicap) o.handicap = spec.handicap;
   return run(`makeAIT2(${team},DIFF[${JSON.stringify(o.tier)}]||DIFF.normal,${JSON.stringify(o)})`);
