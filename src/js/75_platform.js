@@ -92,7 +92,7 @@ function platInit(){
   const cap=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;
   if(cap&&cap.addListener){
     cap.addListener('appStateChange',s=>{if(!s.isActive)autoPause();});
-    cap.addListener('backButton',()=>{if(matchActive()){if(!G.paused)togglePause();}else if(cap.exitApp&&!currentOverlay())cap.exitApp();else if(currentOverlay()!=='menu')closeSub();});
+    cap.addListener('backButton',()=>{if(currentOverlay()==='campDispatch'&&typeof campEsc==='function'){campEsc('campDispatch');return;}if(matchActive()){if(!G.paused)togglePause();}else if(cap.exitApp&&!currentOverlay())cap.exitApp();else if(currentOverlay()!=='menu')closeSub();});
   }
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PLAT.deferred=e;syncPlatformUI();});
   window.addEventListener('appinstalled',()=>{PLAT.deferred=null;PLAT.installed=true;syncPlatformUI();toastAny('Installed — launch it from your home screen');});

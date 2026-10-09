@@ -2,7 +2,7 @@
    Each one is a tiny hand-built mission that is CORRECT or deliberately WRONG in exactly one way, so the gate can be proven to flag what it claims to flag
    (CLAUDE.md rule 15) and to stay quiet on a healthy mission. Seed 1101 (player hub tile (11,72), enemy hub (73,12)); the enemy AI is off, every mission ends by its own
    clock (<= 240 s of game time), so the whole set simulates in seconds.  Usage:
-     const S = require('./campaign_controls.js')();     // {missions, cine, radio, expect}   — fresh deep objects each call; `expect` = what the gate must say about each id
+     const S = require('./campaign_controls.js')();     // {missions, dispatch, radio, expect}   — fresh deep objects each call; `expect` = what the gate must say about each id
      node tools/mission_sim.js all --story tests/fixtures/campaign_controls.js        node tests/sim/campaign_balance.js --story tests/fixtures/campaign_controls.js
    `expect[id]` = {fail:[rule ids that MUST be reported as FAIL], warn:[rule ids that MUST be WARN], clean:true when no FAIL/WARN may appear}. */
 module.exports = function makeControls() {
@@ -61,5 +61,5 @@ module.exports = function makeControls() {
     ctl_impossible: { fail: ['stalled', 'playable'] },
     ctl_humanonly: { warn: ['playable'] }
   };
-  return { missions, cine: clone(ops.story.cine), radio: clone(ops.story.radio), expect };
+  return { missions, dispatch: clone(ops.story.dispatch), radio: clone(ops.story.radio), expect };
 };

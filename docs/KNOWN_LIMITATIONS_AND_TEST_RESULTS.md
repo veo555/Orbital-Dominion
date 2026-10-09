@@ -56,15 +56,14 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
 
 * **Story data** is checked by `tools/validate_story.js`: structure, ids, timing (lines are read at 19 characters a second),
   scripted spawn and building tiles on each mission's own map, flags read only after being set, radio line counts, and the
-  unlock chain. Its self-test (`tests/story/validate_selftest.js`) corrupts a valid fixture in 56 ways and checks that each is caught.
+  unlock chain. Its self-test (`tests/story/validate_selftest.js`) corrupted a valid fixture in 56 ways (59 since 4.0, see 1.4) and checks that each is caught.
 * **Campaign runtime** (`tests/sim/campaign.js`): every condition and action operation, restrictions, the hold and resume
   protocol, determinism, malformed data, the save helpers, and swarm-off inertness. All checks pass.
 * **Sound**: a headless browser starts a real match (which creates the audio context), plays all 25 music cues, and fires
   unit, building, hero and cinematic sounds and speech with no page errors. Offline rendering is deterministic by design
   (each voice has a seeded generator). The objective metric gates in `tests/audio/` exist but were not executed in this pass.
-* **Cinematics**: every one of the 19 effect kinds draws pixels in a headless browser; the crowd, banner and unit props were
-  spot-checked. The intro film starts and runs for 2 s with no painter errors recorded.
-* **Content**: 32 films and 9 missions exist and validate. The generated screenplay (`docs/story/SCRIPT.md`) is produced by `tools/story_to_md.js`.
+* **Cinematics** (removed in 4.0, see 1.4): in 3.2 every one of the 19 effect kinds drew pixels in a headless browser.
+* **Content**: 32 films (text dispatches since 4.0) and 9 missions exist and validate. The generated screenplay (`docs/story/SCRIPT.md`) is produced by `tools/story_to_md.js`.
 
 ### 1.3 Added in 3.3: campaign balance measured, save/resume (headless only; read with §3)
 
@@ -87,6 +86,15 @@ What this does and does not say: the missions are completable (the scripted obje
 * **Save/resume**: the whole match is serialised (`46_save.js`). Tested: restoring a snapshot and running N more ticks gives the same state hash as running on without the round trip (skirmish, AI-vs-AI, campaign missions m01-m03), and tampering with the snapshot changes the outcome (so the comparison can fail). Browser: autosave on backgrounding, Continue after reload, terrain rebuilt, slot erased at game over, corrupt slot rejected. **Not verified**: iOS Safari / WebView storage limits (a snapshot is about 300 KB of localStorage), restoring after a version upgrade (a snapshot of another version is refused, not migrated), restoring a match saved inside a blocking cinematic (autosave is skipped there).
 * **Audio e2e gates were run for the first time** (`e2e_audio_engine.py`, `e2e_audio_wiring.py`, `e2e_soundlab.py`, now part of `tests/run_all.sh`; all pass). They found one real bug, fixed in `80_audio.js`: music notes still scheduled when a cue was stopped were cut from the graph, never fired `ended`, and permanently used up the node budget; a sweep now retires them. The other failures were stale tests (written before the unit/music modules registered at load; they now run those contracts on an engine-only page and assert the new invariants on the full page) and one negative control that did not depend on the caster. The objective DSP gates in `tests/audio/*.py` (loudness, spectra) were still not run. Nothing has been heard by a person.
 * **Pre-existing flaky assertion fixed**: "perks are cosmetic" compared two matches that were not seeded for `Math.random` (about 30 sim calls still use it, BACKLOG B-20); it failed on a build older than 3.2 as well. It now pins `Math.random`.
+
+### 1.4 Added in 4.0 (T1): videos removed, text dispatches (headless Chromium and Node only; read with §3)
+
+* **What was removed:** the cinematic engine and its art (`64_cine_bg_*`, `64_cine_props`, `65_cine_fx`, `66_cine`), the film overlay and CSS, WebM export, the film contact-sheet tools and `e2e_cine.py`. Build size `dist/orbital_dominion_v3.html` went from 2,026,361 to 1,322,454 bytes.
+* **Story preserved:** `tools/films_to_dispatch.js` (one-shot, deleted after use) converted the 32 films; a throwaway check against the v3 source compared all 278 spoken lines (text, speaker, style) and the 32 ids / kinds / titles / order: 0 differences. The 39 scene title cards became `heading` lines. `docs/story/SCRIPT.md` was regenerated; a script check found all 430 dispatch and radio lines in it, in order.
+* **Validator:** `node tools/validate_story.js`: 0 errors, 0 warnings on the real story (including the map checks). `node tests/story/validate_selftest.js`: the fixture validates with 0 errors and 59 mutations are each caught with their expected message (the film-only mutations were deleted, dispatch ones added).
+* **Campaign UI:** `e2e_campaign.py` drives prologue, briefing, in-mission blocking dispatch (hold, two queued cards, Esc, hotkeys do not leak), debrief, defeat, archive, reset and reload, Enter / Space / Esc, touch taps and the five layouts (1366x768, 1024x768, 844x390, 390x844, 412x915: no horizontal overflow, 44 px targets on touch, a 34-line dispatch scrolls inside its card). Rule 15: six deliberately broken builds (Enter / Space handler removed, cards not marked seen, previous screen not restored, Skip all not marking cards read, hold not honoured, hotkeys leaking) were each caught by it; a seventh break (debrief shown over a held card) failed four checks before the fix in `90_main.js`.
+* **Not changed:** simulation, AI, balance. `tests/sim/campaign.js` (394 checks), `campaign_walkthrough.js` and `save.js` pass after the `cine` to `dispatch` rename; `tools/mission_check.js` reports 0 errors (13 warnings, not compared with v3). A balance smoke run of m01 and m04 (1 run each) and m04 again (3 runs) completed; these are smoke runs, not balance claims (CLAUDE.md rule 8).
+* **Not verified:** a real phone, WebKit / iOS momentum scrolling in the transcript, screen readers (the card has dialog / region roles and labels, never tested with VoiceOver or TalkBack), and whether the mood music that opens with a card (`musicPlay` on the dispatch's `mood`) sounds right: the audio gate only observes that the call is made and that closing the card stops it. `e2e_touch.py` has a pre-existing flaky double-tap check (it also fails on the v3 build).
 
 ## 2. Defects found and fixed in the final round (regression ideas)
 1. Overseer stalled unit production while "saving" for a build that was short only of *ether*, with 500+ crystals
@@ -116,7 +124,7 @@ What this does and does not say: the missions are completable (the scripted obje
 
 * **Nothing has been heard.** Music, voices and effects have not been listened to by a person. Loudness, balance and taste are unmeasured by ear.
 * **The campaign has not been played by a human and has not been balanced.** Mission difficulty for a person is unknown; the AI stand-in was run (§1.3).
-* **Films are real-time procedural canvas**, not video files. Their smoothness and subtitle legibility were not checked on real phones. WebM export was not tested on iOS Safari.
+* **No films any more (4.0).** The story is text dispatches; their legibility and scrolling were checked in Chromium emulation only (844x390, 390x844, 412x915, 1024x768, 1366x768), not on a real phone or in WebKit.
 * **Speech depends on the device.** Voices differ across Android WebViews, iOS and desktop. The synthesized fallback voice was checked only as a signal, not for intelligibility.
 * **Phone screens were reviewed only as Chromium emulation screenshots** (campaign select, briefing, match with radio strip at 844x390 and 412x915; geometry is asserted by `e2e_campaign.py`); debrief and Sound Lab rely on those assertions.
 * **Writing quality** comes from automated authoring passes checked by the validator (structure, references, timing). No editor has read the script.

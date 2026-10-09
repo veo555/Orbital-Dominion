@@ -1,7 +1,7 @@
 """Portrait painter gate (Playwright + Chromium). Exit code != 0 on failure.
    python3 tests/e2e/e2e_portraits.py        (about 1.5 minutes; OD_URL=file://... points it at a scratch build)
 
-Owner: src/js/64_cine_portraits.js (CINE_PAINT.actor + drawPortrait). Asserts on pixels and data, never on "looks nice"; the sheets in tests/out/cine/portraits_*.png (tools/portrait_sheets.py) are for looking.
+Owner: src/js/64_portraits.js (PORTRAIT_PAINT.actor + drawPortrait, helpers in 64_portrait_core.js). Asserts on pixels and data, never on "looks nice"; the sheets in tests/out/portraits/portraits_*.png (tools/portrait_sheets.py) are for looking.
   coverage      13 fixture characters (as fx_*) + every character of the real story x 12 expressions x 4 modes: no painter error, non-uniform pixels, mode semantics
                 (silhouette = near-black figure, shadow = dark figure with bright eye lights, hologram = cyan with scanlines and flicker)
   expressions   every pair of the 12 expressions differs by a clear number of pixels on every character
@@ -12,7 +12,8 @@ Owner: src/js/64_cine_portraits.js (CINE_PAINT.actor + drawPortrait). Asserts on
   any look      every hair x armour x mark combination, odd / partial look data, unknown character ids, extreme sizes, missing options: never throws, always draws
   distinctness  every pair of characters differs at 64 px (tools/portrait_sheets.py: head-weighted perceptual metric; controls: an identical look under another id and one-attribute changes)
                 and the 48 px chip keeps the identity; the check is run against deliberately wrong painters and MUST fail them
-  engine        the painter inside cineFrame (all modes, both facings, key lights): non-uniform, pure frames; cost per portrait (software raster, relative only)
+  chips         the dispatch card / radio strip avatar path (cuPortrait, 44 px data: URLs): every character, two expressions, decodes to a non-uniform image, expressions differ, cached
+                result identical; cost per portrait (software raster, relative only)
   mutations     (CLAUDE.md rule 15) blank / look-blind / expression-blind / talk-blind / blink-blind / facing-blind / mode-blind / impure painters are each caught by the check that owns them
 Limits: Chromium software raster; the numbers say nothing about real phones; looks are judged by eye on the sheets, not here."""
 import os, sys, pathlib, re, json
@@ -33,7 +34,7 @@ def note(m): print('note  ' + m, flush=True)
 # ------------------------------------------------------------------ page-side helpers: every check returns an array of problem strings
 HELPERS = r"""
 window.__PT = (()=>{
-  const R=__RTS, P=R.CINE_PAINT, EXPR=['neutral','talk','angry','smirk','sad','shock','smile','determined','laugh','scared','cold','weary'], MODES=['bust','silhouette','shadow','hologram'];
+  const R=__RTS, P=R.PORTRAIT_PAINT, EXPR=['neutral','talk','angry','smirk','sad','shock','smile','determined','laugh','scared','cold','weary'], MODES=['bust','silhouette','shadow','hologram'];
   const BG=[40,48,66];
   const ids=()=>Object.keys(R.STORY.characters).filter(k=>R.STORY.characters[k].look);
   const render=(id,o)=>{o=o||{};const w=o.w||256,h=o.h||270,cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');g.fillStyle='rgb('+BG+')';g.fillRect(0,0,w,h);
@@ -114,17 +115,21 @@ window.__PT = (()=>{
       R.drawPortrait(g,'idris','talk',100,100,150,{talk:7,blink:-3,t:1e9,key:{x:NaN,y:0},lights:[null,{x:.5,y:.5,a:1,col:'#f00'},{x:2,y:-1,a:.9}],bottom:50});R.drawPortrait(g,'idris','talk',100,100,150,{talk:'x',blink:'y',t:'z',rim:'bogus colour',lights:'no'});
       R.drawPortrait(g,'idris','neutral',100,100,150,{bottom:400});R.drawPortrait(g,'idris','neutral',100,100,150,{bottom:-100});R.drawPortrait(g,'idris','neutral',100,100,150,{W:0,H:0});
       for(const m of MODES){R.drawPortrait(g,'idris','neutral',100,100,3000,{mode:m});R.drawPortrait(g,'idris','neutral',100,100,5,{mode:m});}
-      R.drawPortrait(null,'idris','neutral',1,1,1);R.cineFrame&&0;}catch(e){bad.push('awkward arguments threw '+e.message);}
+      R.drawPortrait(null,'idris','neutral',1,1,1);}catch(e){bad.push('awkward arguments threw '+e.message);}
     return bad.slice(0,8).concat(errs(n0,'painter error').slice(0,4));};
-  /* engine integration: the painter inside cineFrame */
-  const filmFor=(chars)=>({id:'pt_film',kind:'interlude',title:'t',music:'intro',letterbox:true,seed:5,scenes:chars.map((c,i)=>({id:'s'+i,dur:3,bg:{k:'void',tint:'#18305a',glow:.5},cam:{from:{x:.5,y:.5,z:1,r:0},to:{x:.5,y:.5,z:1.06,r:0},ease:'lin'},
-    actors:[{id:'a',char:c,at:[.3,.62],h:.8,face:'r',expr:'angry',mode:MODES[i%4],t0:0},{id:'b',char:ids()[(i+3)%ids().length],at:[.72,.62],h:.7,face:'l',expr:'smile',mode:'bust',t0:0}],
-    fx:[{k:'flare',t0:.5,t1:1.5,x:.8,y:.3,col:'#ffd9a0'}],lines:[{who:c,text:'Lip sync line for the portrait gate.',t:.2,dur:2.5,style:'normal'}],sfx:[],trans:{in:'cut',out:'cut',len:.3}}))});
-  const engine=()=>{const out={bad:[],ms:[]},n0=err0(),film=filmFor(ids().slice(0,8)),cv=document.createElement('canvas');cv.width=640;cv.height=268;
-    const fr=(t,o)=>{R.cineFrame(film,t,cv,Object.assign({frameOnly:true,tier:'high',noTrans:true},o||{}));return cv.getContext('2d').getImageData(0,0,640,268);};
-    for(let i=0;i<8;i++){const a=fr(i*3+1.3),b=fr(i*3+1.3);if(diff(a,b,0)!==0)out.bad.push('scene '+i+': cineFrame is not pure');if(stats(a).colours<40)out.bad.push('scene '+i+': frame is nearly uniform');}
-    const t0=performance.now();let n=0;for(let i=0;i<60;i++){fr(1+(i%8)*3+.01*i);n++;}out.ms=(performance.now()-t0)/n;
-    const q=fr(1.3,{rm:true});if(stats(q).colours<40)out.bad.push('reduced motion frame is uniform');
+  /* the avatar chips of the dispatch card and the radio strip: cuPortrait(id,size,expr) -> data: URL (cached) */
+  const loadImg=(u)=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('image did not decode'));im.src=u;});
+  const chipPix=async(url)=>{const im=await loadImg(url),cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;const g=cv.getContext('2d');g.drawImage(im,0,0);return g.getImageData(0,0,cv.width,cv.height);};
+  const chips=async()=>{const out={bad:[],ms:0},n0=err0(),list=ids().slice(0,8);let n=0;const t0=performance.now();
+    for(const id of list){
+      const u1=R.cuPortrait(id,44,'angry'),u2=R.cuPortrait(id,44,'smile');
+      if(!/^data:image\/png/.test(u1)||!/^data:image\/png/.test(u2)){out.bad.push(id+': cuPortrait returned no data: URL');continue;}
+      const a=await chipPix(u1),b=await chipPix(u2);n+=2;
+      const q=new Set();for(let i=0;i<a.data.length;i+=4)q.add((a.data[i]>>4)|((a.data[i+1]>>4)<<4)|((a.data[i+2]>>4)<<8));
+      if(q.size<20)out.bad.push(id+': the chip is nearly uniform ('+q.size+' colours)');
+      if(diff(a,b,12)<25)out.bad.push(id+': angry and smile chips are (almost) the same image');
+      if(R.cuPortrait(id,44,'angry')!==u1)out.bad.push(id+': the cached chip is not identical');}
+    out.ms=(performance.now()-t0)/Math.max(1,n);
     return Object.assign(out,{errs:errs(n0,'painter error')});};
   /* mutations: wrap the real painter so one aspect is ignored */
   let orig=null;
@@ -143,7 +148,7 @@ window.__PT = (()=>{
   /* timing: median ms of a warm portrait (1x1 readback forces the software rasteriser to finish) */
   const bench=(id,W,H,box,mode,n)=>{const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d'),a=[];
     for(let i=0;i<n+3;i++){const t0=performance.now();R.drawPortrait(g,id,'talk',W*.3,H*.55,H*box,{W,H,bottom:H,mode,t:2+i*.033,talk:(Math.sin(i)+1)/2,blink:i%30===5?1:0});g.getImageData(0,0,1,1);if(i>=3)a.push(performance.now()-t0);}a.sort((x,y)=>x-y);return a[a.length>>1];};
-  return{render,diff,stats,ids,mutate,unmutate,bench,hash,checkCoverage,checkModes,checkExpressions,checkTalk,checkBlink,checkFacing,checkMotion,checkPure,checkAnyLook,engine,EXPR,MODES};
+  return{render,diff,stats,ids,mutate,unmutate,bench,hash,checkCoverage,checkModes,checkExpressions,checkTalk,checkBlink,checkFacing,checkMotion,checkPure,checkAnyLook,chips,EXPR,MODES};
 })();
 """
 
@@ -188,10 +193,10 @@ def main():
         cold = pg2.evaluate("()=>{const A=__PT.ids().slice(0,12);return A.map(id=>__PT.hash(__PT.render(id,{expr:'smirk',talk:.4,blink:.25,t:2.2,key:{x:.3,y:.1,col:'#ffd0a0',a:.8}})));}")
         ok(cold == first, 'a fresh page (cold caches) renders bit-identical portraits')
         b2.close()
-        src = (ROOT / 'src' / 'js' / '64_cine_portraits.js').read_text(encoding='utf-8')
+        src = (ROOT / 'src' / 'js' / '64_portraits.js').read_text(encoding='utf-8')
         code = re.sub(r'/\*.*?\*/', '', src, flags=re.S); code = re.sub(r'(^|[^:])//[^\n]*', r'\1', code)
         bad = [t for t in ('Math.random', 'Date.now', 'new Date', 'performance.now', 'setTimeout', 'requestAnimationFrame', 'fetch(', 'XMLHttpRequest') if t in code]
-        ok(not bad, 'source scan: no ' + ', '.join(bad or ['Math.random / Date / performance.now / timers / network']) + ' in 64_cine_portraits.js')
+        ok(not bad, 'source scan: no ' + ', '.join(bad or ['Math.random / Date / performance.now / timers / network']) + ' in 64_portraits.js')
         # ---- any look
         r = run(pg, 'checkAnyLook'); ok(not r, '9 hairs x 7 armours x 8 marks (504 looks), odd / partial look data, unknown ids, extreme sizes and options never throw and always draw' + (' -- ' + '; '.join(r) if r else ''))
         # ---- distinctness
@@ -214,10 +219,10 @@ def main():
         f, _ = PS.chip_features(pg, ['idris', 'ctl_clone']); dclone = PS.pair_distance(f['idris'], f['ctl_clone'])
         note(f'control: idris vs the identical look under another id = {dclone:.2f} (only the per-id face DNA differs)')
         ok(dclone < MIN + .25, f'metric control: an identical look is not rated "clearly different" ({dclone:.2f} < {MIN + .25:.2f})')
-        # ---- engine
-        e = pg.evaluate("()=>__PT.engine()")
-        ok(not e['bad'] and not e['errs'], 'engine: cineFrame with portraits in all modes / facings / flare is pure and non-uniform, reduced motion too' + (' -- ' + '; '.join((e['bad'] + e['errs'])[:4]) if (e['bad'] or e['errs']) else ''))
-        note(f"engine: {e['ms']:.1f} ms per 640x268 frame with two portraits + void + flare (software raster, relative only)")
+        # ---- chips (dispatch card / radio strip)
+        e = pg.evaluate("()=>__PT.chips()")
+        ok(not e['bad'] and not e['errs'], 'chips: the 44 px avatar chips of the dispatch card decode, are non-uniform, differ by expression and are cached' + (' -- ' + '; '.join((e['bad'] + e['errs'])[:4]) if (e['bad'] or e['errs']) else ''))
+        note(f"chips: {e['ms']:.1f} ms per 44 px chip incl. PNG encode and decode (software raster, relative only)")
         warm = [pg.evaluate("([i,W,H,b,m])=>__PT.bench(i,W,H,b,m,40)", [cid, 1280, 720, .8, 'bust']) for cid in ('idris', 'tilda', 'ostrander', 'oru')]
         holo = pg.evaluate("()=>__PT.bench('idris',1280,720,.8,'hologram',30)")
         note('warm bust 1280x720 box 0.8 (talking + blinking): ' + ', '.join(f'{c} {w:.1f} ms' for c, w in zip(('idris', 'tilda', 'ostrander', 'oru'), warm)) + f'; hologram {holo:.1f} ms (budget in the spec: 2 ms on a phone-class GPU path, relative here)')
@@ -229,7 +234,7 @@ def main():
             try:
                 if callable(check): r = check()
                 else: r = run(pg, check)
-            finally: pg.evaluate("()=>{__PT.unmutate();__RTS.CINE_PAINT.errors.length=0}")   # the wrong painters raise errors on purpose: do not leave them in the shared error list
+            finally: pg.evaluate("()=>{__PT.unmutate();__RTS.PORTRAIT_PAINT.errors.length=0}")   # the wrong painters raise errors on purpose: do not leave them in the shared error list
             ok(bool(r), f'mutation control: {why} is caught' + ('' if r else ' -- NOT CAUGHT'))
         mut('blank', 'checkCoverage', 'a blank painter')
         mut('blank', 'checkModes', 'a blank painter (modes)')

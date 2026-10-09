@@ -81,7 +81,7 @@
       <h3>Difficulty</h3>
       <div class="diffrow" id="diffRow"></div>
     </div>
-    <div class="mfoot"><div class="row actions"><button class="btn big hidden" id="bContinue">Continue</button><button class="btn big camp hidden" id="bCamp">Campaign</button><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button><button class="btn hidden" id="bExtras">Extras</button></div>
+    <div class="mfoot"><div class="row actions"><button class="btn big hidden" id="bContinue">Continue</button><button class="btn big camp hidden" id="bCamp">Campaign</button><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button><button class="btn hidden" id="bArchive">Archive</button></div>
       <div class="row links"><button class="btn link hidden" id="bInstall">⬇ Install app</button><button class="btn link hidden" id="bFull">⛶ Fullscreen</button><button class="btn link hidden" id="bShare">↗ Share</button><button class="btn link hidden" id="bSupport">♥ Support</button></div></div>
   </div>
 </div>
@@ -168,16 +168,7 @@
   <div class="card sl-card" id="slCard"></div>
 </div>
 <!-- AUDIO:END -->
-<!-- CINE:BEGIN  (WF-cinematics only: #cineOverlay canvas, subtitle strip, skip button) -->
-<div id="cineOverlay" class="cine-ov hidden" role="dialog" aria-modal="true" aria-label="Cinematic" tabindex="-1">
-  <canvas id="cine" aria-hidden="true"></canvas>
-  <div id="cineSub" role="status" aria-live="polite" aria-atomic="true"></div>
-  <div id="cineHint" class="hidden" aria-hidden="true">Rotate your device for the best view</div>
-  <button id="cineSkip" class="cine-skip" type="button" aria-label="Skip cinematic">Skip ▸▸</button>
-  <div id="cineProg" aria-hidden="true"><i></i></div>
-</div>
-<!-- CINE:END -->
-<!-- CAMP:BEGIN  (WF-campaign only: chapter select, briefing, radio strip, debrief, gallery) -->
+<!-- CAMP:BEGIN  (campaign only: chapter select, briefing, dispatch card, radio strip, debrief, archive) -->
 <div id="campMenu" class="overlay dim hidden" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
   <div class="card camp">
     <div class="cu-head">
@@ -188,12 +179,12 @@
     <div class="cm-bar">
       <button class="btn big" id="cmContinue" data-act="continue">Continue</button>
       <div class="cm-diff" id="cmDiff" role="group" aria-label="Campaign difficulty"><span class="cm-lbl">Difficulty</span><button class="btn" data-act="diff:easy">Easy</button><button class="btn" data-act="diff:normal">Normal</button><button class="btn" data-act="diff:hard">Hard</button></div>
-      <button class="btn" id="cmIntro" data-act="intro">Watch intro</button>
+      <button class="btn" id="cmIntro" data-act="intro">Read prologue</button>
       <button class="btn" id="cmReset" data-act="reset">Reset progress</button>
       <button class="btn" id="cmBack" data-act="back">Back</button>
     </div>
     <div id="cmConfirm" class="cm-confirm hidden" role="alertdialog" aria-labelledby="cmConfirmT">
-      <span id="cmConfirmT">Erase all campaign progress (stars, unlocked missions and seen cinematics)?</span>
+      <span id="cmConfirmT">Erase all campaign progress (stars, unlocked missions and the dispatch archive)?</span>
       <button class="btn danger" id="cmResetYes" data-act="reset-yes">Erase progress</button><button class="btn" id="cmResetNo" data-act="reset-no">Cancel</button>
     </div>
     <div class="cu-body" id="cmBody"></div>
@@ -208,11 +199,15 @@
   <div class="card camp" id="cdCard"></div>
 </div>
 
-<div id="extrasMenu" class="overlay dim hidden" role="dialog" aria-modal="true" aria-labelledby="exTitle">
+<div id="campDispatch" class="overlay dim hidden" role="dialog" aria-modal="true" aria-labelledby="dpTitle">
+  <div class="card camp dp" id="dpCard"></div>
+</div>
+
+<div id="archiveMenu" class="overlay dim hidden" role="dialog" aria-modal="true" aria-labelledby="arTitle">
   <div class="card camp">
-    <div class="cu-head"><h2 class="ttl" id="exTitle">Extras</h2><div class="cu-tag" id="exTag"></div></div>
-    <div class="cu-body" id="exBody"></div>
-    <div class="cu-foot"><button class="btn big" id="exBack" data-act="back">Back</button></div>
+    <div class="cu-head"><h2 class="ttl" id="arTitle">Archive</h2><div class="cu-tag" id="arTag"></div></div>
+    <div class="cu-body" id="arBody"></div>
+    <div class="cu-foot"><button class="btn big" id="arBack" data-act="back">Back</button></div>
   </div>
 </div>
 

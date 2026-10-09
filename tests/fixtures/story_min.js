@@ -1,5 +1,5 @@
 /* A minimal but fully VALID story (passes tools/validate_story.js with 0 errors). Generated, not authored: it exists so the engines
-   (cinematics, campaign runtime, audio cues) can be tested before/independently of the real story, and so the validator can be
+   (dispatch cards, campaign runtime, audio cues) can be tested before/independently of the real story, and so the validator can be
    mutation-tested. Usage: const S=require('./story_min.js')();  — returns a fresh deep object each call. */
 module.exports=function makeMinStory(){
   const chars={},mk=(id,o)=>{chars[id]=Object.assign({id,name:o.name||id[0].toUpperCase()+id.slice(1)+' Test',short:o.short||id[0].toUpperCase()+id.slice(1),title:o.title||'Test character',
@@ -25,22 +25,18 @@ module.exports=function makeMinStory(){
   mk('narrator',{name:'Narrator',short:'Narrator',title:'Voice of the chronicle',role:'narrator',faction:'none',side:'gray',motif:'hope'});
   Object.keys(chars).forEach((id,i)=>{if(id!=='narrator')chars[id].look=mkLook(i+1);});
   const speakers=Object.keys(chars).filter(x=>x!=='narrator');
-  const cine={};
-  const bgs=[{k:'space',nebula:'blue'},{k:'planet',planet:'azure',rings:true},{k:'orbit',planet:'ember',limb:'bottom',station:true},{k:'surface',biome:'dust',time:'dusk',features:['hub','crystals']},{k:'base',faction:'meridian',time:'day',state:'calm'},
-    {k:'bridge',faction:'meridian',alert:false,view:'space'},{k:'hall',style:'obsidian',light:'cold'},{k:'battlefield',biome:'ash',time:'dusk',intensity:.6,sides:['meridian','obsidian']},{k:'ruins',biome:'dust',time:'night'},{k:'array',state:'charging',planet:'violet'},{k:'void',tint:'#112244',glow:.5},{k:'map',focus:[.5,.5],marks:[{x:.3,y:.4,k:'friendly'},{x:.7,y:.6,k:'enemy'}],faction:'meridian'}];
-  const film=(id,kind,total,music,whoList)=>{
-    const n=Math.max(1,Math.round(total/6)),dur=total/n,scenes=[];
+  const dispatch={};
+  const dsp=(id,kind,title,mood,whoList,n)=>{
+    const lines=[];
+    if(kind==='intro'||kind==='credits')lines.push({who:'narrator',text:'ORBITAL DOMINION - Fixture',style:'heading'});
     for(let i=0;i<n;i++){const who=whoList[i%whoList.length],text=['The colony holds the line tonight.','Nothing here is as it seems.','We rebuild, and we remember.','The array wakes at dawn.'][i%4];
-      scenes.push({id:'s'+(i+1),dur,bg:Object.assign({},bgs[(i+kind.length)%bgs.length]),cam:{from:{x:.5,y:.5,z:1,r:0},to:{x:.5,y:.5,z:1.15,r:0},ease:'inout'},
-        actors:[{id:'a'+i,char:who,at:[.3,.62],h:.8,face:'r',expr:'talk',mode:'bust',t0:.2,t1:dur}],props:i%2?[{k:'ship',cls:'dropship',faction:'meridian',from:[-.1,.3],to:[.5,.4],scale:1,t0:0,t1:dur-1}]:[],
-        fx:[{k:'stars',t0:0,t1:dur,a:.8}],lines:[{who,text,t:.5,dur:Math.max(2.5,text.length/19+.4),style:'normal',expr:'talk'}],sfx:[{t:.2,name:'whoosh'}],
-        title:i===0&&(kind==='intro'||kind==='credits')?{text:'ORBITAL DOMINION',sub:'Fixture',t0:.3,t1:Math.min(dur,3)}:undefined,trans:{in:'fade',out:'cut',len:.5}});}
-    cine[id]={id,kind,title:id,music,letterbox:true,seed:7,scenes};};
-  film('intro','intro',70,'intro',['idris','vael','pip','lyra','kaz','sable']);
-  const inter=['i1','i2','i3','i4','i5','i6','i7','i8'];inter.forEach((id,i)=>film(id,'interlude',24,['hope','mystery','tension','dread','march','tragedy','betrayal','dawn'][i],[speakers[i%speakers.length],speakers[(i+3)%speakers.length]]));
-  film('ending','ending',90,'finale',['idris','kaz','lyra','vael','pip']);film('credits','credits',30,'credits',['narrator']);film('defeat','defeat',12,'tragedy',['idris']);
+      lines.push(who==='narrator'?{who,text,style:'narration'}:{who,text,style:i%3===2?'radio':'normal',expr:['talk','determined','weary','smile'][i%4]});}
+    dispatch[id]={id,kind,title,mood,lines};};
+  dsp('intro','intro','intro','intro',['idris','vael','pip','lyra','kaz','sable'],6);
+  const inter=['i1','i2','i3','i4','i5','i6','i7','i8'];inter.forEach((id,i)=>dsp(id,'interlude',id,['hope','mystery','tension','dread','march','tragedy','betrayal','dawn'][i],[speakers[i%speakers.length],speakers[(i+3)%speakers.length]],3));
+  dsp('ending','ending','ending','finale',['idris','kaz','lyra','vael','pip'],6);dsp('credits','credits','credits','credits',['narrator'],4);dsp('defeat','defeat','defeat','tragedy',['idris'],2);
   const ms=[];const facs=['meridian','meridian','meridian','aurora','aurora','aurora','obsidian','obsidian','obsidian'],enm=['obsidian','obsidian','aurora','obsidian','obsidian','meridian','meridian','aurora','meridian'];
-  for(let i=0;i<9;i++){const id='m0'+(i+1);film(id+'_brief','briefing',12,'tension',['idris','tov']);film(id+'_win','debrief',10,'hope',['idris']);
+  for(let i=0;i<9;i++){const id='m0'+(i+1);dsp(id+'_brief','briefing',id+'_brief','tension',['idris','tov'],3);dsp(id+'_win','debrief',id+'_win','hope',['idris'],2);
     const radioIds=[1,2,3,4].map(k=>'r'+(i+1)+k);
     const radio=chars;// placeholder to keep linter calm
     ms.push({id,act:Math.floor(i/3)+1,n:i+1,title:'Mission '+(i+1),subtitle:'Fixture',place:'p1',synopsis:'A fixture mission.',briefing:id+'_brief',debrief:id+'_win',defeat:null,after:i<8?inter[i]:'ending',
@@ -51,5 +47,5 @@ module.exports=function makeMinStory(){
       win:['structs','enemy','==',0],lose:['hubs','me','==',0],stars:{par:900},unlocks:{next:i<8?'m0'+(i+2):null},hints:['Build Generators early.']});}
   const radio={};ms.forEach((m,i)=>[1,2,3,4].forEach(k=>{radio['r'+(i+1)+k]={who:speakers[(i+k)%speakers.length],text:'Fixture radio line '+k+' for mission '+(i+1)+'.',style:'radio',dur:3.5};}));
   const acts=[0,1,2].map(a=>({id:'act'+(a+1),title:'Act '+(a+1),summary:'Fixture act.',missions:ms.slice(a*3,a*3+3).map(m=>m.id)}));
-  return{meta:{title:'Fixture',tagline:'t',version:1,rating:'PG-13',logline:'l'},world:{places:[{id:'p1',name:'Fixture Ridge',desc:'d'}],factions:{},glossary:[]},characters:chars,acts,missions:ms,cine,radio,barks:{}};
+  return{meta:{title:'Fixture',tagline:'t',version:1,rating:'PG-13',logline:'l'},world:{places:[{id:'p1',name:'Fixture Ridge',desc:'d'}],factions:{},glossary:[]},characters:chars,acts,missions:ms,dispatch,radio,barks:{}};
 };

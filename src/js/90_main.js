@@ -1,5 +1,5 @@
 /* =========================================================================
-   MAIN — input, game flow, cinematic menu background, main loop, test hooks
+   MAIN — input, game flow, animated menu background, main loop, test hooks
    ========================================================================= */
 function resetUI(){
   ui.sel=[];ui.selSet=new Set();ui.activeType=null;ui.menu=null;ui.place=null;ui.target=null;ui.drag=null;ui.panel=null;ui.hover=null;ui.pings=[];ui.inc=[];ui.lastInc=0;ui.lastAlert=-99;ui.groups={};
@@ -50,7 +50,7 @@ function togglePause(){
 function setSpeed(dir,cycle){
   if(ui.demo)return;const L=[1,1.5,2,3];let i=L.indexOf(G.speed);if(i<0)i=0;i=cycle?(i+1)%L.length:clamp(i+dir,0,L.length-1);G.speed=L[i];setTxt('bSpeedT',G.speed+'×');toast('Game speed '+G.speed+'×','good');
 }
-/* menu background: a slow cinematic camera over an AI-vs-AI match */
+/* menu background: a slow camera over an AI-vs-AI match */
 function demoUpdate(dt){
   ui.demoT-=dt;
   if(G.over){if(!ui.demoEnd)ui.demoEnd=performance.now()+4000;else if(performance.now()>ui.demoEnd&&!$('menu').classList.contains('hidden')===false){}}
@@ -235,7 +235,6 @@ function bindInput(){
 let lastT=0,acc=0;
 function frame(ts){
   requestAnimationFrame(frame);
-  if(cineActive()){lastT=ts;return;}                  // a cinematic owns the screen (and has paused the match): spend nothing on the game canvas
   if(Q.fps&&ts-lastT<1000/Q.fps-1.5)return;           // battery saver: render at most 30 fps (the sim keeps its own fixed step)
   qualityFrame(ts-lastT);
   const dt=Math.min(0.1,(ts-lastT)/1000||0.016);lastT=ts;
@@ -243,7 +242,7 @@ function frame(ts){
   frameBody(dt,ts/1000);
 }
 function frameBody(dt,t){
-  if(G.camp&&G.camp.hold)acc=0;   // a blocking campaign cinematic holds the world (step() also returns early): no catch-up burst after the resume
+  if(G.camp&&G.camp.hold)acc=0;   // a blocking campaign dispatch card holds the world (step() also returns early): no catch-up burst after the resume
   else if(!G.paused&&(!G.over||G.time-G.overT<3)){acc+=dt*G.speed;let n=0;while(acc>=TICK&&n<14){step();acc-=TICK;n++;}if(n>=14)acc=0;}
   if(Math.abs(cam.tz-cam.z)>0.002)setZoom(cam.z+(cam.tz-cam.z)*Math.min(1,dt*12),ui.zx,ui.zy);
   if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);touchUpdate(dt);if(ui.place)updatePlaceGhost();}
@@ -251,14 +250,14 @@ function frameBody(dt,t){
   terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
   render(t,dt);drawMinimap();fpsOverlay(dt);
   if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof resumeTick==='function')resumeTick(dt);if(typeof campUiTick==='function')campUiTick(dt);
-    if(ui.endRes&&performance.now()>ui.endAt)showEnd();}
+    if(ui.endRes&&performance.now()>ui.endAt&&!(G.camp&&G.camp.hold))showEnd();}   // a held dispatch card is read first, then the debrief
 }
 
 /* -------------------------------- boot ---------------------------------- */
 function boot(){
   cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
-  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();cineInit();campInit();soundLabInit();ui.inWin=true;
+  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();campInit();soundLabInit();ui.inWin=true;
   if(window.ResizeObserver){const ro=new ResizeObserver(()=>{sizeMinimap();measureHud();});ro.observe($('top'));ro.observe($('bottom'));ro.observe($('mmWrap'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
@@ -268,5 +267,5 @@ if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
-  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,cinePlay,cineStop,cineActive,cineFrame,cineExport,cineGallery,cineDuration,speak,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,cineSfx,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents,AUD,MUSIC,MUSIC_DATA,MOTIF,musicInfo,musicState,musicRestore,musicRegister};}
+  get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,drawPortrait,PORTRAIT_PAINT,speak,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,cineSfx,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents,AUD,MUSIC,MUSIC_DATA,MOTIF,musicInfo,musicState,musicRestore,musicRegister};}
 boot();

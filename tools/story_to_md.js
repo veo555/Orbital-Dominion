@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Story data -> screenplay and campaign document (docs/story/SCRIPT.md).
+/* Story data -> script and campaign document (docs/story/SCRIPT.md).
      node tools/story_to_md.js                 # write docs/story/SCRIPT.md
      node tools/story_to_md.js --stdout        # print instead of writing
      node tools/story_to_md.js --out <file>    # write somewhere else
@@ -7,9 +7,8 @@
      node tools/story_to_md.js --story <file>  # render another story module, e.g. tests/fixtures/story_min.js (prints unless --out)
    The data is loaded exactly as tools/validate_story.js loads it (tests/sim/storylib.js: same files, same vocabulary).
    Deterministic: no clock, no randomness. The header carries a SHA-1 fingerprint of the source files, so a stale copy shows.
-   Dialogue and radio text are printed verbatim. Action lines paraphrase the props, fx, actor and camera data: they describe
-   the staging and add no story. Timecodes are film time (m:ss.t from the start of each film).
-   Contract: docs/CAMPAIGN_SPEC.md, docs/CINEMATIC_SPEC.md, src/js/43_vocab.js. */
+   Dispatch and radio text are printed verbatim, in order (headings are datelines). v4.0: there are no films any more, so there is no staging.
+   Contract: docs/CAMPAIGN_SPEC.md, docs/DISPATCH_SPEC.md, src/js/43_vocab.js. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -80,10 +79,9 @@ function colourWord(hex) {
 /* ---------------------------------------------------------------- vocabulary names */
 const UDEF = V.UDEF || {}, BDEF = V.BDEF || {}, TECH = V.TECH || {}, FACTIONS = V.FACTIONS || {};
 const MUSIC = V.MUSIC_CUES || {};
-const LIMITS = (V.CINE_LIMITS && V.CINE_LIMITS.total) || {};
-const KIND_LABEL = { intro: 'Opening film', briefing: 'Briefing', debrief: 'Debrief', interlude: 'Interlude', ending: 'Ending', credits: 'Credits', defeat: 'Defeat film' };
+const KIND_LABEL = { intro: 'Prologue dispatch', briefing: 'Briefing dispatch', debrief: 'Debrief dispatch', interlude: 'Interlude dispatch', ending: 'Ending dispatch', credits: 'Credits', defeat: 'Defeat dispatch' };
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
-const CINE = STORY.cine || {};
+const DISP = STORY.dispatch || {};
 const CH = STORY.characters || {};
 const RADIO = STORY.radio || {};
 const MISSIONS = STORY.missions || [];
@@ -98,32 +96,11 @@ function noun(table, id) {
 const facName = f => esc((FACTIONS[f] && FACTIONS[f].name) || cap(String(f || '')));
 const facAdj = f => esc(cap(String(f || '')));
 const placeName = id => { const p = PLACES.find(x => x.id === id); return p ? p.name : (id || ''); };
-const PLANET_WORD = { azure: 'blue', ember: 'ember-red', verdant: 'green', ice: 'ice-white', ashen: 'ash-grey', violet: 'violet' };
-const NEBULA_WORD = { blue: 'blue', red: 'red', teal: 'teal', violet: 'violet', gold: 'gold' };
-const BIOME_NAME = { dust: 'dust flats', crystal: 'crystal fields', ash: 'ash plain', green: 'green meadow', ice: 'ice shelf' };
-const TIME_NAME = { day: 'day', dusk: 'dusk', night: 'night', dawn: 'dawn' };
-const HALL_STYLE = { meridian: 'steel', obsidian: 'black-glass', aurora: 'pale-glass', forbidden: 'sealed' };
-const HALL_LIGHT = { cold: 'cold', warm: 'warm', blood: 'blood-red' };
-const VIEW_HEAD = { space: 'VIEW: SPACE', planet: 'VIEW: PLANET', array: 'VIEW: THE ARRAY' };
-const VIEW_SAY = { space: 'Stars move past the viewport.', planet: 'A planet turns beneath the viewport.', array: 'The Array shows in the viewport.', none: 'The viewport is dark.' };
-const FEATURE_SAY = { hub: 'a Command Hub', generators: 'generators', crystals: 'crystal clusters', geyser: 'an ether geyser', wreck: 'a wrecked hull', dunes: 'dunes', cliffs: 'cliffs', towers: 'watch towers', banners: 'banners', tents: 'tents' };
-const CLS_NAME = { dropship: 'dropship', frigate: 'frigate', carrier: 'carrier', shuttle: 'shuttle', wreck: 'wrecked hull' };
 const EDGE_NAME = { N: 'north', E: 'east', S: 'south', W: 'west' };
 const HERO_POLICY = { none: 'no hero (locked for this mission)', available: 'the hero can be trained at the Hub', start: 'the hero stands at the Hub from the start' };
-const EASE_WORD = { lin: 'at a steady pace', in: 'easing in', out: 'easing out', inout: 'easing in and out' };
 const MARK_SAY = { 'scar-l': 'left-cheek scar', tattoo: 'tattoo', 'glow-eye': 'glowing eye', mask: 'mask', visor: 'visor', halo: 'halo', cracks: 'cracked plating' };
 const EXPR_WORD = { smile: 'smiling', smirk: 'smirking', laugh: 'laughing', shock: 'shocked', angry: 'angry', sad: 'sad', scared: 'scared',
   cold: 'cold', weary: 'weary', determined: 'determined' };
-/* per prop kind: [one, many, timed one, timed many] verbs */
-const VERBS = {
-  beacon: ['glows', 'line', 'lights up', 'light up'], banner: ['hangs', 'hang', 'appears', 'appear'], building: ['stands', 'stand', 'appears', 'appear'],
-  unit: ['stands', 'stand', 'appears', 'appear'], crystal: ['glints', 'glint', 'appears', 'appear'], crowd: ['gathers', 'gather', 'gathers', 'gather'],
-  holo: ['floats', 'float', 'appears', 'appear'], ship: ['hangs', 'hang', 'appears', 'appear'], station: ['turns', 'turn', 'appears', 'appear'],
-  planet: ['hangs', 'hang', 'rises', 'rise'], moon: ['hangs', 'hang', 'rises', 'rise'], array: ['stands', 'stand', 'appears', 'appear']
-};
-const AMBIENT = new Set(['stars', 'dust', 'embers', 'rain', 'snow', 'smoke', 'heat', 'scan']);
-const ONESHOT = new Set(['flare', 'pulse', 'sparks', 'explosion', 'rings', 'beam', 'lightning', 'glitch', 'shake', 'comets']);
-
 /* ---------------------------------------------------------------- people */
 const charOf = id => (id && CH[id]) || null;
 const narratorKey = Object.keys(CH).find(k => CH[k] && CH[k].role === 'narrator') || null;
@@ -134,53 +111,6 @@ function spk(who) {
 }
 const isStatus = c => !!(c && /rule-based/i.test(c.title || ''));
 const resolveWho = who => (who === 'narrator' ? narratorKey : who);
-
-/* ---------------------------------------------------------------- positions, colour, camera */
-const hPos = x => (x < -0.02 ? 'off the left edge' : x < 0.2 ? 'far left' : x < 0.4 ? 'left of centre' : x <= 0.6 ? 'centre'
-  : x < 0.8 ? 'right of centre' : x <= 1.02 ? 'far right' : 'off the right edge');
-const vPos = y => (y < 0.2 ? 'high' : y < 0.4 ? 'upper' : y <= 0.6 ? 'mid-height' : y < 0.8 ? 'low' : y <= 1 ? 'near the bottom' : 'below the frame');
-const where = (x, y) => {
-  const h = hPos(x), v = vPos(y);
-  if (h === 'centre') return v === 'mid-height' ? 'centre' : 'centre, ' + v;
-  return v === 'mid-height' ? h : h + ', ' + v;
-};
-const posOf = arr => (Array.isArray(arr) ? where(num(arr[0], 0.5), num(arr[1], 0.5)) : 'centre');
-const fxPos = f => (f.x == null && f.y == null ? 'the centre of the frame' : where(num(f.x, 0.5), num(f.y, 0.5)));
-const framing = h => (h >= 0.8 ? 'close-up' : h >= 0.5 ? 'medium shot' : 'distant');
-const dirOf = a => (a.face === 'l' ? 'left' : 'right');
-function actorDesc(a) {
-  const bits = [framing(num(a.h, 0.8))];
-  if (a.expr && a.expr !== 'neutral' && a.expr !== 'talk') bits.push(EXPR_WORD[a.expr] || a.expr);
-  const mode = { silhouette: 'in silhouette', shadow: 'in shadow with glowing eyes', hologram: 'as a flickering hologram' }[a.mode];
-  if (mode) bits.push(mode);
-  return bits.join(', ');
-}
-const zoomWord = z => (z < 0.9 ? 'wide' : z < 1.3 ? 'medium' : z < 2 ? 'close' : 'tight close-up');
-const r2 = x => String(Math.round(num(x, 1) * 100) / 100);
-function cameraSay(cam) {
-  if (!cam || !cam.from || !cam.to) return 'Camera: the default slow push-in over the scene.';
-  const f = cam.from, t = cam.to;
-  const dz = num(t.z, 1) - num(f.z, 1), dx = num(t.x, 0.5) - num(f.x, 0.5), dy = num(t.y, 0.5) - num(f.y, 0.5), dr = num(t.r, 0) - num(f.r, 0);
-  const parts = [];
-  if (Math.abs(dz) >= 0.03) parts.push(dz > 0 ? 'pushes in' : 'pulls back');
-  if (Math.abs(dx) >= 0.03) parts.push(dx > 0 ? 'drifts right' : 'drifts left');
-  if (Math.abs(dy) >= 0.03) parts.push(dy > 0 ? 'tilts down' : 'tilts up');
-  if (Math.abs(dr) >= 0.02) {
-    const d = Math.round(Math.abs(dr) * 180 / Math.PI);
-    parts.push(`rolls ${dr > 0 ? 'clockwise' : 'anticlockwise'} ${d} ${d === 1 ? 'degree' : 'degrees'}`);
-  }
-  const ease = cam.ease && EASE_WORD[cam.ease] ? ', ' + EASE_WORD[cam.ease] : '';
-  if (!parts.length) return `Camera holds on a ${zoomWord(num(f.z, 1))} shot.`;
-  const zoomNote = Math.abs(dz) >= 0.03 ? ` (zoom ${r2(f.z)} to ${r2(t.z)})` : '';
-  return `Camera ${parts.join(', ')}${ease}${zoomNote}.`;
-}
-function transSay(tr) {
-  if (!tr) return '';
-  const bits = [];
-  if (tr.in && tr.in !== 'cut') bits.push(`opens ${tr.in}${tr.len ? ' (' + sec(tr.len) + ')' : ''}`);
-  if (tr.out && tr.out !== 'cut') bits.push(`closes ${tr.out}${tr.len ? ' (' + sec(tr.len) + ')' : ''}`);
-  return bits.join(', ');
-}
 
 /* ---------------------------------------------------------------- conditions and actions in words */
 const CMP_WORD = { '<': 'fewer than', '<=': 'at most', '==': 'exactly', '>=': 'at least', '>': 'more than', '!=': 'not' };
@@ -256,7 +186,7 @@ function actSay(a, ctx) {
   const op = a[0], b = a.slice(1);
   switch (op) {
     case 'radio': return `play radio line ${code(b[0])}`;
-    case 'cine': return `play the film ${code(b[0])} (the game waits for it)`;
+    case 'dispatch': return `show the dispatch card ${code(b[0])} (the game waits for it)`;
     case 'obj': return (b[1] === 'show' ? 'show ' : b[1] === 'done' ? 'complete ' : 'fail ') + objQuote(b[0], ctx);
     case 'flag': return `${b[1] ? 'set' : 'clear'} the flag ${code(b[0])}`;
     case 'spawn': {
@@ -295,297 +225,80 @@ function repeatSay(t) {
   return 'every time its condition holds';
 }
 
-/* ---------------------------------------------------------------- scene settings (background, props, fx) */
-function bgSay(bg) {
-  switch (bg.k) {
-    case 'space': return bg.nebula && bg.nebula !== 'none' ? `Stars surround a ${NEBULA_WORD[bg.nebula] || esc(bg.nebula)} nebula.` : 'Stars, and nothing else.';
-    case 'planet': return `A ${PLANET_WORD[bg.planet] || 'distant'} planet fills the view${bg.rings ? ', ringed' : ''}${bg.moons ? (bg.moons === 1 ? ', with a moon' : `, with ${bg.moons} moons`) : ''}.`;
-    case 'orbit': return `A ${PLANET_WORD[bg.planet] || 'distant'} world fills the lower frame, its ${esc(bg.limb || 'bottom')} limb lit${bg.station ? ', and an orbital station turns above it' : ''}${bg.ships ? `; ${bg.ships === 1 ? 'one ship hangs' : bg.ships + ' ships hang'} in the dark` : ''}.`;
-    case 'surface': {
-      const f = (bg.features || []).map(x => FEATURE_SAY[x] || esc(x));
-      return cap(`${BIOME_NAME[bg.biome] || 'open ground'}.`) + (f.length ? ` ${cap(listJoin(f))} in view.` : '');
-    }
-    case 'base': return { calm: 'Its lights are steady.', siege: 'Its walls take fire, and smoke climbs past them.', ruined: 'Half its walls are gone; the lights that remain flicker.', celebration: 'Banners and bunting hang from its gates.' }[bg.state] || '';
-    case 'bridge': return `The bridge is ${bg.alert ? 'on alert, lit red' : 'quiet, its consoles steady'}. ${VIEW_SAY[bg.view] || ''}`.trim();
-    case 'hall': return `A ${HALL_STYLE[bg.style] || 'great'} hall, lit ${HALL_LIGHT[bg.light] || 'dimly'}.`;
-    case 'battlefield': {
-      const it = num(bg.intensity, 0.5), sides = bg.sides || [];
-      return `${facAdj(sides[0])} and ${facAdj(sides[1])} forces fight over ${BIOME_NAME[bg.biome] || 'open ground'}; the fighting is ${it < 0.3 ? 'light' : it < 0.6 ? 'steady' : 'heavy'}.`;
-    }
-    case 'ruins': return `Ruins stand on ${BIOME_NAME[bg.biome] || 'open ground'}.`;
-    case 'array': return { dormant: 'The Array sits dark.', charging: 'Energy gathers in the Array.', firing: 'The Array fires.', broken: 'The Array is broken and dark.' }[bg.state] || 'The Array is in view.';
-    case 'void': return `Empty dark${colourWord(bg.tint) && colourWord(bg.tint) !== 'black' ? ', tinted ' + colourWord(bg.tint) : ''}${num(bg.glow, 0) > 0.3 ? ', with a faint glow' : ''}.`;
-    case 'map': {
-      const c = {};
-      for (const m of bg.marks || []) c[m.k] = (c[m.k] || 0) + 1;
-      const parts = Object.keys(c).map(k => `${c[k]} ${esc(k)}`);
-      return `A tactical display${parts.length ? ', marked ' + listJoin(parts) : ''}.`;
-    }
-    default: return '';
-  }
-}
-function sceneHead(bg, place) {
-  const T = TIME_NAME[bg.time] ? ' — ' + TIME_NAME[bg.time].toUpperCase() : '';
-  const P = place ? esc(place).toUpperCase() : '';
-  const B = BIOME_NAME[bg.biome] ? ' — ' + BIOME_NAME[bg.biome].toUpperCase() : '';
-  switch (bg.k) {
-    case 'space': return 'EXT. DEEP SPACE' + (bg.nebula && bg.nebula !== 'none' ? ' — ' + (NEBULA_WORD[bg.nebula] || esc(bg.nebula)).toUpperCase() + ' NEBULA' : '');
-    case 'planet': return 'EXT. ORBIT — ' + (PLANET_WORD[bg.planet] || 'DISTANT').toUpperCase() + ' WORLD' + (bg.rings ? ', RINGED' : '');
-    case 'orbit': return 'EXT. ORBIT — ' + (PLANET_WORD[bg.planet] || 'DISTANT').toUpperCase() + ' WORLD';
-    case 'surface': return 'EXT. ' + (P || (BIOME_NAME[bg.biome] || 'GROUND').toUpperCase()) + (P ? B : '') + T;
-    case 'base': return `EXT. ${facAdj(bg.faction).toUpperCase()} BASE${bg.state === 'siege' ? ', UNDER SIEGE' : bg.state === 'ruined' ? ', RUINED' : bg.state === 'celebration' ? ', CELEBRATING' : ''}${T}`;
-    case 'bridge': return `INT. ${facAdj(bg.faction).toUpperCase()} BRIDGE — ${bg.alert ? 'ALERT' : 'STANDING WATCH'}${VIEW_HEAD[bg.view] ? ' — ' + VIEW_HEAD[bg.view] : ''}`;
-    case 'hall': return `INT. ${(HALL_STYLE[bg.style] || 'GREAT').toUpperCase()} HALL — ${(HALL_LIGHT[bg.light] || 'DIM').toUpperCase()} LIGHT`;
-    case 'battlefield': return 'EXT. BATTLEFIELD' + (P ? ' — ' + P : '') + B + T;
-    case 'ruins': return 'EXT. RUINS' + (P ? ' — ' + P : '') + B + T;
-    case 'array': return 'EXT. THE ARRAY — ' + esc(String(bg.state || 'idle')).toUpperCase();
-    case 'void': return 'THE VOID' + (colourWord(bg.tint) && colourWord(bg.tint) !== 'black' ? ' — ' + colourWord(bg.tint).toUpperCase() : '');
-    case 'map': return 'INT. TACTICAL DISPLAY' + (bg.faction ? ' — ' + facAdj(bg.faction).toUpperCase() + ' VIEW' : '');
-    default: return 'EXT. ' + esc(String(bg.k || 'UNKNOWN')).toUpperCase();
-  }
-}
-const propKey = p => [p.k, p.faction, p.type, p.cls, p.shape, p.planet, p.col].map(x => (x == null ? '' : x)).join('|');
-function propNoun(p) {
-  const col = colourWord(p.col), fa = p.faction && !/^hero_/.test(p.type || '') ? facAdj(p.faction) + ' ' : '';
-  const withFa = w => ({ s: fa + w.s, p: fa + w.p });
-  switch (p.k) {
-    case 'ship': { const w = esc(CLS_NAME[p.cls] || p.cls || 'ship'); return withFa({ s: w, p: plural(w) }); }
-    case 'unit': return withFa(noun(UDEF, p.type));
-    case 'building': return withFa(noun(BDEF, p.type));
-    case 'beacon': return { s: (col ? col + ' ' : '') + 'beacon', p: (col ? col + ' ' : '') + 'beacons' };
-    case 'banner': return withFa({ s: 'banner', p: 'banners' });
-    case 'crowd': return withFa({ s: 'crowd', p: 'crowds' });
-    case 'crystal': return { s: (col ? col + ' ' : '') + 'crystal cluster', p: (col ? col + ' ' : '') + 'crystal clusters' };
-    case 'holo': { const sh = esc(p.shape || 'sigil'); return { s: 'holographic ' + sh, p: 'holographic ' + plural(sh) }; }
-    case 'station': return { s: 'orbital station', p: 'orbital stations' };
-    case 'planet': return { s: (PLANET_WORD[p.planet] || 'distant') + ' planet', p: (PLANET_WORD[p.planet] || 'distant') + ' planets' };
-    case 'moon': return { s: 'moon', p: 'moons' };
-    case 'array': return { s: 'Array', p: 'Arrays' };
-    default: { const w = esc(p.k || 'object'); return { s: w, p: plural(w) }; }
-  }
-}
-const isMoving = p => Array.isArray(p.from) && Array.isArray(p.to);
-const pt0 = p => num(p.t0, 0);
-/* "from A to B", saying the shared height once when both ends sit at the same height */
-const fromTo = (a, b) => (vPos(num(a[1], 0.5)) === vPos(num(b[1], 0.5))
-  ? `from ${hPos(num(a[0], 0.5))} to ${hPos(num(b[0], 0.5))}, ${vPos(num(a[1], 0.5))}`
-  : `from ${posOf(a)} to ${posOf(b)}`);
-function spreadPhrase(items, timed) {
-  const pts = items.map(p => (Array.isArray(p.at) ? p.at : [0.5, 0.5]));
-  const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
-  const minx = Math.min(...xs), maxx = Math.max(...xs), avgy = ys.reduce((a, b) => a + b, 0) / ys.length;
-  const mid = posOf([(minx + maxx) / 2, avgy]);
-  if (timed) {
-    const f = pts[0], l = pts[pts.length - 1];
-    return hPos(f[0]) === hPos(l[0]) ? `in turn, at ${mid}` : `in turn, ${fromTo(f, l)}`;
-  }
-  if (maxx - minx < 0.12) return `in a cluster at ${mid}`;
-  if (Math.min(...ys) > 0.75 && maxx - minx > 0.25) return `along the bottom edge, from ${hPos(minx)} to ${hPos(maxx)}`;
-  const L = pts.reduce((a, b) => (b[0] < a[0] ? b : a)), R = pts.reduce((a, b) => (b[0] > a[0] ? b : a));
-  return hPos(L[0]) === hPos(R[0]) ? `in a row at ${mid}` : `in a row, ${fromTo(L, R)}`;
-}
-function staticSentence(items, timed) {
-  const n0 = items[0], nn = propNoun(n0), v = VERBS[n0.k] || ['is', 'are', 'appears', 'appear'];
-  if (items.length === 1) return cap(artFor(nn.s)) + ' ' + (timed ? v[2] : v[0]) + ' at ' + posOf(n0.at) + '.';
-  const cnt = NUMW[items.length] || String(items.length);
-  return `${cap(cnt)} ${nn.p} ${timed ? v[3] : v[1]} ${spreadPhrase(items, timed)}.`;
-}
-function groupStatics(list) {
-  const map = new Map();
-  for (const p of list) { const k = propKey(p); if (!map.has(k)) map.set(k, []); map.get(k).push(p); }
-  return [...map.values()]
-    .map(items => { items.sort((a, b) => pt0(a) - pt0(b)); return { t0: pt0(items[0]), items }; })
-    .sort((a, b) => a.t0 - b.t0);
-}
-function movingSay(p, t0, t1) {
-  const subj = cap(artFor(propNoun(p).s));
-  const dx = p.to[0] - p.from[0], dy = p.to[1] - p.from[1], dur = t1 - t0;
-  const span = dur > 0.5 ? ' over ' + sec(dur) : '';
-  const ease = p.ease && EASE_WORD[p.ease] ? ', ' + EASE_WORD[p.ease] : '';
-  if (Math.hypot(dx, dy) < 0.03) return `${subj} holds position at ${posOf(p.from)}${span}.`;
-  if (hPos(p.from[0]) === hPos(p.to[0]) && vPos(p.from[1]) === vPos(p.to[1])) return `${subj} drifts slightly within ${posOf(p.from)}${span}${ease}.`;
-  const verb = Math.abs(dx) >= Math.abs(dy) ? 'crosses' : dy > 0 ? 'descends' : 'climbs';
-  return `${subj} ${verb} ${fromTo(p.from, p.to)}${span}${ease}.`;
-}
-function ambientSay(f) {
-  const c = colourWord(f.col) ? colourWord(f.col) + ' ' : '';
-  const s = { stars: 'stars fill the frame.', dust: 'dust drifts through the light.', embers: 'embers rise through the air.', rain: 'rain falls.',
-    snow: 'snow falls.', smoke: 'smoke drifts across the scene.', heat: 'heat haze shimmers over the ground.', scan: 'scan lines run across the picture.' }[f.k];
-  return cap(c + (s || f.k + ' effect.'));
-}
-function ambientBegin(f) {
-  const c = colourWord(f.col) ? colourWord(f.col) + ' ' : '';
-  const s = { stars: 'the stars come out', dust: 'dust starts to drift', embers: 'embers start to rise', rain: 'rain starts to fall', snow: 'snow starts to fall',
-    smoke: 'smoke starts to drift', heat: 'heat haze starts to shimmer', scan: 'scan lines start to run' }[f.k];
-  return cap(c + (s || f.k + ' starts') + '.');
-}
-function fxSay(f) {
-  const c = colourWord(f.col) ? colourWord(f.col) + ' ' : '';
-  const at = 'at ' + fxPos(f);
-  switch (f.k) {
-    case 'flare': return cap(`${c}flare blooms ${at}.`);
-    case 'pulse': return cap(`${c}pulse radiates ${at}.`);
-    case 'sparks': return cap(`sparks spit ${at}.`);
-    case 'explosion': return cap(`an explosion blooms ${at}.`);
-    case 'rings': return cap(`${c}rings ripple out ${at}.`);
-    case 'beam': return f.to ? cap(`${c}beam runs from ${fxPos(f)} to ${posOf(f.to)}.`) : cap(`${c}beam fires ${at}.`);
-    case 'comets': return f.to ? cap(`comets streak from ${fxPos(f)} to ${posOf(f.to)}.`) : cap(`comets streak ${at}.`);
-    case 'lightning': return 'Lightning forks across the sky.';
-    case 'glitch': return 'The picture glitches.';
-    case 'shake': return 'The camera shakes.';
-    default: return cap(`${esc(f.k)} effect ${at}.`);
-  }
-}
-function actorTag(a) {
-  return `${spk(a.char).name} (${actorDesc(a)}) is at ${posOf(a.at)}, facing ${dirOf(a)}.`;
-}
-/* the timed beats of one scene, in scene time: actors, moving or timed props, fx, sound, title, dialogue */
-function sceneBeats(s, dur) {
-  const B = [];
-  const add = (t, text, kind) => B.push({ t: num(t, 0), i: B.length, text, kind: kind || 'action' });
-  for (const a of s.actors || []) {
-    const sp = spk(a.char), t0 = num(a.t0, 0), t1 = num(a.t1, dur);
-    if (t0 > 0.05) add(t0, `${sp.name} enters at ${posOf(a.at)}, ${actorDesc(a)}, facing ${dirOf(a)}.`);
-    if (a.move && Array.isArray(a.move.to)) {
-      const mt = num(a.move.t0, t0);
-      const span = num(a.move.t1, NaN);
-      const over = isFinite(span) && span > mt ? ' over ' + sec(span - mt) : '';
-      const ease = a.move.ease && EASE_WORD[a.move.ease] ? ', ' + EASE_WORD[a.move.ease] : '';
-      add(mt, `${sp.name} moves to ${posOf(a.move.to)}${over}${ease}.`);
-    }
-    if (t1 < dur - 0.05) add(t1, `${sp.name} leaves the frame.`);
-  }
-  const timed = [];
-  for (const p of s.props || []) {
-    const t0 = pt0(p), t1 = num(p.t1, dur);
-    if (isMoving(p)) add(t0, movingSay(p, t0, t1));
-    else if (t0 > 0.05) timed.push(p);
-  }
-  for (const g of groupStatics(timed)) add(g.t0, staticSentence(g.items, true));
-  for (const f of s.fx || []) {
-    const t0 = num(f.t0, 0);
-    if (f.k === 'vignette') continue;
-    if (AMBIENT.has(f.k)) { if (t0 > 0.05) add(t0, ambientBegin(f)); }
-    else if (ONESHOT.has(f.k)) add(t0, fxSay(f));
-    else add(t0, cap(esc(f.k)) + ' begins.');
-  }
-  for (const x of s.sfx || []) add(x.t, `*Sound: ${esc(x.name)}.*`, 'sfx');
-  if (s.title && s.title.text) add(s.title.t0, `**Title card:** ${esc(s.title.text)}${s.title.sub ? ' — ' + esc(s.title.sub) : ''}.`, 'title');
-  (s.lines || []).forEach((ln, li) => B.push({ t: num(ln.t, 0), i: 100000 + li, line: ln, kind: 'line' }));
-  B.sort((a, b) => (a.t - b.t) || (a.i - b.i));
-  return B;
-}
-function lineCue(ln, present) {
+/* ---------------------------------------------------------------- dispatches */
+function lineCue(ln) {
   const st = ln.style || 'normal', sp = spk(ln.who), bits = [];
   if (st === 'narration' || sp.vo) bits.push('V.O.');
   else if (st === 'radio') bits.push('over radio');
   else if (st === 'thought') bits.push('thinking');
   else if (st === 'whisper') bits.push('whispering');
   else if (st === 'shout') bits.push('shouting');
-  else if (!present.has(ln.who)) bits.push('O.S.');
   if (st !== 'narration' && ln.expr && ln.expr !== 'neutral' && ln.expr !== 'talk') bits.push(EXPR_WORD[ln.expr] || ln.expr);
   if (isStatus(sp.c) && st === 'normal') bits.push('status line');
   return `**${sp.name}**` + (bits.length ? ' *(' + bits.join(', ') + ')*' : '');
-}
-/* one scene: heading, meta, establishing paragraphs, timed beats (film time) */
-function sceneDoc(s, idx, start, place) {
-  const dur = num(s.dur, 0), end = start + dur, out = [];
-  out.push(`**${idx + 1}. ${sceneHead(s.bg || {}, place)}**`);
-  const meta = [code(s.id), `${tc(start)}–${tc(end)} (${sec(dur)})`];
-  if (s.music) meta.push('music: ' + esc(s.music.cue) + (s.music.section != null ? ' from section ' + s.music.section : ''));
-  const tr = transSay(s.trans);
-  if (tr) meta.push(tr);
-  out.push('*' + meta.join(' · ') + '*');
-  const present = new Set((s.actors || []).map(a => a.char));
-  const opening = [bgSay(s.bg || {})];
-  const statics0 = (s.props || []).filter(p => !isMoving(p) && pt0(p) <= 0.05);
-  for (const g of groupStatics(statics0)) opening.push(staticSentence(g.items, false));
-  for (const f of s.fx || []) if (AMBIENT.has(f.k) && num(f.t0, 0) <= 0.05) opening.push(ambientSay(f));
-  const establishing = opening.filter(Boolean).join(' ');
-  if (establishing) out.push(establishing);
-  const onCam = (s.actors || []).filter(a => num(a.t0, 0) <= 0.05).map(actorTag);
-  if (onCam.length) out.push(onCam.join(' '));
-  out.push('*' + cameraSay(s.cam) + '*');
-  for (const b of sceneBeats(s, dur)) {
-    if (b.kind === 'line') {
-      out.push('`' + tc(start + b.t) + '` ' + lineCue(b.line, present));
-      out.push(esc(b.line.text));
-    } else out.push('`' + tc(start + b.t) + '` ' + b.text);
-  }
-  return out;
 }
 function musicWord(cue) {
   const m = MUSIC[cue];
   return esc(cue) + (m ? ` (${m.loop ? 'loops' : 'plays once'}, nominal ${m.len} s)` : ' (not in MUSIC_CUES)');
 }
-function filmStats(id) {
-  const c = CINE[id], sc = Array.isArray(c.scenes) ? c.scenes : [];
-  return {
-    runtime: sumBy(sc, s => num(s.dur, 0)), scenes: sc.length,
-    lines: sumBy(sc, s => (s.lines || []).length), words: sumBy(sc, s => sumBy(s.lines || [], l => words(l.text)))
-  };
+function dispatchStats(id) {
+  const c = DISP[id], ls = (Array.isArray(c.lines) ? c.lines : []).filter(l => l.style !== 'heading');
+  return { lines: ls.length, words: sumBy(ls, l => words(l.text)) };
 }
-/* a whole film as paragraphs; `level` is the heading depth, `flow` says when it plays */
-function filmDoc(id, level, flow, place) {
-  const c = CINE[id], out = [], st = filmStats(id), lim = LIMITS[c.kind];
+/* a whole dispatch: every line in order, verbatim; `level` is the heading depth, `flow` says when it is shown */
+function dispatchDoc(id, level, flow) {
+  const c = DISP[id], out = [], st = dispatchStats(id);
   out.push('#'.repeat(level) + ' ' + `${KIND_LABEL[c.kind] || esc(c.kind)} — "${esc(c.title)}" ${code(id)}`);
   if (flow) out.push(esc(flow));
-  out.push('*' + [tc(st.runtime) + ' runtime', counted(st.scenes, 'scene', 'scenes'), counted(st.lines, 'line', 'lines') + ', ' + st.words + ' words',
-    'music: ' + musicWord(c.music), lim ? 'kind limit ' + lim[0] + '–' + lim[1] + ' s' : null].filter(Boolean).join(' · ') + '*');
-  if (c.kind === 'intro') out.push('*FADE IN.*');
-  let t = 0;
-  (Array.isArray(c.scenes) ? c.scenes : []).forEach((s, i) => {
-    out.push(...sceneDoc(s, i, t, place));
-    t += num(s.dur, 0);
-  });
-  if (c.kind === 'ending' || c.kind === 'credits') out.push('*FADE OUT.*');
-  if (c.kind === 'credits') out.push('**THE END**');
+  out.push('*' + [counted(st.lines, 'line', 'lines') + ', ' + st.words + ' words', c.mood ? 'mood: ' + musicWord(c.mood) : null].filter(Boolean).join(' · ') + '*');
+  for (const ln of Array.isArray(c.lines) ? c.lines : []) {
+    if (ln.style === 'heading') out.push('**' + esc(ln.text) + '**');
+    else { out.push(lineCue(ln)); out.push(esc(ln.text)); }
+  }
   return out;
 }
 
-/* ---------------------------------------------------------------- film placement in the campaign flow */
+/* ---------------------------------------------------------------- dispatch placement in the campaign flow */
 const HEADS = [];
 const H = (level, text) => { HEADS.push({ level, text }); return '#'.repeat(level) + ' ' + text; };
-const filmIds = Object.keys(CINE);
-const kindOf = id => (CINE[id] ? CINE[id].kind : null);
+const filmIds = Object.keys(DISP);
+const kindOf = id => (DISP[id] ? DISP[id].kind : null);
 const docOrder = [], placed = {};
-const addFilm = (id, slot, mission) => { if (!id || !CINE[id] || placed[id]) return; placed[id] = { slot, mission }; docOrder.push(id); };
-filmIds.filter(id => kindOf(id) === 'intro').forEach(id => addFilm(id, 'opening', null));
+const addDispatch = (id, slot, mission) => { if (!id || !DISP[id] || placed[id]) return; placed[id] = { slot, mission }; docOrder.push(id); };
+filmIds.filter(id => kindOf(id) === 'intro').forEach(id => addDispatch(id, 'opening', null));
 for (const m of MISSIONS) {
-  addFilm(m.briefing, 'briefing', m);
-  addFilm(m.debrief, 'debrief', m);
-  if (m.after && kindOf(m.after) !== 'ending') addFilm(m.after, 'after', m);
-  addFilm(m.defeat, 'defeat', m);
+  addDispatch(m.briefing, 'briefing', m);
+  addDispatch(m.debrief, 'debrief', m);
+  if (m.after && kindOf(m.after) !== 'ending') addDispatch(m.after, 'after', m);
+  addDispatch(m.defeat, 'defeat', m);
 }
-filmIds.filter(id => kindOf(id) === 'ending').forEach(id => addFilm(id, 'ending', null));
-filmIds.filter(id => kindOf(id) === 'credits').forEach(id => addFilm(id, 'credits', null));
+filmIds.filter(id => kindOf(id) === 'ending').forEach(id => addDispatch(id, 'ending', null));
+filmIds.filter(id => kindOf(id) === 'credits').forEach(id => addDispatch(id, 'credits', null));
 const unplaced = filmIds.filter(id => !placed[id]);
 function flowNote(id) {
   const p = placed[id];
   if (!p) return 'Not reached by the campaign flow.';
   switch (p.slot) {
-    case 'opening': return 'Played before Mission 1 when a new campaign starts.';
-    case 'briefing': return `Played before Mission ${p.mission.n}.`;
-    case 'debrief': return `Played after victory in Mission ${p.mission.n}.`;
-    case 'after': return `Played after the debrief of Mission ${p.mission.n}.`;
-    case 'defeat': return `Played when Mission ${p.mission.n} is lost.`;
-    case 'ending': return 'Played after the final debrief.';
-    case 'credits': return 'Played after the ending.';
+    case 'opening': return 'Shown before Mission 1 when a new campaign starts (also from the campaign menu: Read prologue).';
+    case 'briefing': return `Shown before Mission ${p.mission.n}.`;
+    case 'debrief': return `Shown after victory in Mission ${p.mission.n}.`;
+    case 'after': return `Shown after the debrief of Mission ${p.mission.n}.`;
+    case 'defeat': return `Shown when Mission ${p.mission.n} is lost.`;
+    case 'ending': return 'Shown after the final debrief.';
+    case 'credits': return 'Shown after the ending.';
     default: return '';
   }
 }
 
 /* ---------------------------------------------------------------- appearances (cast table and statistics) */
 const appear = {};
-const ap = id => (appear[id] = appear[id] || { first: null, scenes: 0, lines: 0, words: 0, radio: 0, radioWords: 0 });
+const ap = id => (appear[id] = appear[id] || { first: null, lines: 0, words: 0, radio: 0, radioWords: 0 });
 for (const id of docOrder.concat(unplaced)) {
-  for (const s of CINE[id].scenes || []) {
-    for (const a of s.actors || []) { const x = ap(a.char); x.scenes++; if (!x.first) x.first = id; }
-    for (const ln of s.lines || []) {
-      const k = resolveWho(ln.who);
-      if (!k) continue;
-      const x = ap(k); x.lines++; x.words += words(ln.text); if (!x.first) x.first = id;
-    }
+  for (const ln of DISP[id].lines || []) {
+    if (ln.style === 'heading') continue;
+    const k = resolveWho(ln.who);
+    if (!k) continue;
+    const x = ap(k); x.lines++; x.words += words(ln.text); if (!x.first) x.first = id;
   }
 }
 for (const id of Object.keys(RADIO)) {
@@ -616,8 +329,8 @@ function lookSay(c) {
 }
 function screenSay(id) {
   const x = ap(id);
-  if (!x.first) return x.radio ? `never on screen; ${x.radio} radio ${x.radio === 1 ? 'line' : 'lines'}` : 'never on screen and not on the radio';
-  return `first in ${esc(CINE[x.first].title)} ${code(x.first)}; ${counted(x.scenes, 'scene', 'scenes')}, ${counted(x.lines, 'film line', 'film lines')} (${x.words} words), ${counted(x.radio, 'radio line', 'radio lines')}`;
+  if (!x.first) return x.radio ? `no dispatch lines; ${x.radio} radio ${x.radio === 1 ? 'line' : 'lines'}` : 'in no dispatch and not on the radio';
+  return `first in ${esc(DISP[x.first].title)} ${code(x.first)}; ${counted(x.lines, 'dispatch line', 'dispatch lines')} (${x.words} words), ${counted(x.radio, 'radio line', 'radio lines')}`;
 }
 function personEntry(id) {
   const c = CH[id], out = [];
@@ -633,8 +346,8 @@ function personEntry(id) {
     `- **Voice:** ${voiceSay(c.voice)}`,
     `- **Look:** ${lookSay(c)}`,
     `- **Signature line:** “${esc(c.quote)}”`,
-    `- **On screen:** ${screenSay(id)}.`,
-    c.role === 'narrator' ? '- **Speaks as:** NARRATOR (V.O.) in cues, the narrator tag used by the cinematic and radio data.' : null
+    `- **Appears:** ${screenSay(id)}.`,
+    c.role === 'narrator' ? '- **Speaks as:** NARRATOR (V.O.) in cues, the narrator tag used by the dispatch and radio data.' : null
   ].filter(Boolean).join('\n'));
   return out;
 }
@@ -725,8 +438,8 @@ function missionParas(m) {
   out.push(H(3, `Mission ${m.n} — ${esc(m.title)}`));
   out.push(`*${esc(m.subtitle)}*`);
   out.push(esc(m.synopsis));
-  if (m.n === 1) out.push('*A new campaign plays the opening film first (see Opening).*');
-  if (m.briefing && CINE[m.briefing]) out.push(...filmDoc(m.briefing, 4, flowNote(m.briefing), pl));
+  if (m.n === 1) out.push('*A new campaign shows the prologue dispatch first (see Opening).*');
+  if (m.briefing && DISP[m.briefing]) out.push(...dispatchDoc(m.briefing, 4, flowNote(m.briefing), pl));
   out.push(H(4, 'The mission'));
   out.push(table(['Setting', 'Detail'], settingRows(m, ctx)));
   out.push('**Objectives**\n' + ((m.objectives || []).map(o => objectiveBullet(o, ctx)).join('\n') || '- none'));
@@ -737,31 +450,28 @@ function missionParas(m) {
   if ((m.objectives || []).some(o => o.kind === 'primary' && o.fail)) endB.push('- A primary objective that fails also ends the mission in defeat.');
   out.push('**Ending the mission**\n' + endB.join('\n'));
   if ((m.hints || []).length) out.push('**Hints on the briefing card**\n' + m.hints.map(h => '- ' + esc(h)).join('\n'));
-  if (m.debrief && CINE[m.debrief]) out.push(...filmDoc(m.debrief, 4, flowNote(m.debrief), pl));
-  if (m.after && CINE[m.after] && kindOf(m.after) !== 'ending') out.push(...filmDoc(m.after, 4, flowNote(m.after), pl));
+  if (m.debrief && DISP[m.debrief]) out.push(...dispatchDoc(m.debrief, 4, flowNote(m.debrief), pl));
+  if (m.after && DISP[m.after] && kindOf(m.after) !== 'ending') out.push(...dispatchDoc(m.after, 4, flowNote(m.after), pl));
   else if (m.after) out.push(`*Afterwards: the ending (see The ending).*`);
-  else out.push('*No film follows this mission.*');
-  if (m.defeat && CINE[m.defeat]) {
-    if (placed[m.defeat] && placed[m.defeat].mission === m) out.push(...filmDoc(m.defeat, 4, flowNote(m.defeat), pl));
-    else out.push(`*If the mission is lost, the defeat film ${code(m.defeat)} plays (shown under Mission ${placed[m.defeat] && placed[m.defeat].mission ? placed[m.defeat].mission.n : '?'}).*`);
-  } else out.push('*If the mission is lost, the generic retry screen appears (no film).*');
+  else out.push('*No dispatch follows this mission.*');
+  if (m.defeat && DISP[m.defeat]) {
+    if (placed[m.defeat] && placed[m.defeat].mission === m) out.push(...dispatchDoc(m.defeat, 4, flowNote(m.defeat), pl));
+    else out.push(`*If the mission is lost, the defeat dispatch ${code(m.defeat)} is shown (shown under Mission ${placed[m.defeat] && placed[m.defeat].mission ? placed[m.defeat].mission.n : '?'}).*`);
+  } else out.push('*If the mission is lost, the generic retry screen appears (no dispatch).*');
   return out;
 }
 
 /* ---------------------------------------------------------------- statistics and data notes */
 function computeStats() {
-  const S = { films: 0, runtime: 0, scenes: 0, filmLines: 0, filmWords: 0, filmChars: 0, radioLines: 0, radioWords: 0, radioChars: 0,
-    longest: null, shortest: null, byKind: {} };
+  const S = { films: 0, filmLines: 0, filmWords: 0, filmChars: 0, radioLines: 0, radioWords: 0, radioChars: 0, byKind: {} };
   for (const id of filmIds) {
-    const c = CINE[id], st = filmStats(id);
-    S.films++; S.runtime += st.runtime; S.scenes += st.scenes;
-    const k = S.byKind[c.kind] = S.byKind[c.kind] || { films: 0, runtime: 0 };
-    k.films++; k.runtime += st.runtime;
-    for (const s of c.scenes || []) {
-      const d = num(s.dur, 0);
-      if (!S.longest || d > S.longest.d) S.longest = { d, id: s.id, film: id };
-      if (!S.shortest || d < S.shortest.d) S.shortest = { d, id: s.id, film: id };
-      for (const ln of s.lines || []) { S.filmLines++; S.filmWords += words(ln.text); S.filmChars += String(ln.text || '').length; }
+    const c = DISP[id];
+    S.films++;
+    const k = S.byKind[c.kind] = S.byKind[c.kind] || { films: 0, lines: 0 };
+    k.films++;
+    for (const ln of c.lines || []) {
+      if (ln.style === 'heading') continue;
+      S.filmLines++; k.lines++; S.filmWords += words(ln.text); S.filmChars += String(ln.text || '').length;
     }
   }
   for (const id of Object.keys(RADIO)) { const r = RADIO[id]; S.radioLines++; S.radioWords += words(r.text); S.radioChars += String(r.text || '').length; }
@@ -796,14 +506,12 @@ function dataNotes(S) {
   const reusedRadio = Object.keys(S.radioUsed).filter(id => S.radioUsed[id] > 1);
   const offFlow = unplaced;
   const absent = Object.keys(CH).filter(id => CH[id].role !== 'narrator' && !ap(id).first && !ap(id).radio);
-  const overLimit = filmIds.filter(id => { const lim = LIMITS[kindOf(id)], rt = filmStats(id).runtime; return lim && (rt < lim[0] || rt > lim[1]); });
   const list = xs => (xs.length ? xs.map(x => code(x)).join(', ') : 'none');
   out.push(`- **Triggers marked \`optional\`:** ${optional.length ? list(optional) : 'none'}. ${reads ? 'The campaign runtime reads this flag.' : 'The campaign runtime (src/js/45_campaign.js) does not read this flag yet, so it changes nothing in play.'}`);
   out.push(`- **Radio lines no trigger plays:** ${list(unusedRadio)}.`);
   out.push(`- **Radio lines played by more than one trigger (each play repeats the line):** ${list(reusedRadio)}.`);
-  out.push(`- **Films outside their kind's runtime limit:** ${list(overLimit)}.`);
-  out.push(`- **Films not reached by the campaign flow:** ${list(offFlow)}.`);
-  out.push(`- **Characters never on screen or on the radio:** ${list(absent)}.`);
+  out.push(`- **Dispatches not reached by the campaign flow:** ${list(offFlow)}.`);
+  out.push(`- **Characters in no dispatch and not on the radio:** ${list(absent)}.`);
   return out;
 }
 
@@ -816,7 +524,7 @@ body.push('Each entry gives the character brief as recorded in the story data, w
 body.push(...castParas());
 
 body.push(H(2, 'Opening'));
-for (const id of docOrder.filter(x => placed[x] && placed[x].slot === 'opening')) body.push(...filmDoc(id, 3, flowNote(id), null));
+for (const id of docOrder.filter(x => placed[x] && placed[x].slot === 'opening')) body.push(...dispatchDoc(id, 3, flowNote(id), null));
 
 ACTS.forEach((a, i) => {
   body.push(H(2, `Act ${ROMAN[i] || i + 1} — ${esc(a.title)}`));
@@ -829,51 +537,44 @@ ACTS.forEach((a, i) => {
 
 body.push(H(2, 'The ending'));
 const endIds = docOrder.filter(x => placed[x] && placed[x].slot === 'ending');
-if (!endIds.length) body.push('*No ending film is defined.*');
-for (const id of endIds) body.push(...filmDoc(id, 3, flowNote(id), null));
+if (!endIds.length) body.push('*No ending dispatch is defined.*');
+for (const id of endIds) body.push(...dispatchDoc(id, 3, flowNote(id), null));
 
 body.push(H(2, 'Credits'));
 const creditIds = docOrder.filter(x => placed[x] && placed[x].slot === 'credits');
-if (!creditIds.length) body.push('*No credits film is defined.*');
-for (const id of creditIds) body.push(...filmDoc(id, 3, flowNote(id), null));
+if (!creditIds.length) body.push('*No credits dispatch is defined.*');
+for (const id of creditIds) body.push(...dispatchDoc(id, 3, flowNote(id), null));
 
 /* appendices: reference material only, after the credits */
-body.push(H(2, 'Appendix A — Cinematic index'));
-body.push('Every film in the order it appears above, with its runtime checked against the limit for its kind (`CINE_LIMITS.total` in src/js/43_vocab.js).');
+body.push(H(2, 'Appendix A — Dispatch index'));
+body.push('Every dispatch in the order it appears above, with its line and word counts (headings are not counted).');
 {
   const rows = [];
   for (const id of docOrder.concat(unplaced)) {
-    const c = CINE[id], st = filmStats(id), lim = LIMITS[c.kind];
-    const ok = !lim || (st.runtime >= lim[0] && st.runtime <= lim[1]);
-    rows.push([`${esc(c.title)} ${code(id)}`, KIND_LABEL[c.kind] || esc(c.kind), tc(st.runtime), st.scenes, st.lines, st.words,
-      lim ? `${lim[0]}–${lim[1]} s` : '—', ok ? 'yes' : 'NO']);
+    const c = DISP[id], st = dispatchStats(id);
+    rows.push([`${esc(c.title)} ${code(id)}`, KIND_LABEL[c.kind] || esc(c.kind), st.lines, st.words, c.mood ? esc(c.mood) : '—']);
   }
-  body.push(table(['Film', 'Kind', 'Runtime', 'Scenes', 'Lines', 'Words', 'Kind limit', 'Within limit'], rows));
+  body.push(table(['Dispatch', 'Kind', 'Lines', 'Words', 'Mood'], rows));
 }
 
 body.push(H(2, 'Appendix B — Statistics'));
 {
-  const tot = S.runtime;
   const rows = [
-    ['Films (cinematics)', `${S.films}`],
-    ['Total film runtime', `${mss(tot)} (${sec(tot)}); ${S.scenes} scenes, mean ${sec(tot / Math.max(1, S.scenes))}, longest ${sec(S.longest ? S.longest.d : 0)} (${code(S.longest ? S.longest.id : '')}), shortest ${sec(S.shortest ? S.shortest.d : 0)} (${code(S.shortest ? S.shortest.id : '')})`],
-    ['Dialogue lines in films', `${S.filmLines}`],
+    ['Dispatches (text cards)', `${S.films}`],
+    ['Dialogue lines in dispatches', `${S.filmLines}`],
     ['Radio lines (in-mission)', `${S.radioLines}`],
     ['Spoken lines, all', `${S.lines}`],
-    ['Words spoken (films and radio)', `${S.words} (films ${S.filmWords}, radio ${S.radioWords}); counted as tools/validate_story.js --stats counts them`],
-    ['Characters of dialogue (letters, spaces, punctuation)', `${S.chars} (films ${S.filmChars}, radio ${S.radioChars})`],
+    ['Words spoken (dispatches and radio)', `${S.words} (dispatches ${S.filmWords}, radio ${S.radioWords}); counted as tools/validate_story.js --stats counts them`],
+    ['Characters of dialogue (letters, spaces, punctuation)', `${S.chars} (dispatches ${S.filmChars}, radio ${S.radioChars})`],
     ['Cast', `${Object.keys(CH).length} characters: ${S.sides.good} good, ${S.sides.gray} gray, ${S.sides.evil} evil${S.sides.other ? ', ' + S.sides.other + ' other' : ''}`],
     ['Missions and acts', `${MISSIONS.length} missions in ${ACTS.length} acts`],
     ['Objectives', `${S.objTotal}: ${S.objectives.primary} primary, ${S.objectives.bonus} bonus, ${S.objectives.hidden} hidden`],
     ['Triggers', `${S.triggers}, with actions: ${Object.entries(S.actionOps).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ')}`]
   ];
   body.push(table(['Measure', 'Value'], rows));
-  body.push('**Runtime by kind**');
-  const kr = Object.keys(S.byKind).sort().map(k => {
-    const lim = LIMITS[k];
-    return [KIND_LABEL[k] || k, S.byKind[k].films, tc(S.byKind[k].runtime), lim ? `${lim[0]}–${lim[1]} s` : '—'];
-  });
-  body.push(table(['Kind', 'Films', 'Total runtime', 'Limit per film'], kr));
+  body.push('**Lines by kind**');
+  const kr = Object.keys(S.byKind).sort().map(k => [KIND_LABEL[k] || k, S.byKind[k].films, S.byKind[k].lines]);
+  body.push(table(['Kind', 'Dispatches', 'Lines'], kr));
 }
 
 body.push(H(2, 'Appendix C — Data notes'));
@@ -884,11 +585,11 @@ const TITLE = [];
 TITLE.push(`# ${esc(STORY.meta && STORY.meta.title)}`);
 TITLE.push(`*${esc(STORY.meta && STORY.meta.tagline)}*`);
 TITLE.push(`> ${esc(STORY.meta && STORY.meta.logline)}`);
-TITLE.push(`**Campaign script:** the screenplay of every film, the mission book with its radio log, and the statistics. Version ${num(STORY.meta && STORY.meta.version, 1)}, rated ${esc(STORY.meta && STORY.meta.rating)}.`);
+TITLE.push(`**Campaign script:** every dispatch (the text cards that replace the v3 films), the mission book with its radio log, and the statistics. Version ${num(STORY.meta && STORY.meta.version, 1)}, rated ${esc(STORY.meta && STORY.meta.rating)}.`);
 TITLE.push(`Generated by ${code('tools/story_to_md.js')} from ${sourceLine}, fingerprint ${code(FP)}. Do not edit this file by hand: change the story source and run ${code('node tools/story_to_md.js')}.`);
 const glance = [
-  `- **Runtime:** ${mss(S.runtime)} of film (${sec(S.runtime)}) across ${S.films} films and ${S.scenes} scenes.`,
-  `- **Spoken lines:** ${S.lines} (${S.filmLines} in films, ${S.radioLines} on the radio) and ${S.words} words.`,
+  `- **Dispatches:** ${S.films} text cards (prologue, 9 briefings, 9 debriefs, interludes, defeats, ending, credits).`,
+  `- **Spoken lines:** ${S.lines} (${S.filmLines} in dispatches, ${S.radioLines} on the radio) and ${S.words} words.`,
   `- **Missions:** ${MISSIONS.length} in ${ACTS.length} acts, with ${S.objTotal} objectives and ${S.triggers} triggers.`,
   `- **Cast:** ${Object.keys(CH).length} characters: ${S.sides.good} good, ${S.sides.gray} gray, ${S.sides.evil} evil.`
 ];
@@ -896,7 +597,7 @@ const gRows = [];
 ACTS.forEach((a, ai) => (a.missions || []).forEach(id => {
   const m = MISSIONS.find(x => x.id === id);
   if (!m) return;
-  const rtOf = fid => (fid && CINE[fid] ? mss(filmStats(fid).runtime) : '—');
+  const rtOf = fid => (fid && DISP[fid] ? dispatchStats(fid).lines + ' lines' : '—');
   const after = !m.after ? '—' : kindOf(m.after) === 'ending' ? 'the ending' : `${code(m.after)} ${rtOf(m.after)}`;
   gRows.push([ROMAN[ai] || ai + 1, m.n, esc(m.title), esc(placeName(m.place)), `${facAdj(m.setup.faction)} vs ${facAdj(m.setup.enemy)}`,
     rtOf(m.briefing), rtOf(m.debrief), after]);
@@ -911,9 +612,8 @@ const head = [
   TITLE.join('\n\n'),
   '## At a glance\n\n' + glance.join('\n') + '\n\n' + glanceTable,
   '**Contents**\n\n' + tocLines.join('\n'),
-  '**How to read the script.** Each film is printed as a screenplay: scene headings, establishing paragraphs, then the timed beats. ' +
-    'Timecodes are film time from the start of each film, so a beat at `0:08.2` happens eight seconds and two tenths into that film. ' +
-    'Dialogue is printed exactly as the data has it. Action lines are plain-English readings of the props, effects and camera moves; they describe the staging only.'
+  '**How to read the script.** Each dispatch is printed as a transcript: a bold line is a dateline (chapter card), then speaker and text in order. ' +
+    'Dialogue is printed exactly as the data has it. Nothing is staged: there is no picture, timing or camera any more.'
 ].join('\n\n');
 let DOC = head + '\n\n' + bodyText + '\n';
 DOC = DOC.replace(/\n{3,}/g, '\n\n');
