@@ -67,7 +67,7 @@ function cmbStackOf(type,n,o){
   if(d.hero){const L=o.lvl||1;hp=o.hp!==undefined?o.hp:Math.round(d.hp*(1+0.14*(L-1)));dmg*=1+0.10*(L-1);}
   if(isB&&type==='hub')dmg+=3*(o.garr||0);
   return{type,n,hp:Math.max(1,hp),armor:(d.armor||0)+(isB?0:al)+(d.hero?Math.floor(((o.lvl||1)-1)/2):0),parm:d.projArmor||0,tags:d.tags||{},fly:!!d.flying,
-    air:!!d.air,ground:d.ground!==false,dmg:dmg*(1+0.15*wl),bon,cd,range,speed:d.speed||0,splash,ranged:!!(d.proj),heal:d.heal?14:0,static:isB,noW:!dmg};
+    air:!!d.air,ground:d.ground!==false,dmg:dmg*(1+0.15*wl),bon,cd,range,speed:d.speed||0,splash,ranged:!!(d.proj),heal:d.heal?14:0,static:isB,noW:!dmg,cloak:!!d.cloak,detect:!!d.detect,ls:d.lifesteal||0};
 }
 function cmbDmg(s,t){ // damage per shot of stack s against one unit of stack t (dmgVs in 20_sim.js)
   if(s.noW)return 0;if(t.fly?!s.air:!s.ground)return 0;
@@ -90,25 +90,29 @@ function cmbSimulate(A,B,opts){
   const vc=Math.max(30,vClose(a)+vClose(b));
   for(const x of a)x.t0=x.s.static?0:Math.max(0,(Rmax-x.s.range-30))/vc;for(const x of b)x.t0=x.s.static?0:Math.max(0,(Rmax-x.s.range-30))/vc;
   // damage-per-second matrices (cmbDmg once per pair)
-  const mat=(X,Y)=>X.map(x=>Y.map(y=>x.s.noW?0:cmbDmg(x.s,y.s)/x.s.cd));
-  const MAB=mat(a,b),MBA=mat(b,a);
+  // cloak: a side without a detector (Mender, Turret, Hub) cannot shoot cloaked stacks at all
+  const det=(L)=>L.some(x=>x.s.detect);const dA0=det(a),dB0=det(b);
+  const mat=(X,Y,dX)=>X.map(x=>Y.map(y=>x.s.noW||(y.s.cloak&&!dX)?0:cmbDmg(x.s,y.s)/x.s.cd));
+  const MAB=mat(a,b,dA0),MBA=mat(b,a,dB0);
   const healPool=[0,0];for(const x of a)if(x.s.heal)healPool[0]+=300*x.s.n;for(const x of b)if(x.s.heal)healPool[1]+=300*x.s.n;
   let t=0;const dA=new Float64Array(a.length),dB=new Float64Array(b.length);
-  const fire=(X,Y,M,dY)=>{
+  const fire=(X,Y,M,dY,dX)=>{
+    let ng=0;for(const y of Y)if(y.H>0&&!y.s.fly&&!y.s.static)ng+=y.H/y.s.hp;   // ground units that a splash can catch
     for(let i=0;i<X.length;i++){const x=X[i];if(x.H<=0||t<x.t0)continue;const row=M[i],nx=x.H/x.s.hp;
       let wsum=0;for(let j=0;j<Y.length;j++)if(row[j]>0&&Y[j].H>0)wsum+=Y[j].H/Y[j].s.hp;
       if(wsum<=0)continue;const k=nx*dt/wsum;
       for(let j=0;j<Y.length;j++){const y=Y[j];if(row[j]<=0||y.H<=0)continue;const ny=y.H/y.s.hp;
-        const spl=x.s.splash&&!y.s.fly&&!y.s.static?1+Math.min(2.2,Math.max(0,ny-1)*x.s.splash/60):1;
-        dY[j]+=k*ny*row[j]*spl;}}};
+        // splash: a blob of units ~24 px apart puts about pi R^2 / 576 units in the blast; half of that is in the front of the blob
+        const spl=x.s.splash&&!y.s.fly&&!y.s.static?Math.max(1,Math.min(ng,1+0.5*Math.PI*x.s.splash*x.s.splash/576)):1;
+        const dd=k*ny*row[j]*spl;dY[j]+=dd;if(x.s.ls)dX[i]-=x.s.ls*Math.min(dd,y.H);}}};   // lifesteal heals the attacker
   const heal=(X,dX,k)=>{if(healPool[k]<=0)return;let rate=0;for(const x of X)if(x.s.heal&&x.H>0)rate+=x.s.heal*(x.H/x.s.hp)*dt;if(rate<=0)return;
     let need=0;for(let i=0;i<X.length;i++)if(X[i].s.tags.bio&&X[i].H>0)need+=dX[i];if(need<=0)return;const h=Math.min(rate,need,healPool[k]);healPool[k]-=h;
     for(let i=0;i<X.length;i++)if(X[i].s.tags.bio&&X[i].H>0)dX[i]-=h*dX[i]/need;};
   const canHurt=(X,Y,M)=>{for(let i=0;i<X.length;i++)if(X[i].H>0)for(let j=0;j<Y.length;j++)if(M[i][j]>0&&Y[j].H>0)return true;return false;};
   let step=0;
   while(t<tmax){
-    dA.fill(0);dB.fill(0);fire(a,b,MAB,dB);fire(b,a,MBA,dA);heal(a,dA,0);heal(b,dB,1);
-    let la=0,lb=0;for(let i=0;i<a.length;i++){a[i].H=Math.max(0,a[i].H-dA[i]);la+=a[i].H;}for(let i=0;i<b.length;i++){b[i].H=Math.max(0,b[i].H-dB[i]);lb+=b[i].H;}
+    dA.fill(0);dB.fill(0);fire(a,b,MAB,dB,dA);fire(b,a,MBA,dA,dB);heal(a,dA,0);heal(b,dB,1);
+    let la=0,lb=0;for(let i=0;i<a.length;i++){a[i].H=a[i].H>0?Math.min(a[i].H0,Math.max(0,a[i].H-dA[i])):0;la+=a[i].H;}for(let i=0;i<b.length;i++){b[i].H=b[i].H>0?Math.min(b[i].H0,Math.max(0,b[i].H-dB[i])):0;lb+=b[i].H;}
     t+=dt;if(la<=0||lb<=0)break;
     if((++step&7)===0&&!canHurt(a,b,MAB)&&!canHurt(b,a,MBA))break;}
   const val=(L,k)=>{let s=0;for(const x of L)s+=(k?x.H:x.H0)/x.s.hp*x.v;return s;};
@@ -118,8 +122,13 @@ function cmbSimulate(A,B,opts){
 }
 /* closed-form Lanchester fighting strength  S = (sum dps)(sum hp)  — the coarse estimate (also used by 25_agents.js lanch()) */
 function cmbStrength(S,E){let dps=0,hp=0;for(const s of S){let d=0,w=0;for(const e of E){const x=cmbDmg(s,e);if(x>0){d+=x/s.cd*e.n;w+=e.n;}}dps+=s.n*(w?d/w:0);hp+=s.n*s.hp;}return dps*hp;}
-/* P(A wins) from the ODE margin through a logistic link; CMB_K is fitted on real-sim skirmishes (tools/league/calib_combat.js) */
-function cmbPredict(A,B,k){const r=cmbSimulate(A,B);return{p:sigm((k||(typeof AI_PARAMS!=='undefined'&&AI_PARAMS.combat?AI_PARAMS.combat.k:6))*r.margin),r};}
+/* P(A wins) = sigmoid(kOde * ODE margin + kL * ln(S_A / S_B)): a logistic blend of the ODE and the closed-form Lanchester strength
+   ratio, fitted on real-sim skirmishes (tools/league/calib_combat.js; held-out log-loss 0.147 vs 0.166 Lanchester-only, 0.239 ODE-only) */
+function cmbPredict(A,B,k){
+  const r=cmbSimulate(A,B),c=k||(typeof AI_PARAMS!=='undefined'&&AI_PARAMS.combat)||{kOde:2.1,kL:2.2};
+  const ls=Math.log(cmbStrength(A,B)+1)-Math.log(cmbStrength(B,A)+1);
+  return{p:sigm(c.kOde*r.margin+c.kL*ls),r,ls};
+}
 
 /* ---------------------------------------------------------------- 5. ideal free distribution of workers */
 /* Each site s has a concave income curve given by marginal gains g_s(k) (income of the (k+1)-th worker). Measured in the real sim

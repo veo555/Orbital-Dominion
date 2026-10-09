@@ -5,7 +5,7 @@
    ========================================================================= */
 const AI_PARAMS={
   version:'hand-0',
-  theta0:[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5],
+  theta0:[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5],
   styles:{
     rush:{firstAtk:-0.2,atkSup:-0.1,aggr:-0.08,cMelee:0.25,expandAt:0.1,era2:0.1,turret:-0.2,harass:0.2},
     turtle:{turret:0.35,firstAtk:0.12,cHeavy:0.2,cArt:0.2,aggr:0.05,expandAt:-0.05},
@@ -16,5 +16,5 @@ const AI_PARAMS={
     hard:  {think:0.33,apm:150,delay:0.2, micro:1,focus:1,kite:1,macro:1,   useV:1},
     master:{think:0.25,apm:240,delay:0.15,micro:1,focus:1,kite:1,macro:1,   useV:1}},
   vf:null,
-  combat:{k:6}
+  combat:{kOde:2.109,kL:2.222}
 };

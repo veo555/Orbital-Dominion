@@ -8,7 +8,11 @@
 const path = require('path');
 const SIMLIB = path.join(__dirname, '..', '..', 'tests', 'sim', 'simlib3.js');
 const cache = {};
-function sim(src) { const k = src || ''; if (!cache[k]) cache[k] = require(SIMLIB)(src || undefined); return cache[k]; }
+function sim(src) {
+  const k = src || '';
+  if (!cache[k]) { const S = require(SIMLIB)(src || undefined); try { S.__vf0 = S.__run('typeof AI_PARAMS!=="undefined"?JSON.parse(JSON.stringify(AI_PARAMS.vf)):null'); } catch (e) { S.__vf0 = null; } cache[k] = S; }
+  return cache[k];
+}
 function pin(S, rs) { let s = rs >>> 0; S.sandbox.Math.random = function () { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function makeAgent(S, spec, team) {
   const run = S.__run;
@@ -35,6 +39,8 @@ function privFeatures(S, team) {
 function playGame(o) {
   const S = sim(o.src), run = S.__run;
   pin(S, o.rs === undefined ? (o.seed * 7919 + 13) : o.rs);
+  // the value function in use: o.vf (league phases differ; null -> V = 0.5) or, when absent, the one shipped in 41_ai_params.js
+  if (run('typeof AI_PARAMS') !== 'undefined') run(`AI_PARAMS.vf=${JSON.stringify(o.vf === undefined ? S.__vf0 : o.vf)}`);
   S.newGame({ seed: o.seed, faction: o.f0, enemy: o.f1, diff: 'normal', aiBoth: true });
   const G = S.G;
   G.ais[0] = makeAgent(S, o.a0, 0); G.ais[1] = makeAgent(S, o.a1, 1);

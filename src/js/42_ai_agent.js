@@ -16,7 +16,7 @@ const THETA_SPEC=[ // name, lo, hi  (theta is searched in the unit cube; decode 
   ['era2',140,480],['era3',360,900],['gar',0.6,2.2],
   ['cLight',0,1],['cMelee',0,1],['cAnti',0,1],['cHeavy',0,1],['cArt',0,1],['cAir',0,1],['cSup',0,1],
   ['counter',0,1.5],['aggr',0.45,0.85],['retreat',0.12,0.45],['firstAtk',60,480],['atkSup',8,40],
-  ['harass',0,1],['scout',0,1],['turret',0,1],['creep',0,1],['vW',0,2],['bank',0,1],['trade',0,1],['tech',0,1]];
+  ['harass',0,1],['scout',0,1],['turret',0,1],['creep',0,1],['vW',0,2],['bank',0,1],['trade',0,1],['tech',0,1],['prior',0.6,1.4]];
 const THETA_N=THETA_SPEC.length;
 const AI_CLS={rifleman:'light',specter:'light',raptor:'melee',reaver:'melee',rocketeer:'anti',juggernaut:'heavy',bulwark:'heavy',titan:'heavy',howitzer:'art',skiff:'air',mender:'sup'};
 const AI_CLASSES=['light','melee','anti','heavy','art','air','sup'];
@@ -47,7 +47,7 @@ function makeAIT2(team,P,opt){
     apm:{rate:tier.apm/60,burst:Math.max(3,tier.apm/60*5),tok:3,t:0,n:0,denied:0},delay:tier.delay,
     mem:{u:{},b:{},camps:{},armySeenT:-99,heroLvl:0,heroT:-99,eraSeen:1},
     bel:{s:new Float32Array(BN),a:new Float64Array(BN),t:0},ph:{vis:new Float32Array(BN),dem:new Float32Array(BN),def:new Float32Array(BN)},
-    mil:'hold',milT:0,tgt:null,atkN:0,atkCool:0,wave:0,attacking:false,V:0.5,pG:0.5,pL:-1,
+    mil:'hold',milT:0,tgt:null,atkN:0,grp:[],eng:{},atkCool:0,wave:0,attacking:false,V:0.5,pG:0.5,pL:-1,
     har:{ids:[],tgt:null,t:-99},scout:{id:0,tgt:-1,t:-99,last:-99},creep:null,lastCreep:0,
     stage:null,stageHub:0,res:{why:'',since:0},st:{thinks:0,engage:0,retreat:0,focus:0,kite:0,expand:0,cmds:0}};
   if(opt.noV)ai.cfg.useV=0;
@@ -117,9 +117,9 @@ function aiOwn(ai,R){
   for(const b of G.buildings)if(!b.dead&&b.team===team){R.B.push(b);if(b.type==='hub'&&b.done)R.hubs.push(b);if(b.done&&b.type!=='hub'&&b.type!=='exchange'&&prodList(b).length)R.prod.push(b);}
   for(const u of G.units)if(!u.dead&&u.team===team){R.U.push(u);if(u.def.worker)R.workers.push(u);else if(!u.def.trade){R.army.push(u);if(u.def.hero)R.hero=u;}}
 }
-function aiStacksOf(list,team,hpOf){
-  const by={},T=G.teams[team],H=T.hero;for(const u of list){const k=u.type;const e=by[k]||(by[k]={n:0,hp:0});e.n++;e.hp+=hpOf?hpOf(u):u.hp;}
-  const out=[];for(const k in by){const e=by[k];const s=cmbStackOf(k,e.n,{wl:T.wl,al:T.al,hp:e.hp/e.n,lvl:H?H.level:1,meridian:T.faction==='meridian'});s.cost=aiVal(k);out.push(s);}
+function aiStacksOf(list,team,hpOf){ // list: unit objects (own, or currently visible enemies: their buffs such as a Banner aura are visible) or memory records
+  const by={},T=G.teams[team],H=T.hero;for(const u of list){const k=u.type;const e=by[k]||(by[k]={n:0,hp:0,arm:0});e.n++;e.hp+=hpOf?hpOf(u):u.hp;e.arm+=u.armAdd||0;}
+  const out=[];for(const k in by){const e=by[k];const s=cmbStackOf(k,e.n,{wl:T.wl,al:T.al,hp:e.hp/e.n,lvl:H?H.level:1,meridian:T.faction==='meridian'});s.armor+=e.arm/e.n;s.cost=aiVal(k);out.push(s);}
   return out;
 }
 function aiArmyVal(list){let s=0;for(const u of list){const d=UDEF[u.type];if(d&&!d.worker&&!d.trade)s+=aiVal(u.type)*Math.max(0.15,u.hp/(u.mhp||u.maxhp||d.hp));}return s;}
@@ -196,7 +196,7 @@ function aiStrategy(ai,R){
   const en=aiStacksOf(recs,ai.team);
   // phantom army: what we have not seen is not nothing. The longer the opponent's army has been out of sight, the closer the
   // estimate moves to a symmetric prior (the opponent spends like we do), expressed as Riflemen-equivalents.
-  const stale=Math.min(1,Math.max(0,now-ai.mem.armySeenT)/90),prior=0.8*myVal*(0.5+0.5*stale);
+  const stale=Math.min(1,Math.max(0,now-ai.mem.armySeenT)/90),prior=th.prior*myVal*(0.4+0.6*stale);
   if(prior>known+50){const s=cmbStackOf('rifleman',(prior-known)/50,{wl:T.wl,al:T.al});s.cost=50;en.push(s);}
   ai.pG=own.length?cmbPredict(own,en).p:0;
   const thr=aiThreat(ai,R),thrV=aiArmyVal(thr.map(u=>({type:u.type,hp:u.hp,mhp:u.maxhp})));
@@ -213,9 +213,9 @@ function aiStrategy(ai,R){
   // 2. attack decision: predicted win probability against the estimated army, V(s) shifts the threshold (adaptive aggression)
   if(ai.mil==='hold'&&now>th.firstAtk&&now>ai.atkCool){
     const U=(ai.pG-th.aggr)+0.25*th.vW*(ai.V-0.5);
-    if((U>0&&sup>=th.atkSup)||T.used>=MAXSUP-8&&sup>=30){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;}}
+    if((U>0&&sup>=th.atkSup)||T.used>=MAXSUP-8&&sup>=30){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;ai.grp=army.map(u=>u.id);}}
   else if(ai.mil==='attack'){
-    const alive=army.length;
+    const g=new Set(ai.grp||[]),alive=army.filter(u=>g.has(u.id)).length;
     if(alive<Math.max(3,ai.atkN*0.35)||ai.pG<th.retreat*0.8){ai.mil='retreat';ai.milT=now;ai.atkCool=now+20;ai.st.retreat++;}
     else if(now-ai.milT>3){const t=aiAttackTarget(ai,R);if(!ai.tgt||hyp(t.x-ai.tgt.x,t.y-ai.tgt.y)>200&&(!ai.mem.b[ai.tgt.id]))ai.tgt=t;}}
   else if(ai.mil==='retreat'&&now-ai.milT>8){ai.mil='hold';ai.milT=now;}
@@ -515,62 +515,90 @@ function aiSiege(ai,R,army){
     if(!u.sieged&&nd>195&&nd<=335&&u.siegeT<=0&&(u.order.t==='idle'||!u.target)){if(aiAct(ai))toggleSiege(u);}
     else if(u.sieged&&nd>380&&u.siegeT<=0){if(aiAct(ai))toggleSiege(u,true);}}
 }
+/* one group's local engagement: returns true when the group is in contact (and has been handled) */
+function aiGroupFight(ai,R,units,home,key){
+  if(!units.length)return false;
+  const now=G.time,th=ai.th,cfg=ai.cfg,c=centroid(units),E=ai.eng||(ai.eng={});
+  const en=aiNearEnemies(ai,R,c.x,c.y,520),st=aiStaticNear(ai,R,c.x,c.y,380);
+  if(!en.length&&!st.length){if(E[key]&&now-(E[key+'T']||0)>2)E[key]=false;return false;}
+  const mine=units.filter(u=>hyp(u.x-c.x,u.y-c.y)<640);
+  const atHome=R.B.some(b=>hyp(b.x-c.x,b.y-c.y)<560);
+  const ownSt=atHome?R.B.filter(b=>b.done&&b.def.dmg&&hyp(b.x-c.x,b.y-c.y)<520):null;
+  const p=aiLocalP(ai,mine,en,st,ownSt);ai.pL=p;
+  // fight or flight with hysteresis (engaged: leave below th.retreat; not yet engaged: only enter above th.aggr-0.1).
+  // Fleeing only pays when there is somewhere better to fight: never from our own base, and not from faster pursuers already in range.
+  // Before contact the group may decline a fight it expects to lose (p < aggr-0.1); after contact it only disengages below th.retreat
+  // and only if it can outrun the enemy units in range (otherwise turning round just feeds free kills to faster pursuers).
+  let contact=false,vE=0,nE=0;for(const e of en){if(e.def.worker)continue;let near=false;for(const u of mine)if(hyp(e.x-u.x,e.y-u.y)<Math.max(rangeOf(u),e.def.range||0)+60){near=true;break;}
+    if(near){contact=true;vE+=e.def.speed;nE++;}}
+  let vM=0;for(const u of mine)vM+=u.def.speed*u.spdMul;vM/=mine.length;
+  const flee=!atHome&&(contact?(p<th.retreat&&vM>=0.9*vE/Math.max(1,nE)):p<th.aggr-0.1);
+  if(flee){ // retreat along the potential field (home attracts, enemies repel)
+    const dir=fieldDir(c,home,en.map(e=>({x:e.x,y:e.y,w:aiVal(e.type)/100})),1.4);
+    if(aiOrder(ai,mine,{t:'move',x:clamp(c.x+dir.x*420,40,WW-40),y:clamp(c.y+dir.y*420,40,WH-40)})){E[key]=false;ai.st.retreat++;
+      if(key==='atk'&&ai.mil==='attack'){ai.mil='retreat';ai.milT=now;ai.atkCool=now+18;}}
+    return true;}
+  if(!E[key]){E[key]=true;E[key+'T']=now;ai.st.engage++;
+    if(cfg.micro&&en.length&&mine.length>=6){ // concave: sub-groups of four take slots on an arc facing the enemy
+      const ec=centroid(en),rad=Math.max(90,0.75*mine.reduce((s,u)=>s+rangeOf(u),0)/mine.length),slots=arcSlots(c,ec,rad,Math.ceil(mine.length/4));
+      const sorted=mine.slice().sort((a,b)=>Math.atan2(a.y-ec.y,a.x-ec.x)-Math.atan2(b.y-ec.y,b.x-ec.x));
+      for(let i=0;i<slots.length;i++)aiOrder(ai,sorted.slice(i*4,i*4+4),{t:'attackmove',x:slots[i].x,y:slots[i].y,gs:0});}
+    else aiOrder(ai,mine,{t:'attackmove',x:(en[0]||st[0]).x,y:(en[0]||st[0]).y,gs:0});
+    return true;}
+  E[key+'T']=now;
+  if(cfg.kite)aiKite(ai,R,mine,en,home);
+  if(cfg.focus)aiFocus(ai,mine,en);
+  if(cfg.micro){const hurt=mine.filter(u=>(u.def.hero?u.hp<u.maxhp*0.3:u.hp<u.maxhp*0.22)&&en.some(e=>hyp(e.x-u.x,e.y-u.y)<220));
+    if(hurt.length)aiOrder(ai,hurt,{t:'move',x:home.x,y:home.y});}
+  const idle=mine.filter(u=>u.order.t==='idle'||u.order.t==='move'&&u.order.x===home.x&&u.hp>u.maxhp*0.5);
+  if(idle.length&&en.length){const e=en[0];aiOrder(ai,idle,{t:'attackmove',x:e.x,y:e.y,gs:0});}
+  return true;
+}
+/* march in formation: cohesion (regroup when strung out), alignment (group speed = slowest member), boids-style sub-group offsets */
+function aiMarch(ai,units,goal){
+  if(!units.length)return;const c=centroid(units),now=G.time;
+  const sp=spreadOf(units,c),R0=60+22*Math.sqrt(units.length);
+  if(sp>R0*2.2&&hyp(c.x-goal.x,c.y-goal.y)>700){ // no chokepoint stringing: the stragglers close up before the push goes on
+    aiOrder(ai,units.filter(u=>hyp(u.x-c.x,u.y-c.y)>R0),{t:'move',x:c.x,y:c.y,gs:0});return;}
+  if(now-(ai.marchT||0)<3&&units.every(u=>u.order.t==='attackmove'))return;   // re-plan the formation at most every 3 s (APM)
+  ai.marchT=now;let slow=1e9;for(const u of units)if(u.def.speed<slow)slow=u.def.speed;const gs=slow<1e9?slow*1.1:0;
+  if(!ai.cfg.micro||units.length<8){aiOrder(ai,units,{t:'attackmove',x:goal.x,y:goal.y,gs});return;}
+  const sorted=units.slice().sort((a,b)=>Math.atan2(a.y-c.y,a.x-c.x)-Math.atan2(b.y-c.y,b.x-c.x)),k=Math.ceil(units.length/4);
+  const subs=[];for(let i=0;i<k;i++)subs.push(sorted.slice(i*4,i*4+4));
+  const T=boidsTargets(subs.map(L=>centroid(L)),goal,0.5);
+  for(let i=0;i<k;i++)aiOrder(ai,subs[i],{t:'attackmove',x:clamp(T[i].x,40,WW-40),y:clamp(T[i].y,40,WH-40),gs});
+}
 function aiArmy(ai,R){
-  const now=G.time,th=ai.th,cfg=ai.cfg,team=ai.team;
+  const now=G.time,team=ai.team;
   const all=R.army.filter(u=>u.id!==ai.scout.id&&!u.garr);
-  const harIds=ai.har.ids,har=all.filter(u=>harIds.includes(u.id)),crew=ai.creep?all.filter(u=>ai.creep.ids.includes(u.id)):[];
-  const army=all.filter(u=>!harIds.includes(u.id)&&!(ai.creep&&ai.creep.ids.includes(u.id)));
+  const harIds=ai.har.ids,crewIds=ai.creep?ai.creep.ids:[];
+  const har=all.filter(u=>harIds.includes(u.id)),crew=all.filter(u=>crewIds.includes(u.id));
+  const rest=all.filter(u=>!harIds.includes(u.id)&&!crewIds.includes(u.id));
   const home=ai.stage||(R.hubs[0]?{x:R.hubs[0].x,y:R.hubs[0].y}:{x:R.B[0].x,y:R.B[0].y});
   aiSiege(ai,R,all);
   if(R.hero)aiHeroCast2(ai,R.hero,R);
-  // local engagements: the predictor decides fight or flight, with hysteresis between th.aggr and th.retreat
-  const c=centroid(army);
-  if(c){
-    const en=aiNearEnemies(ai,R,c.x,c.y,520),st=aiStaticNear(ai,R,c.x,c.y,380);
-    if(en.length||st.length){
-      const mine=army.filter(u=>hyp(u.x-c.x,u.y-c.y)<640);
-      const atHome=R.B.some(b=>hyp(b.x-c.x,b.y-c.y)<560);
-      const ownSt=atHome?R.B.filter(b=>b.done&&b.def.dmg&&hyp(b.x-c.x,b.y-c.y)<520):null;
-      const p=aiLocalP(ai,mine,en,st,ownSt);ai.pL=p;
-      // fleeing only pays when there is somewhere better to fight: never from our own base, and not from faster pursuers already in range
-      let chased=0;for(const e of en)if(e.def.speed>95&&hyp(e.x-c.x,e.y-c.y)<200)chased++;
-      const flee=!atHome&&chased<mine.length*0.5&&(ai.engaged?p<th.retreat:p<th.aggr-0.1);
-      if(flee){ // retreat along the potential field (home attracts, enemies repel)
-        const dir=fieldDir(c,home,en.map(e=>({x:e.x,y:e.y,w:aiVal(e.type)/100})),1.4);
-        if(aiOrder(ai,mine,{t:'move',x:clamp(c.x+dir.x*420,40,WW-40),y:clamp(c.y+dir.y*420,40,WH-40)})){ai.engaged=false;ai.st.retreat++;if(ai.mil==='attack'){ai.mil='retreat';ai.milT=now;ai.atkCool=now+18;}}
-        return aiCrew(ai,R,har,crew,home);}
-      if(!ai.engaged){ai.engaged=true;ai.st.engage++;ai.engT=now;
-        if(cfg.micro&&en.length&&mine.length>=6){ // concave: sub-groups of four take slots on an arc facing the enemy
-          const ec=centroid(en),rad=Math.max(90,0.75*mine.reduce((s,u)=>s+rangeOf(u),0)/mine.length),slots=arcSlots(c,ec,rad,Math.ceil(mine.length/4));
-          const sorted=mine.slice().sort((a,b)=>Math.atan2(a.y-ec.y,a.x-ec.x)-Math.atan2(b.y-ec.y,b.x-ec.x));
-          for(let i=0;i<slots.length;i++)aiOrder(ai,sorted.slice(i*4,i*4+4),{t:'attackmove',x:slots[i].x,y:slots[i].y,gs:0});}
-        else aiOrder(ai,mine,{t:'attackmove',x:(en[0]||st[0]).x,y:(en[0]||st[0]).y,gs:0});}
-      else{
-        if(cfg.kite)aiKite(ai,R,mine,en,home);
-        if(cfg.focus)aiFocus(ai,mine,en);
-        if(cfg.micro){const hurt=mine.filter(u=>(u.def.hero?u.hp<u.maxhp*0.3:u.hp<u.maxhp*0.22)&&en.some(e=>hyp(e.x-u.x,e.y-u.y)<220));
-          if(hurt.length)aiOrder(ai,hurt,{t:'move',x:home.x,y:home.y});}
-        const idle=mine.filter(u=>u.order.t==='idle'||u.order.t==='move'&&u.order.x===home.x&&u.hp>u.maxhp*0.5);
-        if(idle.length&&en.length){const e=en[0];aiOrder(ai,idle,{t:'attackmove',x:e.x,y:e.y,gs:0});}}
-      return aiCrew(ai,R,har,crew,home);}
-    if(ai.engaged&&now-(ai.engT||0)>2)ai.engaged=false;}
-  // no contact: execute the posture
-  if(ai.mil==='defend'&&ai.tgt){const near=army.filter(u=>hyp(u.x-ai.tgt.x,u.y-ai.tgt.y)<2600);aiOrder(ai,near,{t:'attackmove',x:ai.tgt.x,y:ai.tgt.y,gs:0});
-    // Call to Arms when the defence is hopeless and the hub is hit
-    for(const h of R.hubs){const thr=R.en.filter(e=>!e.def.worker&&hyp(e.x-h.x,e.y-h.y)<420);
-      if(thr.length>=4&&h.garr.length===0&&aiLocalP(ai,army.filter(u=>hyp(u.x-h.x,u.y-h.y)<600),thr,[])<0.3){if(aiAct(ai))callToArms(team,h);}}}
-  else if(ai.mil==='attack'&&ai.tgt&&c){
-    const sp=spreadOf(army,c),R0=60+22*Math.sqrt(army.length);
-    if(sp>R0*2.2&&hyp(c.x-ai.tgt.x,c.y-ai.tgt.y)>700){ // cohesion: regroup at the centroid before pushing on (no chokepoint stringing)
-      const far=army.filter(u=>hyp(u.x-c.x,u.y-c.y)>R0);aiOrder(ai,far,{t:'move',x:c.x,y:c.y,gs:0});}
-    else{let slow=1e9;for(const u of army)if(u.def.speed<slow)slow=u.def.speed;
-      aiOrder(ai,army,{t:'attackmove',x:ai.tgt.x,y:ai.tgt.y,gs:slow<1e9?slow*1.1:0});}}
-  else if(ai.mil==='retreat'||ai.mil==='hold'){
-    const away=army.filter(u=>hyp(u.x-home.x,u.y-home.y)>300&&(u.order.t==='idle'||ai.mil==='retreat'));
-    if(away.length)aiOrder(ai,away,{t:ai.mil==='retreat'?'move':'attackmove',x:home.x,y:home.y,gs:0});
-    for(const h of R.hubs)if(h.garr.length&&(ai.thrV||0)<30){if(aiAct(ai))callToArms(team,h);}}
+  if(ai.mil==='attack'&&ai.tgt){
+    // the attack group fights / marches; new units gather at the stage and join in batches (no reinforcement trickle)
+    const g=new Set(ai.grp||[]),grp=rest.filter(u=>g.has(u.id)),res=rest.filter(u=>!g.has(u.id));
+    ai.grp=grp.map(u=>u.id);
+    if(!aiGroupFight(ai,R,grp,home,'atk'))aiMarch(ai,grp,ai.tgt);
+    if(!aiGroupFight(ai,R,res,home,'home')){
+      if(grp.length&&res.length>=Math.max(5,grp.length*0.3)){const c=centroid(grp);if(aiOrder(ai,res,{t:'attackmove',x:c.x,y:c.y,gs:0}))for(const u of res)ai.grp.push(u.id);}
+      else{const away=res.filter(u=>u.order.t==='idle'&&hyp(u.x-home.x,u.y-home.y)>300);if(away.length)aiOrder(ai,away,{t:'attackmove',x:home.x,y:home.y,gs:0});}}}
+  else{
+    ai.grp=[];
+    if(!aiGroupFight(ai,R,rest,home,'home')){
+      if(ai.mil==='defend'&&ai.tgt){aiOrder(ai,rest.filter(u=>hyp(u.x-ai.tgt.x,u.y-ai.tgt.y)<2600),{t:'attackmove',x:ai.tgt.x,y:ai.tgt.y,gs:0});}
+      else{const away=rest.filter(u=>hyp(u.x-home.x,u.y-home.y)>300&&(u.order.t==='idle'||ai.mil==='retreat'));
+        if(away.length)aiOrder(ai,away,{t:ai.mil==='retreat'?'move':'attackmove',x:home.x,y:home.y,gs:0});}}}
+  // Call to Arms when the defence of a hub is hopeless; release the haulers once the threat is gone
+  for(const h of R.hubs){
+    if(h.garr.length){if((ai.thrV||0)<30&&aiAct(ai))callToArms(team,h);continue;}
+    if(ai.mil!=='defend')continue;
+    const thr=R.en.filter(e=>!e.def.worker&&hyp(e.x-h.x,e.y-h.y)<420);
+    if(thr.length>=4&&aiLocalP(ai,rest.filter(u=>hyp(u.x-h.x,u.y-h.y)<600),thr,[],[h])<0.3){if(aiAct(ai))callToArms(team,h);}}
   aiCrew(ai,R,har,crew,home);
-  if(ai.mil==='hold')aiCreepPlan(ai,R,army);
+  if(ai.mil==='hold'&&ai.k%4===1)aiCreepPlan(ai,R,rest);
 }
 function aiCrew(ai,R,har,crew,home){
   const H=ai.har;
