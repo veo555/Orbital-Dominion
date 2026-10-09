@@ -562,11 +562,11 @@ function calcPos(x,y,range){
   POS.pan=cl((x-cx)/hv,-1,1)*0.8;POS.vol=cl(1.15-dd,0.25,1);POS.far=cl((dd-SPAT.near)/(1-SPAT.near),0,1);return true;
 }
 function prep(A,v,p,n){
-  const vy=v.vary,r=A.rng,u0=(v.h>>>0)/4294967296;
-  /* pitch and filter follow golden-ratio sequences (low discrepancy) instead of white noise: two consecutive shots are never nearly identical (the minimum step is about 0.38 of the range, white noise gives
-     steps of ~0), which is what makes a machine-gun burst sound like many shots. The sequence starts at a per-voice phase so two voices do not move together. */
-  if(vy.pitch)p.pitch*=1+(((u0+n*0.6180339887498949)%1)*2-1)*vy.pitch;
-  if(vy.filter)p.fmul=1+(((u0*7.31+n*0.7548776662466927)%1)*2-1)*vy.filter;
+  const vy=v.vary,r=A.rng;
+  /* seeded white-noise variation. A low-discrepancy (golden-ratio) sequence was tried and reverted: the TRIM calibrations of the content voices were fitted against these exact draws, and a different
+     sequence pushed 5-6 headroom-limited voices over 0.98 on some seeds (tests/audio/units_gate.py). Measured variation of this scheme: tests/e2e/e2e_audio_mix.py 'variation'. */
+  if(vy.pitch)p.pitch*=1+(r()*2-1)*vy.pitch;
+  if(vy.filter)p.fmul=1+(r()*2-1)*vy.filter;
   if(vy.gain)p.vol*=1+(r()*2-1)*vy.gain;
   if(v.variants>1)p.variant=v.seq?((n-1)%v.variants):Math.floor(r()*v.variants);
 }
