@@ -49,9 +49,51 @@ against v3-Hard on fresh seeds (24 mirrored games each, 10-min cap):
 BT over these games: θ₀ 898, M@18 985, M@30 998, E2@24 928 (v3-Hard 1000). The league's result is ≈ +100 Elo over the hand prior,
 **not significant at 24 games per arm**.
 
-## 2. Final evaluation (`tools/league/final_eval.js`, seeds 7001+, 10-min cap, mirrored sides and factions)
+## 2a. Shipped tier ladder ("ladder-2", current `41_ai_params.js`)
 
-Tiers shipped in `41_ai_params.js`: Master / Hard / Normal use θ = M@30, Easy uses θ₀; they differ in think rate, APM cap,
+The first release (§2 below) had Normal/Hard/Master sharing θ and was not Elo-separated at the top. The ladder was rebuilt from
+skill levers only (income ×1.0 everywhere). In the AI, *macro efficiency* is the probability that a production building or a hub
+uses a given chance to queue; it now also gates worker production.
+
+| Tier | θ | think | APM | delay | focus | kite / concave / pull-back | macro eff. |
+|---|---|---|---|---|---|---|---|
+| Easy | θ₀ (hand prior) | 0.6 s | 45 | 0.50 s | no | no | 0.50 |
+| Normal | θ₀ | 0.45 s | 80 | 0.35 s | yes | no | 0.70 |
+| Hard | M@30 (league) | 0.45 s | 90 | 0.30 s | yes | no | 0.65 |
+| Master | M@30 | 0.25 s | 240 | 0.15 s | yes | yes | 1.00 |
+
+**Search** (candidates picked on these seeds, so these scores are optimistic):
+- seeds 11001+: Master vs Hard-candidate with micro and macro 0.8 scored 54.2%; that candidate vs Normal 83.3%; Normal vs Easy 70.8%.
+- seeds 12001+: Master vs Hard (shipped) 66.7% [46.7, 82.0], vs a macro-0.75 variant 60.4%; Hard vs Normal 66.7% [46.7, 82.0], variant 75.0%.
+- seeds 14001+: weakening Hard further (macro 0.55, 80 APM) and Normal (macro 0.6) did *not* widen the top gap. Master vs that Hard
+  scored 52.1%, that Hard vs that Normal 56.3%, and that Normal vs Easy 62.5%. So macro efficiency stops mattering at the top, and
+  the shipped ladder was kept.
+
+**Confirmation on fresh seeds 13001+ with the shipped presets** (24 mirrored games each, 10-min cap):
+
+| Matchup | W–D–L | Score | 95 % Wilson CI | Elo |
+|---|---|---|---|---|
+| Master vs Hard | 12–3–9 | **56.3 %** | [36.9, 73.8] | +44 — **below the 60 % target** |
+| Hard vs Normal | 13–5–6 | **64.6 %** | [44.7, 80.5] | +104 |
+| Normal vs Easy | 14–7–3 | **72.9 %** | [52.9, 86.6] | +172 |
+| Master vs v3-Hard at equal income | 19–3–2 | **85.4 %** | [66.5, 94.5] | +307 |
+| Normal vs v3-Normal | 16–5–3 | 77.1 % | [57.3, 89.4] | +211 |
+| Easy vs v3-Easy (0.85 income) | 23–1–0 | 97.9 % | [82.8, 99.8] | |
+| Autopilot (human proxy) vs Easy, 18-min cap | 19–1–4 | 81.3 % | [61.8, 92.1] | |
+
+BT Elo of the confirmation games (Master = 1000): Master 1000, Hard 961, Normal 869, Easy 710; Autopilot 954, v3-Hard×1.0 698,
+v3-Normal 664, v3-Easy 160.
+
+Pooled Master vs Hard over both seed sets (48 games, selection-biased): 61.5 % [47.3, 73.9].
+
+**Honest summary.** Hard > Normal > Easy meet the ≥ 60 % point-estimate target on fresh seeds; none of the three adjacent pairs is
+significant at 24 games (every CI's lower bound is below 60 %, two below 50 %). Master > Hard stays at 56 % on fresh seeds. The
+largest Master–Hard separation seen was 66.7 % (selection seeds). Further separation would need a stronger Master (more
+league training) rather than a weaker Hard.
+
+## 2. First release evaluation (`tools/league/final_eval.js`, seeds 7001+, 10-min cap, mirrored sides and factions)
+
+Tiers then shipped (superseded by §2a): Master / Hard / Normal used θ = M@30, Easy used θ₀; they differ in think rate, APM cap,
 reaction delay, micro and macro efficiency (`docs/AI_DESIGN.md` §10). **Income ×1.0 on every T2 tier; the v3 opponents keep their
 own multipliers (v3-Easy 0.85, v3-Normal 1.0, v3-Hard 1.25).**
 

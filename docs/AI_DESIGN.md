@@ -193,14 +193,14 @@ most under-allocated site.
   never refuses breaks the bound (control).
 * **Reaction delay** §2; **think rate** (2–4 Hz); **micro** switches per tier.
 
-| Tier | think | APM (command) | delay | focus | kite / concave / pull-back | macro efficiency |
-|---|---|---|---|---|---|---|
-| Easy | 0.6 s | 50 | 0.45 s | no | no | 0.6 (skips 40 % of production chances) |
-| Normal | 0.45 s | 90 | 0.30 s | yes | no | 0.85 |
-| Hard | 0.33 s | 150 | 0.20 s | yes | yes | 1 |
-| Master | 0.25 s | 240 | 0.15 s | yes | yes | 1 |
+| Tier | θ | think | APM (command) | delay | focus | kite / concave / pull-back | macro efficiency (production and worker queues) |
+|---|---|---|---|---|---|---|---|
+| Easy | θ₀ | 0.6 s | 45 | 0.50 s | no | no | 0.50 |
+| Normal | θ₀ | 0.45 s | 80 | 0.35 s | yes | no | 0.70 |
+| Hard | league M@30 | 0.45 s | 90 | 0.30 s | yes | no | 0.65 |
+| Master | league M@30 | 0.25 s | 240 | 0.15 s | yes | yes | 1 |
 
-(Final tier values, if retuned for Elo spacing, are in `41_ai_params.js` and the results doc.) Income handicap is 1.0 on every tier;
+(Shipped "ladder-2"; measured separations in `docs/AI_LEAGUE_RESULTS.md` §2a.) Income handicap is 1.0 on every tier;
 the v3 "Hard = +25 % income" cheat is not used by T2 (the field `handicap` exists and defaults to 1.0).
 
 ## 11. The parameter vector θ and faction styles
