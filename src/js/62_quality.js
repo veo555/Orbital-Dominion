@@ -8,13 +8,16 @@
      fx      0 none · 1 vignette + grade · 2 + additive glows and dust · 3 + extra particles
      part    multiplier on cosmetic particle counts
      fps     0 = display rate, 30 = render at most 30 frames per second (battery saver)
+     lit     lighting: 1 = ambient grade + coarse lights (6 px cells), 2 = finer lights (5 px cells), 3 = 4 px cells + additive colour pools
+     shd     sprite shadows: 0 = blob only, 1 = one baked soft silhouette, 2 = two stacked copies (long soft shadow), 3 = three
+     bloom   0 off, 1 one downscaled bright-pass (1/8), 2 two levels (1/8 + 1/16); only 'ultra' enables it (software raster: +4 ms)
    'auto' starts from a device heuristic and then moves between tiers using measured frame times.
    ========================================================================= */
 const QUALITY={
-  battery :{dpr:1,  sc:2,smooth:'low',   hires:0,fx:0,part:.4,fps:30},
-  balanced:{dpr:1.5,sc:3,smooth:'medium',hires:0,fx:1,part:.7,fps:0},
-  high    :{dpr:2,  sc:3,smooth:'high',  hires:1,fx:2,part:1, fps:0},
-  ultra   :{dpr:3,  sc:4,smooth:'high',  hires:2,fx:3,part:1.3,fps:0}
+  battery :{dpr:1,  sc:2,smooth:'low',   hires:0,fx:0,part:.4,fps:30,lit:1,shd:0,bloom:0},
+  balanced:{dpr:1.5,sc:3,smooth:'medium',hires:0,fx:1,part:.7,fps:0, lit:2,shd:1,bloom:0},
+  high    :{dpr:2,  sc:3,smooth:'high',  hires:1,fx:2,part:1, fps:0, lit:2,shd:2,bloom:0},
+  ultra   :{dpr:3,  sc:4,smooth:'high',  hires:2,fx:3,part:1.3,fps:0,lit:3,shd:3,bloom:2}
 };
 const TIERS=['battery','balanced','high','ultra'];
 const Q=Object.assign({tier:'high',auto:true,autoMax:2,acc:0,n:0,bad:0,good:0,lastSwitch:0,fpsAvg:60,msAvg:16,gate:0},QUALITY.high);

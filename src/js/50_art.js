@@ -185,5 +185,6 @@ function unitSprite(type,f){
   const d=UDEF[type],S=Math.ceil((d.r+(d.hero?18:type==='titan'?24:type==='brute'?14:12))*2),cvs=mkCanvas(S*SC,S*SC),g=cvs.getContext('2d');
   g.translate(S*SC/2,S*SC/2);g.scale(SC,SC);g.lineJoin='round';g.lineCap='round';
   artUnit(g,type,d.creep?NEUTRAL_COL:facCol(f),f);
+  spritePolish(cvs,'u');
   return spriteCache[k]={cv:cvs,S};
 }
