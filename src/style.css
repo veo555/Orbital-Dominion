@@ -455,6 +455,53 @@ select{font:inherit;font-size:14px;color:var(--txt);background:#07101c;border:1p
 html.compact .row.links{margin-top:6px}
 html.rm *,html.rm *::before,html.rm *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 
+/* ------------------------------ 12. Material 3 layer (v4) ------------------------------
+   Google's Material 3 vocabulary mapped onto this game's own palette (the tokens in section 1 stay the single source of colour; the --md-* roles are aliases):
+   colour roles, shape scale, state layers (hover 8 %, focus 10 %, press 10 %, drag 16 %, disabled 38 % / 12 %), emphasized motion, 48 dp touch targets on touch devices,
+   window size classes (html.wc-compact < 600 px, wc-medium 600-839, wc-expanded >= 840; set by 79_m3.js). See docs/DESIGN_SYSTEM.md section 9. */
+:root{
+  --md-primary:var(--acc);--md-on-primary:#04101f;--md-primary-container:rgba(var(--acc-rgb),.32);--md-on-primary-container:var(--txt);
+  --md-secondary-container:var(--raise);--md-on-secondary-container:var(--txt);
+  --md-surface:var(--panel);--md-surface-container-low:#0c182b;--md-surface-container:var(--panel2);--md-surface-container-high:var(--raise);--md-surface-container-highest:var(--raise2);
+  --md-on-surface:var(--txt);--md-on-surface-variant:var(--txt2);--md-outline:var(--line2);--md-outline-variant:var(--line);
+  --md-error:var(--bad);--md-error-container:#4a1d1d;--md-on-error-container:#ffd9d6;
+  --md-shape-xs:4px;--md-shape-sm:8px;--md-shape-md:12px;--md-shape-lg:16px;--md-shape-xl:28px;--md-shape-full:999px;
+  --md-state-hover:.08;--md-state-focus:.10;--md-state-press:.10;--md-state-drag:.16;--md-disabled-content:.38;--md-disabled-container:.12;
+  --md-ease-standard:cubic-bezier(.2,0,0,1);--md-ease-emph-dec:cubic-bezier(.05,.7,.1,1);--md-ease-emph-acc:cubic-bezier(.3,0,.8,.15);
+  --md-dur-short2:100ms;--md-dur-short3:150ms;--md-dur-short4:200ms;--md-dur-med2:300ms;--md-dur-med4:400ms;
+  --md-target:48px;
+}
+/* state layer: one overlay in the element's own text colour, opacity by state (replaces the old per-button brightness hacks) */
+.btn,.tier,.fac{position:relative;isolation:isolate;overflow:hidden}
+.btn::after,.tier::after,.fac::after{content:"";position:absolute;inset:0;border-radius:inherit;background:currentColor;opacity:0;pointer-events:none;z-index:-1;transition:opacity var(--md-dur-short3) var(--md-ease-standard)}
+.btn::before,.tier::before{content:"";position:absolute;left:var(--rx,50%);top:var(--ry,50%);width:max(200%,220px);aspect-ratio:1;border-radius:50%;background:currentColor;opacity:0;transform:translate(-50%,-50%) scale(0);pointer-events:none;z-index:-1}
+.btn.rip::before,.tier.rip::before{animation:mdRipple var(--md-dur-med4) var(--md-ease-standard) forwards}
+@keyframes mdRipple{0%{opacity:.14;transform:translate(-50%,-50%) scale(0)}70%{opacity:.10}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+@media (hover:hover){
+  .btn:hover,.btn.big:hover{filter:none}
+  .btn:not(.sel):not(.big):not(.danger):hover{background:linear-gradient(#18325a,#0f2139);border-color:var(--line2)}
+  .tier:hover{background:linear-gradient(#18325a,#0f2139)}
+  .btn:hover::after,.tier:hover::after,.fac:hover::after{opacity:var(--md-state-hover)}
+}
+.btn:focus-visible::after,.tier:focus-visible::after,.fac:focus-visible::after{opacity:var(--md-state-focus)}
+.btn:active::after,.tier:active::after{opacity:var(--md-state-press)}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:var(--md-disabled-content);cursor:not-allowed}
+.btn:disabled::after{opacity:0}
+.btn.danger{background:linear-gradient(var(--md-error-container),#2a1111);color:var(--md-on-error-container)}
+/* shape + dialog motion: dialogs enter with the emphasized-decelerate curve, 300 ms; reduced motion is handled by html.rm / prefers-reduced-motion above */
+.card,.mcard{border-radius:clamp(var(--md-shape-lg),3vw,var(--md-shape-xl))}
+.overlay:not(.hidden)>.card,.overlay:not(.hidden)>.mcard{animation:mdIn var(--md-dur-med2) var(--md-ease-emph-dec) both}
+@keyframes mdIn{from{opacity:0}to{opacity:1}}   /* opacity only: a scale/translate entry made the card's measured geometry (and hit targets) wrong for 300 ms */
+.btn.big{border-radius:var(--md-shape-full)}
+/* 48 dp touch targets where there is room (compact phones keep the denser 44 px rule above) */
+html.touch:not(.compact) .btn,html.touch:not(.compact) .tier{min-height:var(--md-target)}
+html.touch .btn{min-width:44px}
+/* window size classes: a wider window gets a wider menu card, a narrow one stays single column */
+html.wc-expanded .mcard{width:min(860px,96vw)}
+html.wc-expanded .card.wide{width:min(1040px,96vw)}
+
+.pmini{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:2px 0}.pmini .btn{flex:1 1 auto;border-radius:var(--md-shape-full);background:var(--md-secondary-container);min-height:40px}
+html.compact #pauseMenu>.card{align-self:center}
 /* AUDIO:BEGIN (WF-audio only) */
 /* ---- Sound lab entry (body.html, Settings card): the hint sits level with its button ---- */
 #setMenu #bSoundLab~.small{align-self:center}

@@ -257,7 +257,7 @@ function frameBody(dt,t){
 function boot(){
   cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
-  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();campInit();soundLabInit();ui.inWin=true;
+  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();campInit();soundLabInit();m3Init();ui.inWin=true;
   if(window.ResizeObserver){const ro=new ResizeObserver(()=>{sizeMinimap();measureHud();});ro.observe($('top'));ro.observe($('bottom'));ro.observe($('mmWrap'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
