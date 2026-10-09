@@ -341,11 +341,27 @@ function onKey(e){
   if(e.key==='Escape'){e.preventDefault();closeLab();return;}
   if(e.key==='Tab')trapTab(e);
 }
+/* Settings row for the OPTIONAL recorded-voice pack (84_voice.js, tools/voicepack/README.md). File picker only: nothing is requested from the network. */
+function buildPackRow(){
+  const row=ST.entry&&ST.entry.parentNode;if(!row||!row.parentNode||document.getElementById('bVoicePack'))return;
+  const r=mk('div','row'),b=mk('button','btn','Load voice pack...'),rm=mk('button','btn','Remove'),info=mk('span','dim small','Optional recorded voices (none loaded)'),inp=document.createElement('input');
+  b.id='bVoicePack';b.type='button';rm.id='bVoicePackX';rm.type='button';rm.hidden=true;info.id='voicePackInfo';info.setAttribute('aria-live','polite');
+  inp.type='file';inp.id='voicePackFile';inp.multiple=true;inp.hidden=true;inp.accept='.json,.zip,.ogg,.opus,.m4a,.mp3,.wav,application/json,application/zip,audio/*';
+  const show=()=>{const s=typeof voicepackStatus==='function'?voicepackStatus():null;
+    if(!s||!s.loaded||!s.accepted){info.textContent=s&&s.reasons&&s.reasons.length?'Voice pack rejected: '+s.reasons[0]:'Optional recorded voices (none loaded)';rm.hidden=true;return;}
+    info.textContent='Voice pack: '+s.accepted+' lines'+(s.rejected?' ('+s.rejected+' rejected)':'')+(s.license&&s.license.statement?'. '+s.license.statement:'');rm.hidden=false;};
+  b.addEventListener('click',()=>inp.click());
+  inp.addEventListener('change',()=>{const f=inp.files;if(!f||!f.length)return;info.textContent='Checking voice pack...';
+    voicepackLoadFiles(f).then(show,e=>{info.textContent='Voice pack not loaded: '+(e&&e.message||e);}).then(()=>{try{inp.value='';}catch(e){}});});
+  rm.addEventListener('click',()=>{voicepackClear();show();});
+  r.append(b,rm,info,inp);row.parentNode.insertBefore(r,row.nextSibling);
+}
 function init(){
   ST.root=document.getElementById('soundLab');ST.card=document.getElementById('slCard');ST.entry=document.getElementById('bSoundLab');
   if(!ST.root||!ST.card||!ST.entry)return;
   ST.fac=typeof SET!=='undefined'&&SET&&FAC.indexOf(SET.faction)>=0?SET.faction:'meridian';
   ST.entry.addEventListener('click',openLab);
+  buildPackRow();
   document.addEventListener('keydown',onKey,true);
 }
 return{init,open:openLab,close:closeLab,isOpen};

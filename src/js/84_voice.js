@@ -487,6 +487,143 @@ function voxTtsStart(P,text,SY,vol,done){
   return{u,voice:v.name};
 }
 
+
+/* ------------------------------------------------------------------ OPTIONAL VOICE PACK (tools/voicepack/, docs/AUDIO_V4.md)
+   Recorded lines that replace the synthesized voice for the lines they cover. DEFAULT: absent. With no pack loaded nothing here runs and nothing is requested.
+   A pack is  manifest.json {format:1, lines:{id:{file,duration,sha256,speaker,key}}}  + the audio files, supplied by the PLAYER:
+     * Settings -> "Load voice pack..." (a file picker: manifest.json + audio files, or a .zip)  - File APIs only, no network;
+     * or, if the page is served over http(s) and the URL carries ?voicepack=voicepack/ (same origin, relative path only), fetched from there. No such parameter = no request.
+   Every file is verified against its manifest sha256 (pure-JS SHA-256, works on insecure origins) BEFORE it is decoded; a mismatch, an unsafe path, an oversize file or a decode error
+   rejects that file only (the line keeps the synthesized voice). Lines are found by what is spoken: key = <canonical speaker>|<fnv1a32 of the whitespace-normalised text>, so renamed ids
+   still match and an edited line falls back to the synthesized voice instead of playing stale audio. A recording plays on the voice bus (music/battle duck exactly as for synthesized
+   speech); the subtitle path is the caller's and is unchanged. */
+const VP={man:null,byKey:new Map(),byId:new Map(),bufs:new Map(),stats:{accepted:0,rejected:0,reasons:[],played:0,source:''},MAXB:6*1024*1024,MAXN:2000};
+const VP_SHA_K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+function voxSha256(bytes){
+  const u8=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes),n=u8.length,tot=((n+9+63)>>6)<<6,m=new Uint8Array(tot);m.set(u8);m[n]=0x80;
+  const dv=new DataView(m.buffer);dv.setUint32(tot-8,Math.floor(n/0x20000000));dv.setUint32(tot-4,(n<<3)>>>0);
+  const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]),W=new Uint32Array(64),rr=(x,k)=>(x>>>k)|(x<<(32-k));
+  for(let o=0;o<tot;o+=64){
+    for(let i=0;i<16;i++)W[i]=dv.getUint32(o+i*4);
+    for(let i=16;i<64;i++){const a=W[i-15],b=W[i-2];W[i]=(W[i-16]+(rr(a,7)^rr(a,18)^(a>>>3))+W[i-7]+(rr(b,17)^rr(b,19)^(b>>>10)))>>>0;}
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let i=0;i<64;i++){
+      const t1=(h+(rr(e,6)^rr(e,11)^rr(e,25))+((e&f)^(~e&g))+VP_SHA_K[i]+W[i])>>>0,t2=((rr(a,2)^rr(a,13)^rr(a,22))+((a&b)^(a&c)^(b&c)))>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    H[0]+=a;H[1]+=b;H[2]+=c;H[3]+=d;H[4]+=e;H[5]+=f;H[6]+=g;H[7]+=h;
+  }
+  let s='';for(let i=0;i<8;i++)s+=H[i].toString(16).padStart(8,'0');return s;
+}
+function voxPackKey(who,text){
+  const t=String(text==null?'':text).replace(/\s+/g,' ').trim();
+  return voxCanon(who)+'|'+(KIT.hash(t)>>>0).toString(16).padStart(8,'0');
+}
+function voxPackSafe(f){return typeof f==='string'&&f.length>0&&f.length<200&&/^[A-Za-z0-9_\-][A-Za-z0-9_\-./]*$/.test(f)&&f.indexOf('..')<0&&f.indexOf('//')<0;}
+function voxPackClear(){VP.man=null;VP.byKey.clear();VP.byId.clear();VP.bufs.clear();VP.stats={accepted:0,rejected:0,reasons:[],played:0,source:''};}
+/* manifest + a byte supplier  getBytes(path) -> Promise<ArrayBuffer|Uint8Array|null>  ->  {accepted, rejected, reasons} */
+async function voxPackLoad(man,getBytes,source){
+  voxPackClear();
+  const st=VP.stats;st.source=source||'';
+  const bad=(f,why)=>{st.rejected++;if(st.reasons.length<50)st.reasons.push(f+': '+why);};
+  if(!man||man.format!==1||!man.lines||typeof man.lines!=='object'){bad('manifest','unsupported or missing format/lines');return st;}
+  const ids=Object.keys(man.lines);if(ids.length>VP.MAXN){bad('manifest','too many lines ('+ids.length+')');return st;}
+  if(!AC){try{audioInit();}catch(e){}}
+  if(!AC||typeof AC.decodeAudioData!=='function'){bad('audio','no audio context');return st;}
+  const ok=new Map();   // file -> decoded entry or null
+  for(const id of ids){
+    const e=man.lines[id];if(!e||typeof e!=='object'){bad(id,'bad entry');continue;}
+    const f=e.file;let d=ok.get(f);
+    if(d===undefined){
+      d=null;
+      try{
+        if(!voxPackSafe(f))throw new Error('unsafe path');
+        if(typeof e.sha256!=='string'||!/^[0-9a-f]{64}$/.test(e.sha256))throw new Error('missing sha256');
+        const raw=await getBytes(f);if(!raw)throw new Error('file missing');
+        const u8=raw instanceof Uint8Array?raw:new Uint8Array(raw);
+        if(u8.length===0||u8.length>VP.MAXB)throw new Error('bad size '+u8.length);
+        if(voxSha256(u8)!==e.sha256)throw new Error('sha256 mismatch');
+        const buf=await AC.decodeAudioData(u8.slice().buffer);
+        if(!(buf.duration>0.05&&buf.duration<60))throw new Error('implausible duration');
+        const ch=buf.getChannelData(0),fr=Math.max(1,Math.round(buf.sampleRate*0.02)),env=[];let mx=1e-6;
+        for(let i=0;i<ch.length;i+=fr){let s=0,c=0;for(let k=i;k<Math.min(ch.length,i+fr);k++){s+=ch[k]*ch[k];c++;}const r=Math.sqrt(s/c);env.push([i/buf.sampleRate,r]);if(r>mx)mx=r;}
+        for(const p of env)p[1]=Math.min(1.1,p[1]/mx);
+        d={buf,env,dur:buf.duration};
+      }catch(err){bad(f||id,String(err&&err.message||err));d=null;}
+      ok.set(f,d);
+    }
+    if(!d)continue;
+    VP.byId.set(id,d);
+    if(typeof e.key==='string'&&e.key)VP.byKey.set(e.key,d);
+    st.accepted++;
+  }
+  VP.man=man;return st;
+}
+/* the files of a picker / drop: a manifest.json (or .json) and audio files (matched by basename), or one .zip */
+async function voxPackFromFiles(files){
+  files=Array.prototype.slice.call(files||[]);
+  const base=n=>String(n).split('/').pop();
+  const zip=files.find(f=>/\.zip$/i.test(f.name));
+  const rd=f=>new Promise((res,rej)=>{if(f.arrayBuffer){f.arrayBuffer().then(res,rej);return;}const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsArrayBuffer(f);});
+  let man=null,get;
+  if(zip){
+    const ent=await voxZipRead(new Uint8Array(await rd(zip)));
+    const m=ent.get('manifest.json');if(!m)throw new Error('no manifest.json in the zip');
+    man=JSON.parse(new TextDecoder().decode(m));get=async p=>ent.get(p)||null;
+  }else{
+    const mf=files.find(f=>base(f.name)==='manifest.json')||files.find(f=>/\.json$/i.test(f.name));
+    if(!mf)throw new Error('select manifest.json together with the audio files');
+    man=JSON.parse(await (mf.text?mf.text():new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsText(mf);})));
+    const by=new Map();for(const f of files)by.set(base(f.webkitRelativePath||f.name),f);
+    get=async p=>{const f=by.get(base(p));return f?rd(f):null;};
+  }
+  return voxPackLoad(man,get,zip?'zip':'files');
+}
+/* minimal ZIP reader (central directory; STORE, and DEFLATE through DecompressionStream when the browser has it). Entries are capped in size and count. */
+async function voxZipRead(u8){
+  const dv=new DataView(u8.buffer,u8.byteOffset,u8.length),out=new Map();let e=-1;
+  for(let i=u8.length-22;i>=Math.max(0,u8.length-65558);i--)if(dv.getUint32(i,true)===0x06054b50){e=i;break;}
+  if(e<0)throw new Error('not a zip file');
+  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);
+  if(n>VP.MAXN+4)throw new Error('zip has too many entries');
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50)throw new Error('bad zip directory');
+    const meth=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),usz=dv.getUint32(p+24,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));p+=46+nl+xl+cl;
+    if(name.endsWith('/')||usz>VP.MAXB||csz>VP.MAXB)continue;
+    if(dv.getUint32(off,true)!==0x04034b50)throw new Error('bad zip entry');
+    const ds=off+30+dv.getUint16(off+26,true)+dv.getUint16(off+28,true),raw=u8.subarray(ds,ds+csz);
+    if(meth===0)out.set(name,raw.slice());
+    else if(meth===8&&typeof DecompressionStream!=='undefined'){
+      const s=new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      out.set(name,new Uint8Array(await new Response(s).arrayBuffer()));
+    }
+  }
+  return out;
+}
+/* same-origin, relative, http(s) only. Called only from ?voicepack= or the API; never at boot by itself. */
+async function voxPackFromUrl(rel){
+  if(typeof location==='undefined'||!/^https?:$/.test(location.protocol))throw new Error('voice packs load from a URL only on http(s)');
+  rel=String(rel||'');if(!voxPackSafe(rel.replace(/\/$/,'')+'/x'))throw new Error('unsafe pack path');
+  const b=rel.endsWith('/')?rel:rel+'/',r=await fetch(b+'manifest.json',{credentials:'omit'});if(!r.ok)throw new Error('manifest HTTP '+r.status);
+  const man=await r.json();
+  return voxPackLoad(man,async p=>{const x=await fetch(b+p,{credentials:'omit'});return x.ok?x.arrayBuffer():null;},'url');
+}
+function voxPackFind(charId,txt,opts){
+  if(!VP.man)return null;
+  return(opts&&opts.lineId&&VP.byId.get(opts.lineId))||VP.byKey.get(voxPackKey(charId,txt))||null;
+}
+function voxPackPlay(pk,vol){
+  const x=AC,src=x.createBufferSource(),g=x.createGain(),t0=x.currentTime+0.03,bus=audioBus('voice');
+  if(!bus)return null;
+  src.buffer=pk.buf;g.gain.value=vol;src.connect(g);g.connect(bus);src.start(t0);
+  let done=false;const cleanup=()=>{if(done)return;done=true;try{g.disconnect();}catch(e){}};src.onended=cleanup;
+  return{T0:t0,gm:g,srcs:[src],
+    stop(){const now=x.currentTime;try{g.gain.cancelScheduledValues(now);g.gain.setValueAtTime(g.gain.value,now);g.gain.linearRampToValueAtTime(0,now+0.05);src.stop(now+0.08);}catch(e){}},cleanup};
+}
+/* ?voicepack=voicepack/ : an explicit request from whoever opened the page; nothing happens without it */
+try{const m=typeof location!=='undefined'&&/[?&]voicepack=([^&]+)/.exec(location.search);if(m)setTimeout(()=>{voxPackFromUrl(decodeURIComponent(m[1])).catch(e=>{VP.stats.reasons.push('url: '+(e&&e.message||e));});},0);}catch(e){}
+
 /* ------------------------------------------------------------------ speak / stop / queue */
 let VOXCUR=null;const VOXQ=[],VOX_QMAX=8;
 function voxCheck(cur){if(cur===VOXCUR&&cur.blipDone&&cur.ttsDone)voxFinish('end');}
@@ -516,18 +653,25 @@ function speak(charId,text,opts){
   const C=AUD.counters,cur=VOXCUR={id:P.id,plan,style,opts,h:null,tts:null,t0:0,blipDone:false,ttsDone:true,dead:false,timer:0,guard:0,bark:!!opts.bark};
   C.speaks=(C.speaks||0)+1;if(opts.bark)C.barks=(C.barks||0)+1;
   const vol=clamp(opts.volume===undefined?1:+opts.volume,0,2),SY=VOX_STY[style];
-  const tt=voxTtsStart(P,txt,SY,vol,()=>{if(!cur.ttsDone){cur.ttsDone=true;voxCheck(cur);}});
+  const pk=voxPackFind(charId,txt,opts);   // a recorded line (optional voice pack); null = the synthesized voice as always
+  const tt=pk?null:voxTtsStart(P,txt,SY,vol,()=>{if(!cur.ttsDone){cur.ttsDone=true;voxCheck(cur);}});
   if(tt){
     cur.tts=tt;cur.ttsDone=false;res.tts=true;res.voice=tt.voice;
     const est=txt.length/(14*clamp(P.ttsRate*SY.ttsRate,.5,2))+.5;
     cur.guard=setTimeout(()=>{cur.ttsDone=true;voxCheck(cur);},Math.max(plan.dur,est)*1700+1000);
   }
-  if(typeof AC!=='undefined'&&AC&&!muted&&AC.state==='running'&&vol>0){
+  if(pk){
+    cur.plan=Object.assign({},plan,{dur:pk.dur,ch:Object.assign({},plan.ch,{gv:pk.env})});res.dur=pk.dur;res.pack=true;
+    if(typeof AC!=='undefined'&&AC&&!muted&&AC.state==='running'&&vol>0){
+      try{cur.h=voxPackPlay(pk,vol*(opts.bark?0.8:1));if(cur.h){cur.t0=cur.h.T0;res.blips=false;VP.stats.played++;AUD.counters.packPlays=(AUD.counters.packPlays||0)+1;}}catch(e){C.errors++;AUD.lastError='voicepack: '+(e&&e.message||e);}
+    }
+  }
+  else if(typeof AC!=='undefined'&&AC&&!muted&&AC.state==='running'&&vol>0){
     const A=audioA('voice');
     if(A){try{cur.h=voxBuild(A,AC.currentTime+0.03,plan,P,style,vol*(tt?VOX_TTSMIX:1));cur.t0=cur.h.T0;res.blips=true;}catch(e){C.errors++;AUD.lastError='speech: '+(e&&e.message||e);}}
   }
-  if(!opts.bark&&opts.duck!==false)audioDuckVoice((plan.dur+0.5)*1000);   // music dips deeply, battle sounds a little (80_audio.js VOICE_DUCKS)
-  cur.timer=setTimeout(()=>{cur.blipDone=true;voxCheck(cur);},(plan.dur+0.1)*1000);
+  if(!opts.bark&&opts.duck!==false)audioDuckVoice((cur.plan.dur+0.5)*1000);   // music dips deeply, battle sounds a little (80_audio.js VOICE_DUCKS)
+  cur.timer=setTimeout(()=>{cur.blipDone=true;voxCheck(cur);},(cur.plan.dur+0.1)*1000);
   return res;
 }
 /* 0..1 envelope of the line being spoken right now (the voicing gain of the plan at the context clock); 0 when nothing is spoken */
@@ -574,6 +718,9 @@ function say(txt){
     audioDuckVoice(400+txt.length*65);
   }catch(e){}
 }
-AUD.voice={speak,stop:speakStop,bark,profile:voiceProfile,say,level:speakLevel,words:voxWords,syllables:voxSylWord,count:voxCount,plan:voxPlan,estimate:voxEstimate,styles:VOX_STYLES,canon:voxCanon,
+function voicepackLoadFiles(files){return voxPackFromFiles(files);}
+function voicepackClear(){voxPackClear();}
+function voicepackStatus(){return{loaded:!!VP.man,lines:VP.byId.size,accepted:VP.stats.accepted,rejected:VP.stats.rejected,reasons:VP.stats.reasons.slice(),played:VP.stats.played,source:VP.stats.source,name:VP.man&&VP.man.name||'',license:VP.man&&VP.man.license||null};}
+AUD.voice={pack:{load:voxPackLoad,fromFiles:voxPackFromFiles,fromUrl:voxPackFromUrl,clear:voxPackClear,status:voicepackStatus,key:voxPackKey,sha256:voxSha256,find:voxPackFind,zip:voxZipRead},speak,stop:speakStop,bark,profile:voiceProfile,say,level:speakLevel,words:voxWords,syllables:voxSylWord,count:voxCount,plan:voxPlan,estimate:voxEstimate,styles:VOX_STYLES,canon:voxCanon,
   cur:()=>VOXCUR,queue:()=>VOXQ.length,tts:{voice:voxTtsVoice,assign:voxTtsAssign,refresh:voxTtsRefresh,voices:()=>VOX_TTS.voices.slice()},
   tune:{F0:VOX_F0,TTSMIX:VOX_TTSMIX,TIM:VOX_TIM,STY:VOX_STY,CON:VOX_CON,PAUSE:VOX_PAUSE}};
