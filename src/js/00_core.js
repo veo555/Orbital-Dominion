@@ -152,10 +152,14 @@ const CAMP_TYPES={
   2:['crawler','crawler','spitter','spitter','brute'],
   3:['brute','brute','brute','spitter','spitter']
 };
+/* Difficulty. `tier` selects the T2 opponent's skill preset (41_ai_params.js: theta, think rate, APM cap, reaction delay, micro);
+   its income handicap is 1.0 on every tier. The other fields drive the legacy v3 AI (40_ai.js), which campaign missions keep using
+   (their waves were balanced against it): mult = v3 income multiplier, iv = think interval, base/step/first = wave sizes and timing. */
 const DIFF={
-  easy:{mult:0.85,iv:1.1,base:30,step:14,first:540,hubs:[360,820],air:false,hero:false,creep:false,smart:0.2},
-  normal:{mult:1.0,iv:0.7,base:24,step:12,first:380,hubs:[210,600],air:true,hero:true,creep:true,smart:0.6},
-  hard:{mult:1.25,iv:0.45,base:18,step:10,first:250,hubs:[140,400,720],air:true,hero:true,creep:true,smart:1.0}
+  easy:{mult:0.85,iv:1.1,base:30,step:14,first:540,hubs:[360,820],air:false,hero:false,creep:false,smart:0.2,tier:'easy'},
+  normal:{mult:1.0,iv:0.7,base:24,step:12,first:380,hubs:[210,600],air:true,hero:true,creep:true,smart:0.6,tier:'normal'},
+  hard:{mult:1.25,iv:0.45,base:18,step:10,first:250,hubs:[140,400,720],air:true,hero:true,creep:true,smart:1.0,tier:'hard'},
+  master:{mult:1.25,iv:0.45,base:18,step:10,first:250,hubs:[140,400,720],air:true,hero:true,creep:true,smart:1.0,tier:'master'}
 };
 
 /* =========================================================================

@@ -1,7 +1,7 @@
 const fs=require('fs'),vm=require('vm'),path=require('path');
 module.exports=function load(dir){
   dir=dir||path.join(__dirname,'..','..','src','js');
-  const files=fs.readdirSync(dir).filter(f=>/^(00|10|20|25|26|27|30|40|43|44|45|46)_/.test(f)).sort();
+  const files=fs.readdirSync(dir).filter(f=>/^(00|10|20|25|26|27|30|40|41|42|43|44|45|46)_/.test(f)).sort();
   let code=files.map(f=>fs.readFileSync(path.join(dir,f),'utf8')).join('\n');
   code+=`
 function toast(t,c){(globalThis.__toasts=globalThis.__toasts||[]).push(t);} function sfx(){} function say(){} function uiDirty(){} function onVision(){} function onStepEnd(){} function onGameOver(r){globalThis.__over=r;} function onCampaignEvent(e){(globalThis.__campEv=globalThis.__campEv||[]).push(e);}
