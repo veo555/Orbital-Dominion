@@ -123,7 +123,7 @@ multiplied by `(eff/mean eff)^θ_counter`.
 Like HierNet-SC2 / mini-AlphaStar's macro-actions, the top layer chooses among a few **postures** rather than raw commands; the
 lower layers turn a posture into commands.
 
-* **Value function** `V(s) = P(win | observation)`: logistic regression (or a 16-unit tanh MLP if it is clearly better on held-out
+* **Value function** `V(s) = P(win | observation)` (shipped: a 16-unit tanh MLP, held-out AUC 0.825; logistic regression is the fallback): logistic regression (or a 16-unit tanh MLP if it is clearly better on held-out
   games) over 11 observation features: log army-value ratio, log worker ratio, base difference, era difference, time, army
   difference, supply, log bank, hero level difference, kill difference, log structure-value ratio. Enemy quantities come from
   memory (with floors), never from the true state. Training: §9.
