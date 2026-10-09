@@ -1,7 +1,7 @@
 /* =========================================================================
    MENUS — main menu, pause, settings, help and the post-game report
    ========================================================================= */
-const DIFF_DESC={easy:'Slow reactions, loose macro, no unit micro.',normal:'Scouts, expands and counters what it has seen.',hard:'Quick reactions, focus fire and kiting.',master:'Strongest setting, tuned by self-play. Same fog, rules and income as you.'};
+const DIFF_DESC={easy:'Slow reactions, loose macro, no focus fire. A good first opponent.',normal:'Scouts, expands, counters what it sees and focuses fire.',hard:'Self-play-tuned strategy and timings, focus fire, no fine micro.',master:'Strongest setting: full micro (kiting, concave, retreats). Same fog, rules and income as you.'};
 const HELP_HTML=`
 <h3>Goal</h3><p>Destroy <b>every enemy structure</b>. Both sides play by the same rules: fog of war, supply, eras, upgrades. Lose all of your structures and you are out.</p>
 <h3>Touch controls <small>(phones &amp; tablets)</small></h3><div class="keys">
