@@ -213,7 +213,7 @@ h3{margin:14px 0 6px;font-size:11px;letter-spacing:2px;color:var(--acc2);text-tr
 .btn.sel{border-color:var(--acc2);background:linear-gradient(rgba(var(--acc-rgb),.55),#0f2139);box-shadow:0 0 12px rgba(var(--acc-rgb),.5)}
 .btn.big{padding:12px 30px;font-size:16px;font-weight:700;letter-spacing:2px;background:linear-gradient(rgba(var(--acc-rgb),.7),rgba(var(--acc-rgb),.4));border-color:var(--acc2);box-shadow:0 0 20px rgba(var(--acc-rgb),.35),var(--hi)}
 .btn.danger{border-color:#a04545;background:linear-gradient(#4a1d1d,#2a1111)}
-.diffrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.diffrow .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 11px}.diffrow .btn span{font-size:11px;color:var(--dim);font-weight:400;text-align:left}
+.diffrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.diffrow .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 11px}.diffrow .btn span{font-size:11px;color:var(--dim);font-weight:400;text-align:left}
 #seedIn{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r2);background:#07101c;color:var(--txt);font:inherit;font-size:16px;-webkit-user-select:text;user-select:text}
 .card{width:min(680px,96vw);max-height:94vh;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:22px 28px;border:1px solid var(--line2);border-radius:var(--r3);background:linear-gradient(#0e1c33,#09121f);box-shadow:0 0 60px rgba(var(--acc-rgb),.3)}
 .card.narrow{width:min(400px,94vw)}.card.wide{width:min(920px,96vw)}
@@ -412,7 +412,7 @@ html.compact h3{margin:6px 0 4px}
 html.compact .fac{padding:6px 8px}html.compact .fac ul,html.compact .fac p{display:none}html.compact .fac .fic img{width:30px;height:30px}html.compact .fac b{font-size:12.5px}html.compact .fac i{margin-bottom:0;font-size:10.5px}
 html.compact .facrow{grid-template-columns:repeat(3,1fr);gap:6px}
 html.compact .two{grid-template-columns:1fr;gap:0}
-html.compact .diffrow{grid-template-columns:repeat(3,1fr);gap:6px}html.compact .diffrow .btn span{display:none}html.compact .diffrow .btn{padding:7px 8px}
+html.compact .diffrow{grid-template-columns:repeat(4,1fr);gap:6px}html.compact .diffrow .btn span{display:none}html.compact .diffrow .btn{padding:7px 8px}
 html.compact .row.actions{position:static;margin:8px 0 0;padding:0;background:none;flex-wrap:wrap;gap:6px}html.compact .row.actions .btn{padding:10px 11px;font-size:13px;white-space:nowrap}html.compact .row.actions .btn.big{padding:10px 14px;font-size:14px;letter-spacing:1px}
 html.compact .btn.big{padding:11px 20px;font-size:15px}
 html.compact .card{max-height:100%;padding:12px 16px}
@@ -1037,7 +1037,7 @@ html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
 
 <script>
 (function(){
-const BUILD={"variant": "pwa", "id": "910fb34b5d", "version": "3.1.0"};
+const BUILD={"variant": "pwa", "id": "6a4579c505", "version": "3.1.0"};
 const SUPPORT_CFG={"enabled":false,"_help":"Optional 'support the game' payments through Stripe. OFF by default. See docs/MONETIZATION.md. Everything here is PUBLIC (it ships in the page): never put a Stripe secret key in this file.","title":"Support Orbital Dominion","blurb":"Orbital Dominion is free to play. If you enjoy it you can chip in, which pays for development. Payments are handled by Stripe on its own page; the game never sees your card details. Supporting unlocks cosmetic extras only: no gameplay advantage, and in-game currency is never sold.","tiers":[{"id":"coffee","label":"Coffee","amount":"$3","paymentLink":""},{"id":"backer","label":"Backer","amount":"$9","paymentLink":""},{"id":"founder","label":"Founder","amount":"$25","paymentLink":""}],"checkoutEndpoint":"","verifyEndpoint":"","entitlementEndpoint":"","perks":["Supporter badge on the title screen","Three extra interface colour themes"]};
 'use strict';
 /* =========================================================================
@@ -1193,10 +1193,14 @@ const CAMP_TYPES={
   2:['crawler','crawler','spitter','spitter','brute'],
   3:['brute','brute','brute','spitter','spitter']
 };
+/* Difficulty. `tier` selects the T2 opponent's skill preset (41_ai_params.js: theta, think rate, APM cap, reaction delay, micro);
+   its income handicap is 1.0 on every tier. The other fields drive the legacy v3 AI (40_ai.js), which campaign missions keep using
+   (their waves were balanced against it): mult = v3 income multiplier, iv = think interval, base/step/first = wave sizes and timing. */
 const DIFF={
-  easy:{mult:0.85,iv:1.1,base:30,step:14,first:540,hubs:[360,820],air:false,hero:false,creep:false,smart:0.2},
-  normal:{mult:1.0,iv:0.7,base:24,step:12,first:380,hubs:[210,600],air:true,hero:true,creep:true,smart:0.6},
-  hard:{mult:1.25,iv:0.45,base:18,step:10,first:250,hubs:[140,400,720],air:true,hero:true,creep:true,smart:1.0}
+  easy:{mult:0.85,iv:1.1,base:30,step:14,first:540,hubs:[360,820],air:false,hero:false,creep:false,smart:0.2,tier:'easy'},
+  normal:{mult:1.0,iv:0.7,base:24,step:12,first:380,hubs:[210,600],air:true,hero:true,creep:true,smart:0.6,tier:'normal'},
+  hard:{mult:1.25,iv:0.45,base:18,step:10,first:250,hubs:[140,400,720],air:true,hero:true,creep:true,smart:1.0,tier:'hard'},
+  master:{mult:1.25,iv:0.45,base:18,step:10,first:250,hubs:[140,400,720],air:true,hero:true,creep:true,smart:1.0,tier:'master'}
 };
 
 /* =========================================================================
@@ -1389,6 +1393,7 @@ function newGame(opts){
   if(f1===f0)f1=FACTION_IDS.find(f=>f!==f0);
   do{G=mkG(seed+att*131,diff,f0,f1);genMap();att++;}while(!mapConnected()&&att<30);
   G.mapAttempts=att;
+  G.aiKind=opts.aiKind||(opts.campaign?'v3':'t2');   // skirmish: T2 opponent (42_ai_agent.js); campaign missions keep the v3 wave AI they were balanced with
   for(let t=0;t<2;t++){
     const s=G.sites[t],hub=addBuilding('hub',t,s.tx,s.ty,true);
     for(let i=0;i<6;i++){const a=i/6*TAU+0.3,u=addUnit('hauler',t,s.cx*TILE+Math.cos(a)*92,s.cy*TILE+Math.sin(a)*92);
@@ -4240,9 +4245,10 @@ function step(){
 }
 
 /* =========================================================================
-   AI — personality-driven opponent that uses every system the player has
+   AI v3 (legacy) — personality-driven wave opponent. Drives campaign missions and is the league anchor;
+   skirmish uses the T2 opponent (41_ai_*.js, 42_ai_agent.js). makeAI / aiThink dispatch in 42_ai_agent.js.
    ========================================================================= */
-function makeAI(team,P){
+function makeAIV3(team,P){
   const T=G.teams[team];T.mult=P.mult;
   const style=FACTIONS[T.faction].style;
   const ai={team,P:Object.assign({},P),style,next:3,wave:0,attacking:false,group:new Set(),initN:0,stage:null,stageHub:0,saving:false,saveSince:0,
@@ -4334,7 +4340,7 @@ function aiHeroCast(ai,h){
       let allies=0;forNear(h.x,h.y,s.radius,a=>{if(a.team===team&&!a.dead&&!a.def.worker)allies++;});
       if(allies>=5&&en.length>=3){castSkill(h,i,h.x,h.y);return;}}}
 }
-function aiThink(ai){
+function aiThinkV3(ai){
   const team=ai.team,T=G.teams[team],P=ai.P,time=G.time,style=ai.style;
   const B=[],U=[],enemyU=[];
   for(const b of G.buildings)if(!b.dead&&b.team===team)B.push(b);
@@ -4525,6 +4531,850 @@ function aiThink(ai){
     const alive=army.filter(u=>ai.group.has(u.id));
     if(!alive.length||alive.length<ai.initN*0.35){ai.attacking=false;for(const u of alive)if(free(u))setOrder(u,{t:'move',x:ai.stage.x,y:ai.stage.y,gs:0});}
     else for(const u of alive)if(free(u)&&u.order.t==='idle'){const tg=nearestEnemyBuilding(u.x,u.y,team);if(tg)setOrder(u,{t:'attackmove',x:tg.x,y:tg.y,gs:0});}}
+}
+
+/* =========================================================================
+   41_AI_LIB — the maths behind the T2 opponent (SIM-SIDE: headless, deterministic, no Math.random, no DOM, no wall clock).
+   Everything here is a pure function of its arguments (plus static unit data), so tests/sim/ai_lib.js can test it in isolation.
+   See docs/AI_DESIGN.md for the formulas and where they come from.
+     1. airand            mulberry32 on a plain integer state (o.rs), so AI state stays JSON-able for 46_save.js
+     2. belief grid        Bayesian occupancy update with an imperfect sensor, hazard prior, mass-conserving diffusion, negative information
+     3. pheromone fields   tau <- (1-rho) tau + deposit, then diffusion (ant-colony stigmergy: scouting staleness, defence / repair demand)
+     4. combat predictor   heterogeneous Lanchester square-law ODE over unit stacks (range delay, splash, healing) -> P(win)
+     5. ideal free distribution   greedy marginal allocation of workers over concave site-income curves (optimal for separable concave sums)
+     6. value function     logistic / tiny-MLP evaluation of V(s)=P(win | observation)
+     7. swarm geometry     boids-style formation targets, concave arc, potential-field retreat vector
+   ========================================================================= */
+
+/* ---------------------------------------------------------------- 1. rng */
+function airand(o){let a=(o.rs|0)+0x6D2B79F5|0;o.rs=a;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
+const sigm=x=>x>30?1:x<-30?0:1/(1+Math.exp(-x));
+
+/* ---------------------------------------------------------------- 2. belief grid (coarse cells of BC x BC tiles) */
+const BC=4,BW=Math.ceil(MW/BC),BH=Math.ceil(MH/BC),BN=BW*BH,BPX=BC*TILE;
+function bcell(x,y){return clamp(y/BPX|0,0,BH-1)*BW+clamp(x/BPX|0,0,BW-1);}
+function bcx(i){return((i%BW)+.5)*BPX;}
+function bcy(i){return(((i/BW)|0)+.5)*BPX;}
+/* Bayes rule for "is there an enemy structure in this cell" with detection probability pd and false-alarm probability pf:
+     P(occ | detect)    = P pd / (P pd + (1-P) pf)
+     P(occ | no detect) = P (1-pd) / (P (1-pd) + (1-P)(1-pf))                                                      */
+function bayesOcc(p,detected,pd,pf){
+  if(detected){const a=p*pd,b=(1-p)*pf;return a+b>0?a/(a+b):p;}
+  const a=p*(1-pd),b=(1-p)*(1-pf);return a+b>0?a/(a+b):p;
+}
+/* hazard prior for cells nobody watches: p <- p + h (q - p)   (q = long-run prior, h = per-update hazard) */
+function hazard(p,q,h){return p+h*(q-p);}
+/* Diffusion on a W x H grid by pairwise fluxes between 4-neighbours: each edge moves k*(a_j - a_i).
+   Reflecting boundaries; the total mass is conserved exactly up to float rounding; stable (no negative values) for k <= 0.25.
+   mask (optional, Uint8Array): cells with mask 0 neither give nor receive mass (cliffs / void).                           */
+function diffuse(a,W,H,k,tmp,mask){
+  const n=W*H;tmp.set(a);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(mask&&!mask[i])continue;
+    if(x+1<W){const j=i+1;if(!mask||mask[j]){const f=k*(a[j]-a[i]);tmp[i]+=f;tmp[j]-=f;}}
+    if(y+1<H){const j=i+W;if(!mask||mask[j]){const f=k*(a[j]-a[i]);tmp[i]+=f;tmp[j]-=f;}}}
+  for(let i=0;i<n;i++)a[i]=tmp[i];
+}
+function gsum(a){let s=0;for(let i=0;i<a.length;i++)s+=a[i];return s;}
+/* negative information for a location density: cells that are in view and show nothing lose (pd of) their mass; renormalise to 1 */
+function densityObserve(a,inView,pd,mask){
+  let s=0;for(let i=0;i<a.length;i++){if(inView[i])a[i]*=(1-pd);s+=a[i];}
+  if(s<=1e-12){let m=0;for(let i=0;i<a.length;i++)if((!mask||mask[i])&&!inView[i])m++;
+    const v=m?1/m:1/a.length;for(let i=0;i<a.length;i++)a[i]=((!mask||mask[i])&&(!inView[i]||!m))?v:0;return;}
+  for(let i=0;i<a.length;i++)a[i]/=s;
+}
+
+/* ---------------------------------------------------------------- 3. pheromone (stigmergy) */
+/* one update:  tau <- (1-rho) tau ;  tau <- tau + deposit (done by the caller with phDeposit) ;  diffusion with rate k */
+function phStep(tau,W,H,rho,k,tmp,mask){
+  if(rho>0)for(let i=0;i<tau.length;i++)tau[i]*=(1-rho);
+  if(k>0)diffuse(tau,W,H,k,tmp,mask);
+}
+function phDeposit(tau,i,amt,cap){tau[i]+=amt;if(cap&&tau[i]>cap)tau[i]=cap;}
+function argmaxIdx(a,score){let b=-1,bs=-1e18;for(let i=0;i<a.length;i++){const s=score?score(i,a[i]):a[i];if(s>bs){bs=s;b=i;}}return b;}
+
+/* ---------------------------------------------------------------- 4. combat predictor */
+/* A fighting "stack": n identical units. hp is per unit; dmg/cd/bon/range/splash from UDEF (+ upgrades); armor includes upgrades.
+   stack fields: {type,n,hp,armor,parm,tags,fly,air,ground,dmg,bon,cd,range,speed,splash,heal,static}                         */
+function cmbStackOf(type,n,o){
+  o=o||{};const d=UDEF[type]||BDEF[type],wl=o.wl||0,al=o.al||0,isB=!UDEF[type];
+  let hp=o.hp!==undefined?o.hp:(d.hp*(isB&&o.meridian?1.2:1)),dmg=d.dmg||0,cd=d.cd||1,range=d.range||0,splash=d.splash||0,bon=d.bon||{};
+  if(o.sieged&&d.siege){dmg=d.siege.dmg;cd=d.siege.cd;range=d.siege.range;splash=d.siege.splash;bon=d.siege.bon||bon;}
+  if(d.hero){const L=o.lvl||1;hp=o.hp!==undefined?o.hp:Math.round(d.hp*(1+0.14*(L-1)));dmg*=1+0.10*(L-1);}
+  if(isB&&type==='hub')dmg+=3*(o.garr||0);
+  return{type,n,hp:Math.max(1,hp),armor:(d.armor||0)+(isB?0:al)+(d.hero?Math.floor(((o.lvl||1)-1)/2):0),parm:d.projArmor||0,tags:d.tags||{},fly:!!d.flying,
+    air:!!d.air,ground:d.ground!==false,dmg:dmg*(1+0.15*wl),bon,cd,range,speed:d.speed||0,splash,ranged:!!(d.proj),heal:d.heal?14:0,static:isB,noW:!dmg,cloak:!!d.cloak,detect:!!d.detect,ls:d.lifesteal||0};
+}
+function cmbDmg(s,t){ // damage per shot of stack s against one unit of stack t (dmgVs in 20_sim.js)
+  if(s.noW)return 0;if(t.fly?!s.air:!s.ground)return 0;
+  let a=s.dmg;for(const k in s.bon)if(t.tags[k])a+=s.bon[k];
+  return Math.max(1,a-t.armor-(s.ranged?t.parm:0));
+}
+/* Heterogeneous Lanchester square-law ODE ("aimed fire"): each stack s of side X splits its fire over the enemy stacks it can hit,
+   in proportion to their remaining numbers; target stack t loses  dH_t/dt = - sum_s n_s(t) * cmbDmg(s,t)/cd_s * share_{s,t} * splashMul.
+   n_s(t) = H_s(t)/hp_s (units die continuously), so for one homogeneous stack per side this IS Lanchester's square law:
+   A wins iff alpha A0^2 > beta B0^2 with alpha = dps_A/hp_B, beta = dps_B/hp_A.
+   Range: a stack starts firing at t0 = max(0, Rmax - range)/v_close (out-ranged units must first close the gap).
+   Healing: Menders restore up to 14 HP/s each to bio stacks of their side (capped by an energy pool of 300 HP + regen).
+   Returns {win: 1|0|0.5, remA, remB (fractions of the starting HP value), margin, t}.                                           */
+function cmbSimulate(A,B,opts){
+  opts=opts||{};const dt=opts.dt||0.5,tmax=opts.tmax||40;
+  const side=(S)=>S.filter(s=>s.n>0.001).map(s=>({s,H:s.n*s.hp,H0:s.n*s.hp,v:(s.cost||1)}));
+  const a=side(A),b=side(B);if(!a.length||!b.length)return{win:a.length?1:(b.length?0:0.5),remA:a.length?1:0,remB:b.length?1:0,margin:a.length?1:(b.length?-1:0),t:0};
+  let Rmax=0;for(const x of a)if(!x.s.static)Rmax=Math.max(Rmax,x.s.range);for(const x of b)if(!x.s.static)Rmax=Math.max(Rmax,x.s.range);Rmax+=30;
+  const vClose=(L)=>{let v=0,n=0;for(const x of L)if(!x.s.static){v+=x.s.speed*x.s.n;n+=x.s.n;}return n?v/n:0;};
+  const vc=Math.max(30,vClose(a)+vClose(b));
+  for(const x of a)x.t0=x.s.static?0:Math.max(0,(Rmax-x.s.range-30))/vc;for(const x of b)x.t0=x.s.static?0:Math.max(0,(Rmax-x.s.range-30))/vc;
+  // damage-per-second matrices (cmbDmg once per pair)
+  // cloak: a side without a detector (Mender, Turret, Hub) cannot shoot cloaked stacks at all
+  const det=(L)=>L.some(x=>x.s.detect);const dA0=det(a),dB0=det(b);
+  const mat=(X,Y,dX)=>X.map(x=>Y.map(y=>x.s.noW||(y.s.cloak&&!dX)?0:cmbDmg(x.s,y.s)/x.s.cd));
+  const MAB=mat(a,b,dA0),MBA=mat(b,a,dB0);
+  const healPool=[0,0];for(const x of a)if(x.s.heal)healPool[0]+=300*x.s.n;for(const x of b)if(x.s.heal)healPool[1]+=300*x.s.n;
+  let t=0;const dA=new Float64Array(a.length),dB=new Float64Array(b.length);
+  const fire=(X,Y,M,dY,dX)=>{
+    let ng=0;for(const y of Y)if(y.H>0&&!y.s.fly&&!y.s.static)ng+=y.H/y.s.hp;   // ground units that a splash can catch
+    for(let i=0;i<X.length;i++){const x=X[i];if(x.H<=0||t<x.t0)continue;const row=M[i],nx=x.H/x.s.hp;
+      let wsum=0;for(let j=0;j<Y.length;j++)if(row[j]>0&&Y[j].H>0)wsum+=Y[j].H/Y[j].s.hp;
+      if(wsum<=0)continue;const k=nx*dt/wsum;
+      for(let j=0;j<Y.length;j++){const y=Y[j];if(row[j]<=0||y.H<=0)continue;const ny=y.H/y.s.hp;
+        // splash: a blob of units ~24 px apart puts about pi R^2 / 576 units in the blast; half of that is in the front of the blob
+        const spl=x.s.splash&&!y.s.fly&&!y.s.static?Math.max(1,Math.min(ng,1+0.5*Math.PI*x.s.splash*x.s.splash/576)):1;
+        const dd=k*ny*row[j]*spl;dY[j]+=dd;if(x.s.ls)dX[i]-=x.s.ls*Math.min(dd,y.H);}}};   // lifesteal heals the attacker
+  const heal=(X,dX,k)=>{if(healPool[k]<=0)return;let rate=0;for(const x of X)if(x.s.heal&&x.H>0)rate+=x.s.heal*(x.H/x.s.hp)*dt;if(rate<=0)return;
+    let need=0;for(let i=0;i<X.length;i++)if(X[i].s.tags.bio&&X[i].H>0)need+=dX[i];if(need<=0)return;const h=Math.min(rate,need,healPool[k]);healPool[k]-=h;
+    for(let i=0;i<X.length;i++)if(X[i].s.tags.bio&&X[i].H>0)dX[i]-=h*dX[i]/need;};
+  const canHurt=(X,Y,M)=>{for(let i=0;i<X.length;i++)if(X[i].H>0)for(let j=0;j<Y.length;j++)if(M[i][j]>0&&Y[j].H>0)return true;return false;};
+  let step=0;
+  while(t<tmax){
+    dA.fill(0);dB.fill(0);fire(a,b,MAB,dB,dA);fire(b,a,MBA,dA,dB);heal(a,dA,0);heal(b,dB,1);
+    let la=0,lb=0;for(let i=0;i<a.length;i++){a[i].H=a[i].H>0?Math.min(a[i].H0,Math.max(0,a[i].H-dA[i])):0;la+=a[i].H;}for(let i=0;i<b.length;i++){b[i].H=b[i].H>0?Math.min(b[i].H0,Math.max(0,b[i].H-dB[i])):0;lb+=b[i].H;}
+    t+=dt;if(la<=0||lb<=0)break;
+    if((++step&7)===0&&!canHurt(a,b,MAB)&&!canHurt(b,a,MBA))break;}
+  const val=(L,k)=>{let s=0;for(const x of L)s+=(k?x.H:x.H0)/x.s.hp*x.v;return s;};
+  const A0=val(a,0),B0=val(b,0),A1=val(a,1),B1=val(b,1);
+  const remA=A0?A1/A0:0,remB=B0?B1/B0:0,margin=(A1-B1)/Math.max(1,A0+B0)*2;
+  return{win:A1>0&&B1<=0?1:B1>0&&A1<=0?0:(remA>remB?1:remA<remB?0:0.5),remA,remB,margin,t};
+}
+/* closed-form Lanchester fighting strength  S = (sum dps)(sum hp)  — the coarse estimate (also used by 25_agents.js lanch()) */
+function cmbStrength(S,E){const det=S.some(s=>s.detect);let dps=0,hp=0;
+  for(const s of S){let d=0,w=0;for(const e of E){if(e.cloak&&!det)continue;const x=cmbDmg(s,e);if(x>0){d+=x/s.cd*e.n;w+=e.n;}}dps+=s.n*(w?d/w:0);hp+=s.n*s.hp;}return dps*hp;}
+/* P(A wins) = sigmoid(kOde * ODE margin + kL * ln(S_A / S_B)): a logistic blend of the ODE and the closed-form Lanchester strength
+   ratio, fitted on real-sim skirmishes (tools/league/calib_combat.js; held-out log-loss 0.147 vs 0.166 Lanchester-only, 0.239 ODE-only) */
+function cmbPredict(A,B,k){
+  const r=cmbSimulate(A,B),c=k||(typeof AI_PARAMS!=='undefined'&&AI_PARAMS.combat)||{kOde:2.1,kL:2.2};
+  const ls=Math.log(cmbStrength(A,B)+1)-Math.log(cmbStrength(B,A)+1);
+  return{p:sigm(c.kOde*r.margin+c.kL*ls),r,ls};
+}
+
+/* ---------------------------------------------------------------- 5. ideal free distribution of workers */
+/* Each site s has a concave income curve given by marginal gains g_s(k) (income of the (k+1)-th worker). Measured in the real sim
+   (docs/AI_DESIGN.md §IFD): a base mines ~98 crystals/min per worker up to 16 workers, then 0.6x for the next 4, 0.4x up to 24, ~0.1x
+   beyond; a siphon gives ~52 ether/min per worker, linear to 6.  Greedy marginal allocation (always give the next worker to the
+   site with the largest marginal gain) maximises the total of separable concave incomes (Gross 1956; Fox 1966), and at the optimum
+   no worker can raise its own income by moving: the Ideal Free Distribution (Fretwell & Lucas 1970).                          */
+function ifdGain(site,k){ // marginal value of the (k+1)th worker at this site
+  const s=site.sat,r=site.rate*(site.w===undefined?1:site.w);
+  if(site.kind==='e')return k<s?r:k<s+2?r*0.4:0;
+  return k<s?r:k<s+4?r*0.6:k<s+8?r*0.4:k<s+14?r*0.1:0;
+}
+function ifdAlloc(sites,N){
+  const n=sites.map(()=>0);
+  for(let w=0;w<N;w++){let b=-1,bg=0;for(let i=0;i<sites.length;i++){const g=ifdGain(sites[i],n[i]);if(g>bg+1e-12){bg=g;b=i;}}if(b<0)break;n[b]++;}
+  return n;
+}
+function ifdTotal(sites,n){let s=0;for(let i=0;i<sites.length;i++)for(let k=0;k<n[i];k++)s+=ifdGain(sites[i],k);return s;}
+
+/* ---------------------------------------------------------------- 6. value function V(s) = P(win | features) */
+/* model: {kind:'lr', w:[...], b, mu:[...], sd:[...]} or {kind:'mlp', W1 (h x d), b1, w2 (h), b2, mu, sd};  features are standardised */
+function vfEval(m,f){
+  if(!m||!m.w&&!m.W1)return 0.5;
+  const d=f.length,x=new Array(d);for(let i=0;i<d;i++)x[i]=(f[i]-(m.mu?m.mu[i]:0))/(m.sd?m.sd[i]||1:1);
+  if(m.kind==='mlp'){let z=m.b2;for(let h=0;h<m.W1.length;h++){let a=m.b1[h];const r=m.W1[h];for(let i=0;i<d;i++)a+=r[i]*x[i];z+=m.w2[h]*Math.tanh(a);}return sigm(z);}
+  let z=m.b;for(let i=0;i<d;i++)z+=m.w[i]*x[i];return sigm(z);
+}
+
+/* ---------------------------------------------------------------- 7. swarm geometry */
+function centroid(L){let x=0,y=0;for(const u of L){x+=u.x;y+=u.y;}return L.length?{x:x/L.length,y:y/L.length}:null;}
+function spreadOf(L,c){let s=0;for(const u of L)s+=hyp(u.x-c.x,u.y-c.y);return L.length?s/L.length:0;}
+/* boids-style formation move (Reynolds 1987): target_i = goal + cohesion * (x_i - centroid), clamped to a radius that grows with
+   sqrt(n) (separation keeps a minimum spacing); alignment comes from moving the whole group at the speed of its slowest member.  */
+function boidsTargets(L,goal,coh){
+  const c=centroid(L);if(!c)return[];const R=40+18*Math.sqrt(L.length);
+  return L.map(u=>{let dx=(u.x-c.x)*coh,dy=(u.y-c.y)*coh;const d=hyp(dx,dy);if(d>R){dx*=R/d;dy*=R/d;}return{x:goal.x+dx,y:goal.y+dy};});
+}
+/* concave arc: n slots on an arc of radius rad around the enemy centre e, centred on the direction we come from */
+function arcSlots(from,e,rad,n,width){
+  const a0=Math.atan2(from.y-e.y,from.x-e.x),W=Math.min(width||2.2,0.35*n+0.4),out=[];
+  for(let i=0;i<n;i++){const a=a0+(n>1?(i/(n-1)-0.5)*W:0);out.push({x:e.x+Math.cos(a)*rad,y:e.y+Math.sin(a)*rad});}
+  return out;
+}
+/* potential field: attraction to home, 1/d repulsion from each threat (weight w); returns a unit vector */
+function fieldDir(p,home,threats,wHome){
+  let fx=0,fy=0;const hd=hyp(home.x-p.x,home.y-p.y)||1;fx+=(home.x-p.x)/hd*(wHome||1);fy+=(home.y-p.y)/hd*(wHome||1);
+  for(const t of threats){const dx=p.x-t.x,dy=p.y-t.y,d=Math.max(30,hyp(dx,dy));fx+=dx/d*(t.w||1)*200/d;fy+=dy/d*(t.w||1)*200/d;}
+  const l=hyp(fx,fy)||1;return{x:fx/l,y:fy/l};
+}
+
+/* =========================================================================
+   41_AI_PARAMS — parameters of the T2 opponent. GENERATED by tools/league/export_params.js from a league run; do not edit by hand.
+   theta vectors live in the unit cube (decoded by thetaDecode in 42_ai_agent.js; THETA_SPEC names them); styles are faction priors
+   added in the same space; tiers differ in theta (decision quality) and in think rate, APM cap, reaction delay, micro and macro efficiency
+   (all with income x1.0). vf = value function V(s) (tools/league/train_value.py); combat = predictor link (tools/league/calib_combat.js).
+   See docs/AI_DESIGN.md and docs/AI_LEAGUE_RESULTS.md.
+   ========================================================================= */
+const AI_PARAMS={"version":"league-1 (M@30)","theta0":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5],"styles":{"rush":{"firstAtk":-0.2,"atkSup":-0.1,"aggr":-0.08,"cMelee":0.25,"expandAt":0.1,"era2":0.1,"turret":-0.2,"harass":0.2},"turtle":{"turret":0.35,"firstAtk":0.12,"cHeavy":0.2,"cArt":0.2,"aggr":0.05,"expandAt":-0.05},"trader":{"trade":0.4,"expandAt":-0.12,"era2":-0.08,"tech":0.15,"cAir":0.1}},"tiers":{"easy":{"think":0.6,"apm":50,"delay":0.45,"micro":0,"focus":0,"kite":0,"macro":0.6,"useV":1,"theta":[0.5,0.67,0.25,0.32,0.5,0.35,0.37,0.375,0.6,0.35,0.45,0.45,0.2,0.3,0.3,0.53,0.375,0.55,0.57,0.375,0.4,0.5,0.25,0.5,0.5,0.5,0.3,0.5,0.5]},"normal":{"think":0.45,"apm":90,"delay":0.3,"micro":0,"focus":1,"kite":0,"macro":0.85,"useV":1,"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628]},"hard":{"think":0.33,"apm":150,"delay":0.2,"micro":1,"focus":1,"kite":1,"macro":1,"useV":1,"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628]},"master":{"think":0.25,"apm":240,"delay":0.15,"micro":1,"focus":1,"kite":1,"macro":1,"useV":1,"theta":[-0.39403,1.54606,-0.14113,0.20882,-0.02091,0.65411,0.55617,0.49367,0.30549,1.003,0.68517,0.09351,0.71665,-0.22145,0.09761,1.0009,0.46767,0.21854,0.58332,-0.06232,0.67553,0.10938,0.45061,0.91524,0.58709,-0.02465,-0.0148,-0.43986,0.0628]}},"vf":{"kind":"mlp","W1":[[0.34264,0.47832,0.09304,-0.05393,0.46297,-0.22938,0.21981,0.02573,0.00851,0.20147,-0.02082],[-0.06285,0.11858,0.01612,0.0775,0.20465,-0.04423,-0.00686,0.05723,0.02033,-0.24088,0.09347],[0.04047,0.04464,0.0392,-0.01466,-0.00363,0.00175,0.03137,-0.01071,-0.00767,0.02737,-0.01449],[0.07176,-0.21808,-0.00921,0.06703,-0.40424,0.36626,0.00644,0.1822,0.0646,-0.38284,0.23784],[-0.20243,0.18238,0.13847,0.11068,0.65819,0.13614,0.12098,0.11162,-0.45468,-0.17051,-0.17239],[0.23781,0.08674,0.28554,0.15095,0.53018,0.05909,0.13524,0.04532,-0.15209,-0.23228,0.0463],[0.02414,0.02859,0.02505,-0.01206,-0.00729,0.00939,0.02043,-0.00814,0.00189,0.02126,-0.0057],[0.0196,0.07645,0.10659,0.06132,-0.60759,0.27382,0.302,-0.01812,-0.01634,-0.23863,0.20165],[-0.13692,0.10114,-0.21775,-0.01433,0.0388,-0.10425,-0.18081,-0.05098,-0.57138,-0.21428,0.00594],[-0.06584,0.18984,0.02371,0.09735,0.284,-0.07786,-0.0106,0.06843,0.08051,-0.3421,0.10899],[0.05784,0.09793,-0.04222,-0.1281,0.16234,-0.12668,-0.04631,-0.13761,0.01512,0.38083,-0.21312],[0.092,0.24728,0.28343,-0.03082,-0.24593,0.31916,0.4483,-0.05213,0.05571,0.22957,-0.02892],[0.02384,0.02643,0.0245,-0.01098,-0.00581,0.00796,0.01964,-0.0076,0.00302,0.02015,-0.00578],[-0.0991,-0.09236,-0.11719,-0.0629,-0.15392,-0.00165,-0.07192,-0.01906,0.00414,0.0682,-0.02194],[0.05788,-0.00556,0.00335,-0.03563,-0.09775,-0.02185,0.00354,-0.03162,0.07588,0.07351,-0.03103],[-0.00873,0.04017,-0.06248,-0.02242,-0.26506,-0.07814,0.01727,0.43829,0.16973,0.11392,-0.18493]],"b1":[-0.37768,0.45705,-0.03296,-0.78462,-0.36818,-1.78383,0.17299,0.87757,2.08581,0.50984,0.20455,1.3461,0.07966,0.85533,-0.11887,-0.00655],"w2":[0.75092,-0.34035,0.1103,-0.68557,-0.89497,0.72189,0.06897,0.77048,-0.71688,-0.47429,0.4795,0.77941,0.06753,-0.24685,0.16514,0.47953],"b2":0.09028,"mu":[0.42791,0.98797,0.78035,0.10944,0.4119,0.28858,0.35919,1.3811,-0.24376,0.07007,1.51075],"sd":[1.01382,0.45569,0.81556,0.37698,0.23056,0.77728,0.22149,0.43672,1.96833,0.98022,0.45077],"feats":["logArmyRatio","logWorkerRatio","baseDiff","eraDiff","time","armyDiffK","supply","logBank","heroDiff","killDiff","logStructRatio"],"n":125424},"combat":{"kOde":2.109,"kL":2.222},"meta":{"league":{"generations":30,"minutes":118,"games":2160},"masterFrom":"M@30","easyFrom":"M@0 (theta0)"}};
+
+/* =========================================================================
+   42_AI_AGENT — the T2 computer opponent (SIM-SIDE: headless, deterministic, no Math.random, no DOM, no wall clock).
+   A hierarchical, parameterised policy whose parameter vector theta is tuned by a self-play league (tools/league/).
+     perception   aiObserve      fog-honest: only seen(team,e) entities enter the AI; memory with timestamps; reaction delay
+                  aiBelief       Bayesian structure-occupancy grid + enemy-army location density + pheromone fields (41_ai_lib.js)
+     strategy     aiStrategy     value function V(s)=P(win|observation), posture choice (hold/attack/defend/harass) with hysteresis
+     macro        aiMacro        priority list with money reservation: supply, workers, buildings, era, hero, research, units, trade
+     workers      aiWorkers      Ideal Free Distribution over bases/siphons, repair via a demand pheromone
+     tactics      aiArmy         Lanchester/ODE fight prediction for engage/retreat, focus fire, kiting, concave arc, boids moves
+     limits       aiAct          token-bucket APM cap; every command to a selection costs one action
+   State lives in G.ais[team] as plain data (+ typed arrays), so 46_save.js snapshots it; transient object lists live in AI_RT.
+   The legacy v3 AI (40_ai.js: makeAIV3 / aiThinkV3) still drives campaign missions and is the league's anchor opponent.
+   ========================================================================= */
+const THETA_SPEC=[ // name, lo, hi  (theta is searched in the unit cube; decode maps u in [0,1] to lo + (hi-lo) u)
+  ['wBase',12,22],['wMax',24,48],['wEther',2,6],['expandAt',100,600],['expandRate',0,1],
+  ['era2',140,480],['era3',360,900],['gar',0.6,2.2],
+  ['cLight',0,1],['cMelee',0,1],['cAnti',0,1],['cHeavy',0,1],['cArt',0,1],['cAir',0,1],['cSup',0,1],
+  ['counter',0,1.5],['aggr',0.45,0.85],['retreat',0.12,0.45],['firstAtk',60,480],['atkSup',8,40],
+  ['harass',0,1],['scout',0,1],['turret',0,1],['creep',0,1],['vW',0,2],['bank',0,1],['trade',0,1],['tech',0,1],['prior',0.6,1.4]];
+const THETA_N=THETA_SPEC.length;
+const AI_CLS={rifleman:'light',specter:'light',raptor:'melee',reaver:'melee',rocketeer:'anti',juggernaut:'heavy',bulwark:'heavy',titan:'heavy',howitzer:'art',skiff:'air',mender:'sup'};
+const AI_CLASSES=['light','melee','anti','heavy','art','air','sup'];
+const AI_CKEY={light:'cLight',melee:'cMelee',anti:'cAnti',heavy:'cHeavy',art:'cArt',air:'cAir',sup:'cSup'};
+const AI_RT=[{},{}];                       // per-team transient caches (object lists), rebuilt at the start of every think
+const AI_INV=new Uint8Array(BN),AI_TMP=new Float64Array(BN),AI_TMP2=new Float64Array(BN);
+function reflect01(z){z=((z%2)+2)%2;return z>1?2-z:z;}
+function thetaDecode(u){const o={};for(let i=0;i<THETA_N;i++){const[n,lo,hi]=THETA_SPEC[i];o[n]=lo+(hi-lo)*reflect01(u[i]);}return o;}
+function aiTierCfg(name){const P=(typeof AI_PARAMS!=='undefined'&&AI_PARAMS.tiers)||{};return P[name]||P.normal||{think:0.45,apm:60,delay:0.3,micro:0,focus:1,kite:0,macro:0.85,useV:1};}
+function aiThetaFor(tier,style,override){
+  const base=override||tier.theta||(typeof AI_PARAMS!=='undefined'&&AI_PARAMS.theta0)||THETA_SPEC.map(()=>0.5),u=base.slice();
+  const d=(typeof AI_PARAMS!=='undefined'&&AI_PARAMS.styles&&AI_PARAMS.styles[style])||{};
+  for(let i=0;i<THETA_N;i++){const n=THETA_SPEC[i][0];if(d[n])u[i]=reflect01(u[i]+d[n]);else u[i]=reflect01(u[i]);}
+  return u;
+}
+function aiVal(type){const d=UDEF[type]||BDEF[type];if(!d)return 50;if(d.creep)return(d.bounty||10)*3;return(d.cost?d.cost.c+d.cost.e:50)+(d.hero?100:0);}
+
+/* ------------------------------------------------------------------ construction */
+function makeAI(team,P,kind){kind=kind||(G&&G.aiKind)||'t2';return kind==='v3'?makeAIV3(team,P):makeAIT2(team,P);}
+function aiThink(ai){if(ai.kind==='t2')aiThinkT2(ai);else aiThinkV3(ai);}
+function makeAIT2(team,P,opt){
+  opt=opt||P.t2||{};
+  const T=G.teams[team],tierName=opt.tier||P.tier||'normal',tier=Object.assign({},aiTierCfg(tierName),opt.cfg||{});
+  T.mult=opt.handicap||P.handicap||1;                                   // income handicap: 1.0 on every tier (the v3 'hard' +25 % cheat is gone)
+  const style=FACTIONS[T.faction].style,u=aiThetaFor(tier,style,opt.theta);
+  const ai={kind:'t2',team,enemy:1-team,tier:tierName,cfg:tier,style,thu:u,th:thetaDecode(u),
+    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false},next:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
+    apm:{rate:tier.apm/60,burst:Math.max(3,tier.apm/60*5),tok:3,t:0,n:0,denied:0},delay:tier.delay,
+    mem:{u:{},b:{},camps:{},armySeenT:-99,heroLvl:0,heroT:-99,eraSeen:1},
+    bel:{s:new Float32Array(BN),a:new Float64Array(BN),t:0},ph:{vis:new Float32Array(BN),dem:new Float32Array(BN),def:new Float32Array(BN)},
+    mil:'hold',milT:0,tgt:null,atkN:0,grp:[],eng:{},atkCool:0,wave:0,attacking:false,V:0.5,pG:0.5,pL:-1,
+    har:{ids:[],tgt:null,t:-99},scout:{id:0,tgt:-1,t:-99,last:-99},creep:null,lastCreep:0,
+    stage:null,stageHub:0,res:{why:'',since:0},st:{thinks:0,engage:0,retreat:0,focus:0,kite:0,expand:0,cmds:0}};
+  if(opt.noV)ai.cfg.useV=0;
+  aiBeliefInit(ai);
+  return ai;
+}
+function aiBeliefInit(ai){
+  const s=ai.bel.s,a=ai.bel.a,em=G.sites[ai.enemy];
+  for(let i=0;i<BN;i++)s[i]=0.003;
+  const ci=bcell(em.cx*TILE,em.cy*TILE);s[ci]=0.99;
+  for(let i=0;i<BN;i++)a[i]=0;a[ci]=1;                                   // the opponent's army starts at its (publicly known, mirrored) start site
+  ai.bel.sites=[];for(const st of G.sites){if(st.main)continue;const x=st.cx*TILE,y=st.cy*TILE;
+    ai.bel.sites.push({i:bcell(x,y),x,y,tx:st.tx,ty:st.ty,d:hyp(x-em.cx*TILE,y-em.cy*TILE),dOwn:hyp(x-G.sites[ai.team].cx*TILE,y-G.sites[ai.team].cy*TILE)});}
+}
+
+/* ------------------------------------------------------------------ actions (APM cap) */
+function aiAct(ai){const by=ai.st.by||(ai.st.by={});if(ai.apm.tok<1){ai.apm.denied++;by['x'+ai.tag]=(by['x'+ai.tag]||0)+1;return false;}ai.apm.tok-=1;ai.apm.n++;ai.st.cmds++;by[ai.tag]=(by[ai.tag]||0)+1;return true;}
+function aiSame(u,o){const p=u.order;if(p.t!==o.t)return false;
+  if(o.t==='attack')return p.target===o.target;
+  if(o.t==='move'||o.t==='attackmove')return hyp(p.x-o.x,p.y-o.y)<48;
+  if(o.t==='gather')return p.res===o.res;return false;}
+function aiOrder(ai,units,o){ // one command to one selection (a human: select + right-click)
+  const L=[];for(const u of units)if(!u.dead&&!u.garr&&!u.sieged&&u.siegeT<=0&&!aiSame(u,o))L.push(u);
+  if(!L.length)return true;if(!aiAct(ai))return false;
+  for(const u of L)setOrder(u,Object.assign({},o));return true;
+}
+
+/* ------------------------------------------------------------------ perception (fog honest) */
+function aiRectInView(v,r){for(const x of[r.tx,r.tx+r.w-1])for(const y of[r.ty,r.ty+r.h-1])if(v[y*MW+x]!==2)return false;return true;}
+function aiObserve(ai,R){
+  const team=ai.team,M=ai.mem,now=G.time,v=G.vis[team];
+  R.vis=[];R.en=[];R.enB=[];R.creeps=[];
+  for(const u of G.units){
+    if(u.dead||u.team===team||u.hidden)continue;
+    if(!seen(team,u))continue;                                           // THE gate: nothing about an unseen enemy enters the AI
+    if(u.team===2){R.creeps.push(u);continue;}
+    let r=M.u[u.id];
+    if(!r)r=M.u[u.id]={type:u.type,x:u.x,y:u.y,hp:u.hp,mhp:u.maxhp,t:now,first:now};
+    else{if(now-r.t>3)r.first=now;r.type=u.type;r.x=u.x;r.y=u.y;r.hp=u.hp;r.mhp=u.maxhp;r.t=now;}
+    R.vis.push(u);if(now-r.first>=ai.delay-1e-9)R.en.push(u);           // reaction delay: a new sighting is acted on only after `delay` s
+    if(!u.def.worker&&!u.def.trade)M.armySeenT=now;
+    if(u.def.hero){M.heroT=now;M.heroLvl=Math.max(1,Math.round(((u.maxhp/u.def.hp)-1)/0.14)+1);}
+    if(u.def.era>M.eraSeen)M.eraSeen=u.def.era;
+  }
+  for(const id in M.u){const r=M.u[id];if(r.t===now)continue;const age=now-r.t;
+    if(age>80){delete M.u[id];continue;}
+    // vanished in plain view: it was seen moments ago and every point it could have reached since is visible -> it died
+    // (what a player sees as an explosion). Units can also vanish into a geyser or a garrison; those are workers and are re-seen.
+    if(age<2){const d=UDEF[r.type],rad=(d?d.speed:90)*age+24;let all=v[tileOf(r.x,r.y)]===2;
+      for(let k=0;k<6&&all;k++){const a=k*1.0472;if(v[tileOf(clamp(r.x+Math.cos(a)*rad,0,WW-1),clamp(r.y+Math.sin(a)*rad,0,WH-1))]!==2)all=false;}
+      if(all&&!(d&&d.cloak)){delete M.u[id];M.killsSeen=(M.killsSeen||0)+1;}}}
+  for(const b of G.buildings){if(b.dead||b.team===team||b.team>1)continue;if(!seen(team,b))continue;
+    let r=M.b[b.id];if(!r)r=M.b[b.id]={type:b.type,x:b.x,y:b.y,tx:b.tx,ty:b.ty,w:b.w,h:b.h,hp:b.hp,mhp:b.maxhp,done:b.done,t:now};
+    else{r.hp=b.hp;r.mhp=b.maxhp;r.done=b.done;r.t=now;}
+    R.enB.push(b);if(b.def.era>M.eraSeen)M.eraSeen=b.def.era;}
+  for(const id in M.b){const r=M.b[id];if(r.t!==now&&aiRectInView(v,r))delete M.b[id];}   // the spot is in plain view and empty: destroyed
+  for(const c of G.camps){                                               // creep camps: positions are map knowledge; who is alive is not
+    if(v[tileOf(c.x,c.y)]!==2)continue;
+    let alive=false;for(const z of R.creeps)if(z.camp===c.id){alive=true;break;}
+    M.camps[c.id]={alive,t:now};}
+}
+function aiEnemyRecs(ai,maxAge,combatOnly){const out=[],now=G.time;for(const id in ai.mem.u){const r=ai.mem.u[id];if(now-r.t>maxAge)continue;const d=UDEF[r.type];if(!d)continue;if(combatOnly&&(d.worker||d.trade||d.noWeapon&&!d.heal))continue;out.push(r);}return out;}
+
+/* ------------------------------------------------------------------ own state */
+function aiOwn(ai,R){
+  const team=ai.team;R.B=[];R.U=[];R.workers=[];R.army=[];R.hubs=[];R.prod=[];R.hero=null;
+  for(const b of G.buildings)if(!b.dead&&b.team===team){R.B.push(b);if(b.type==='hub'&&b.done)R.hubs.push(b);if(b.done&&b.type!=='hub'&&b.type!=='exchange'&&prodList(b).length)R.prod.push(b);}
+  for(const u of G.units)if(!u.dead&&u.team===team){R.U.push(u);if(u.def.worker)R.workers.push(u);else if(!u.def.trade){R.army.push(u);if(u.def.hero)R.hero=u;}}
+}
+function aiStacksOf(list,team,hpOf){ // list: unit objects (own, or currently visible enemies: their buffs such as a Banner aura are visible) or memory records
+  const by={},T=G.teams[team],H=T.hero;for(const u of list){const k=u.type;const e=by[k]||(by[k]={n:0,hp:0,arm:0});e.n++;e.hp+=hpOf?hpOf(u):u.hp;e.arm+=u.armAdd||0;}
+  const out=[];for(const k in by){const e=by[k];const s=cmbStackOf(k,e.n,{wl:T.wl,al:T.al,hp:e.hp/e.n,lvl:H?H.level:1,meridian:T.faction==='meridian'});s.armor+=e.arm/e.n;s.cost=aiVal(k);out.push(s);}
+  return out;
+}
+function aiArmyVal(list){let s=0;for(const u of list){const d=UDEF[u.type];if(d&&!d.worker&&!d.trade)s+=aiVal(u.type)*Math.max(0.15,u.hp/(u.mhp||u.maxhp||d.hp));}return s;}
+
+/* ------------------------------------------------------------------ belief + pheromones (2-4 Hz) */
+function aiBelief(ai,R){
+  const team=ai.team,v=G.vis[team],s=ai.bel.s,a=ai.bel.a,now=G.time,M=ai.mem;
+  const dt=Math.max(0.1,now-(ai.bel.t||0));ai.bel.t=now;
+  for(let i=0;i<BN;i++){const tx=Math.min(MW-1,(i%BW)*BC+(BC>>1)),ty=Math.min(MH-1,((i/BW)|0)*BC+(BC>>1));AI_INV[i]=v[ty*MW+tx]===2?1:0;}
+  // structures: Bayes with an imperfect sensor where we look, hazard prior (the enemy expands over time) where we do not
+  const det=AI_TMP2;det.fill(0);for(const id in M.b){const r=M.b[id];det[bcell(r.x,r.y)]=1;}
+  const prior=AI_TMP;prior.fill(0.003);
+  for(const st of ai.bel.sites){const tExp=170+st.d/9;prior[st.i]=Math.max(prior[st.i],0.7*sigm((now-tExp)/70));}
+  for(let i=0;i<BN;i++){
+    if(det[i])s[i]=Math.max(s[i],0.99);
+    else if(AI_INV[i])s[i]=bayesOcc(s[i],false,0.92,0.002);
+    else s[i]=hazard(s[i],prior[i],1-Math.pow(0.97,dt));}
+  // enemy army location density: diffusion (movement model), pull toward its structures, negative / positive information
+  const k=Math.min(0.24,0.12*dt);diffuse(a,BW,BH,k,AI_TMP);
+  let ss=0;for(let i=0;i<BN;i++)ss+=s[i];if(ss>0)for(let i=0;i<BN;i++)a[i]=0.97*a[i]+0.03*s[i]/ss;
+  let seenV=0;const obs=AI_TMP2;obs.fill(0);
+  for(const u of R.vis){if(u.def.worker||u.def.trade)continue;const w=aiVal(u.type);obs[bcell(u.x,u.y)]+=w;seenV+=w;}
+  if(seenV>0){for(let i=0;i<BN;i++)a[i]=0.4*a[i]+0.6*obs[i]/seenV;}
+  else densityObserve(a,AI_INV,0.85);
+  // pheromones: coverage (stigmergic scouting) evaporates, so cells nobody looked at for a while become attractive again
+  const pv=ai.ph.vis;phStep(pv,BW,BH,1-Math.pow(0.985,dt),0,AI_TMP);for(let i=0;i<BN;i++)if(AI_INV[i])pv[i]=1;
+  // defence demand: perceived enemies near our structures deposit, evaporation + diffusion aggregate repeated alarms
+  const pd=ai.ph.def;phStep(pd,BW,BH,1-Math.pow(0.6,dt),0.08,AI_TMP);
+  for(const e of R.en){if(e.def.worker||e.def.trade)continue;let near=false;for(const b of R.B)if(hyp(e.x-b.x,e.y-b.y)<620){near=true;break;}
+    if(near)phDeposit(pd,bcell(e.x,e.y),aiVal(e.type)/100,50);}
+  // repair / build demand: damaged own structures (no enemy around) and unfinished ones deposit
+  const pm=ai.ph.dem;phStep(pm,BW,BH,1-Math.pow(0.7,dt),0.05,AI_TMP);
+  for(const b of R.B){if(b.done&&b.hp<b.maxhp*0.8)phDeposit(pm,bcell(b.x,b.y),(b.maxhp-b.hp)/150,40);}
+}
+
+/* ------------------------------------------------------------------ features + value function */
+const AI_FEATS=['logArmyRatio','logWorkerRatio','baseDiff','eraDiff','time','armyDiffK','supply','logBank','heroDiff','killDiff','logStructRatio'];
+function aiFeatures(ai,R){
+  const team=ai.team,T=G.teams[team],now=G.time,M=ai.mem;
+  let Va=0,Wa=0,Sa=0;for(const u of G.units)if(!u.dead&&u.team===team){if(u.def.worker)Wa++;else if(!u.def.trade)Va+=aiVal(u.type)*Math.max(0.15,u.hp/u.maxhp);}
+  let hubsA=0;for(const b of G.buildings)if(!b.dead&&b.team===team){Sa+=aiVal(b.type);if(b.type==='hub')hubsA++;}
+  const recs=aiEnemyRecs(ai,90,false);let Ve=0,We=0;for(const r of recs){const d=UDEF[r.type];if(d.worker)We++;else if(!d.trade)Ve+=aiVal(r.type)*Math.max(0.15,r.hp/r.mhp);}
+  let Se=0,hubsE=0;for(const id in M.b){const r=M.b[id];Se+=aiVal(r.type);if(r.type==='hub')hubsE++;}
+  hubsE=Math.max(1,hubsE);We=Math.max(We,6);
+  const heroA=T.hero.alive?T.hero.level:0,heroE=now-M.heroT<120?M.heroLvl:0;
+  return[Math.log((Va+100)/(Ve+100)),Math.log((Wa+2)/(We+2)),hubsA-hubsE,T.era-M.eraSeen,now/600,(Va-Ve)/1000,T.used/120,Math.log((T.c+T.e+100)/100),heroA-heroE,(T.kills-(T.creeps||0)-T.lost)/20,Math.log((Sa+400)/(Se+400))];
+}
+function aiValue(ai,R){if(!ai.cfg.useV)return 0.5;const m=typeof AI_PARAMS!=='undefined'?AI_PARAMS.vf:null;return m?vfEval(m,aiFeatures(ai,R)):0.5;}
+
+/* ------------------------------------------------------------------ strategy layer (postures) */
+function aiThreat(ai,R){ // perceived enemy combat units near our structures
+  const L=[];for(const e of R.en){if(e.def.worker||e.def.trade)continue;for(const b of R.B)if(hyp(e.x-b.x,e.y-b.y)<(b.type==='hub'?650:480)){L.push(e);break;}}
+  return L;
+}
+function aiAttackTarget(ai,R){ // best known enemy structure: value / (1 + known defence), minus distance
+  const M=ai.mem,st=ai.stage||R.hubs[0]||R.B[0];let best=null,bs=-1e9;
+  for(const id in M.b){const r=M.b[id];let thr=0;
+    for(const id2 in M.b){const q=M.b[id2];if((q.type==='turret'||q.type==='hub')&&q.done&&hyp(q.x-r.x,q.y-r.y)<260)thr+=q.type==='turret'?1:0.5;}
+    const val=r.type==='hub'?3:(prodList({type:r.type,team:ai.enemy,def:BDEF[r.type]}).length?1.6:r.type==='turret'?0.6:1);
+    const s=val/(1+thr)-hyp(r.x-st.x,r.y-st.y)/2500;if(s>bs){bs=s;best={x:r.x,y:r.y,id:+id};}}
+  if(best)return best;
+  // nothing remembered: go where the belief says structures most likely are
+  const s=ai.bel.s;let bi=-1,bp=0.2;for(let i=0;i<BN;i++)if(s[i]>bp){bp=s[i];bi=i;}
+  if(bi>=0)return{x:bcx(bi),y:bcy(bi),id:0};
+  const em=G.sites[ai.enemy];return{x:em.cx*TILE,y:em.cy*TILE,id:0};
+}
+function aiStrategy(ai,R){
+  const th=ai.th,now=G.time,T=G.teams[ai.team];
+  ai.V=aiValue(ai,R);
+  const army=R.army.filter(u=>!ai.har.ids.includes(u.id)&&u.id!==ai.scout.id);
+  const own=aiStacksOf(army,ai.team);
+  const recs=aiEnemyRecs(ai,90,true),known=aiArmyVal(recs);
+  const myVal=aiArmyVal(army.map(u=>({type:u.type,hp:u.hp,mhp:u.maxhp})));
+  const en=aiStacksOf(recs,ai.team);
+  // phantom army: what we have not seen is not nothing. The longer the opponent's army has been out of sight, the closer the
+  // estimate moves to a symmetric prior (the opponent spends like we do), expressed as Riflemen-equivalents.
+  const stale=Math.min(1,Math.max(0,now-ai.mem.armySeenT)/90),prior=th.prior*myVal*(0.4+0.6*stale);
+  if(prior>known+50){const s=cmbStackOf('rifleman',(prior-known)/50,{wl:T.wl,al:T.al});s.cost=50;en.push(s);}
+  ai.pG=own.length?cmbPredict(own,en).p:0;
+  const thr=aiThreat(ai,R),thrV=aiArmyVal(thr.map(u=>({type:u.type,hp:u.hp,mhp:u.maxhp})));
+  ai.thrV=thrV;
+  // economic posture: 'mass' (army first, no greed) while a stronger enemy army has been seen recently or we are under attack
+  ai.eco=(thrV>150||(ai.pG<0.45&&known>0.6*myVal&&now-ai.mem.armySeenT<75))?'mass':'grow';
+  const sup=army.reduce((n,u)=>n+u.def.supply,0);
+  const prev=ai.mil;
+  // 1. defence has priority when something real is at our structures
+  if(thrV>=120||thr.some(e=>!e.def.worker)&&thrV>=60&&R.army.length<3){
+    if(ai.mil!=='defend'){ai.mil='defend';ai.milT=now;}
+    const c=centroid(thr);ai.tgt={x:c.x,y:c.y,id:0};}
+  else if(ai.mil==='defend'&&now-ai.milT>4){ai.mil='hold';ai.milT=now;}
+  // 2. attack decision: predicted win probability against the estimated army, V(s) shifts the threshold (adaptive aggression)
+  if(ai.mil==='hold'&&now>th.firstAtk&&now>ai.atkCool){
+    const U=(ai.pG-th.aggr)+0.25*th.vW*(ai.V-0.5);
+    if((U>0&&sup>=th.atkSup)||T.used>=MAXSUP-8&&sup>=30){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;ai.grp=army.map(u=>u.id);}}
+  else if(ai.mil==='attack'){
+    const g=new Set(ai.grp||[]),alive=army.filter(u=>g.has(u.id)).length;
+    if(alive<Math.max(3,ai.atkN*0.35)||ai.pG<th.retreat*0.8){ai.mil='retreat';ai.milT=now;ai.atkCool=now+20;ai.st.retreat++;}
+    else if(now-ai.milT>3){const t=aiAttackTarget(ai,R);if(!ai.tgt||hyp(t.x-ai.tgt.x,t.y-ai.tgt.y)>200&&(!ai.mem.b[ai.tgt.id]))ai.tgt=t;}}
+  else if(ai.mil==='retreat'&&now-ai.milT>8){ai.mil='hold';ai.milT=now;}
+  if(ai.mil!=='attack')ai.attacking=false;
+  if(prev!==ai.mil)ai.lastOrderT=-99;
+  // 3. harassment squad (fast units) against the least defended known mining base
+  aiHarassPlan(ai,R);
+}
+function aiHarassPlan(ai,R){
+  const th=ai.th,now=G.time,H=ai.har;
+  H.ids=H.ids.filter(id=>R.army.some(u=>u.id===id));
+  if(H.ids.length&&(now-H.t>75)){H.ids=[];H.tgt=null;}
+  if(H.ids.length||th.harass<0.3||now<200||ai.mil==='defend'||now-H.t<60+120*(1-th.harass))return;
+  const fast=R.army.filter(u=>(u.type==='raptor'||u.type==='reaver'||u.type==='skiff')&&u.hp>u.maxhp*0.8);
+  if(fast.length<4)return;
+  let best=null,bs=-1e9;for(const id in ai.mem.b){const r=ai.mem.b[id];if(r.type!=='hub')continue;let thr=0;for(const id2 in ai.mem.b){const q=ai.mem.b[id2];if(q.type==='turret'&&hyp(q.x-r.x,q.y-r.y)<300)thr++;}
+    const s=-thr*2-hyp(r.x-G.sites[ai.enemy].cx*TILE,r.y-G.sites[ai.enemy].cy*TILE)/-1500;if(s>bs){bs=s;best=r;}}
+  if(!best){const em=G.sites[ai.enemy];best={x:em.cx*TILE,y:em.cy*TILE};}
+  const n=Math.min(fast.length,Math.round(4+4*th.harass));H.ids=fast.slice(0,n).map(u=>u.id);H.tgt={x:best.x,y:best.y};H.t=now;
+}
+
+/* ------------------------------------------------------------------ macro */
+function aiFindSpot2(ai,type,R){
+  const d=BDEF[type],hubs=R.hubs.length?R.hubs:[R.B[0]],em=G.sites[ai.enemy],ex=em.cx*TILE,ey=em.cy*TILE;
+  let anchor=hubs[0];
+  if(type==='turret'){let bd=1e18;for(const h of hubs){const dd=hyp(h.x-ex,h.y-ey);if(dd<bd){bd=dd;anchor=h;}}}
+  else if(hubs.length>1&&(type==='generator'||type==='garrison'))anchor=hubs[ai.k%hubs.length];
+  const reserved=pendingRects(R.workers);
+  const anchors=[anchor];for(const h of hubs)if(h!==anchor)anchors.push(h);   // a full plateau: try the other bases, then any structure
+  for(const b of R.B)if(b.type!=='hub'&&anchors.length<6&&b.done&&(b.type==='garrison'||b.type==='generator'))anchors.push(b);
+  for(const an of anchors){
+    const ax=an.x/TILE|0,ay=an.y/TILE|0,l=hyp(ex-an.x,ey-an.y)||1,ux=(ex-an.x)/l,uy=(ey-an.y)/l,RR=an===anchor?13:15;
+    let best=null,bs=1e9;
+    for(let dy=-RR;dy<=RR;dy++)for(let dx=-RR;dx<=RR;dx++){
+      const r=hyp(dx,dy);if(r>RR+0.5)continue;
+      let s=r+airand(ai)*2.5;if(r<5&&an.type==='hub')s+=8;
+      if(type==='turret'){s-=(dx*ux+dy*uy)*1.1;if(r<4||r>10)s+=6;}
+      else s+=(dx*ux+dy*uy)*0.35;                                      // keep the soft buildings on the far side of the base
+      if(s>=bs)continue;
+      const tx=ax+dx-(d.w>>1),ty=ay+dy-(d.h>>1),cx=(tx+d.w/2)*TILE,cy=(ty+d.h/2)*TILE;
+      if(!spotOK(ai.team,type,tx,ty,d,reserved,cx,cy))continue;
+      bs=s;best={tx,ty};}
+    if(best)return best;}
+  return null;
+}
+function aiFindExpansion2(ai,R){
+  const own=G.sites[ai.team],em=G.sites[ai.enemy],reserved=pendingRects(R.workers);let best=null,bd=1e18;
+  for(const st of ai.bel.sites){
+    if(R.B.some(b=>b.type==='hub'&&hyp(b.x-st.x,b.y-st.y)<12*TILE))continue;
+    if(ai.bel.s[st.i]>0.3)continue;                                     // believed (or known) to be taken
+    let enemyNear=false;for(const id in ai.mem.b){const r=ai.mem.b[id];if(hyp(r.x-st.x,r.y-st.y)<14*TILE){enemyNear=true;break;}}if(enemyNear)continue;
+    if(st.d<st.dOwn*0.9)continue;                                       // closer to the opponent's start than to ours
+    if(reserved.some(q=>Math.abs(q.tx-st.tx)<6&&Math.abs(q.ty-st.ty)<6))continue;
+    if(!canPlace(ai.team,'hub',st.tx,st.ty,true))continue;
+    if(!G.res.some(r=>!r.dead&&r.type==='crystal'&&hyp(r.x-st.x,r.y-st.y)<9*TILE))continue;
+    if(st.dOwn<bd){bd=st.dOwn;best={tx:st.tx,ty:st.ty};}}
+  return best;
+}
+function aiFreeGeyser(ai,R){let best=null,bd=1e9;
+  for(const r of G.res){if(r.dead||r.type!=='geyser'||r.siphon)continue;
+    if(R.workers.some(w=>w.order.t==='build'&&w.order.type==='siphon'&&w.order.tx===r.tx&&w.order.ty===r.ty))continue;
+    for(const h of R.hubs){const d=hyp(h.x-r.x,h.y-r.y);if(d<bd&&d<520){bd=d;best=r;}}}
+  return best;}
+function aiBuild2(ai,type,R){
+  const d=BDEF[type];let spot=null;
+  if(type==='siphon'){const g=aiFreeGeyser(ai,R);if(g)spot={tx:g.tx,ty:g.ty};}
+  else if(type==='hub')spot=aiFindExpansion2(ai,R);
+  else spot=aiFindSpot2(ai,type,R);
+  if(!spot)return false;
+  const cx=(spot.tx+d.w/2)*TILE,cy=(spot.ty+d.h/2)*TILE;let w=null,bd=1e9;
+  for(const u of R.workers){if(u.order.t==='build'||u.order.t==='repair'||u.garr||u.id===ai.scout.id)continue;
+    const dd=hyp(u.x-cx,u.y-cy)+(u.carry>0?150:0)+(u.order.t==='gather'&&u.order.st==='work'?60:0);if(dd<bd){bd=dd;w=u;}}
+  if(!w||!aiAct(ai))return false;
+  const ok=orderBuild(w,type,spot.tx,spot.ty);if(ok&&type==='hub')ai.st.expand++;return ok;
+}
+/* exchange efficiency of each producible class against the observed enemy mix (Lanchester attrition rates per unit of cost):
+   off = sum_t share_t * dps(s->t) * cost_t / hp_t   (enemy value destroyed per second by one unit of type s)
+   def = sum_t share_t * dps(t->s) / hp_s            (fraction of one s lost per second per enemy unit)
+   eff = off / (def * cost_s)                                                                                       */
+function aiCounterEff(recs,list,team){
+  const es=aiStacksOf(recs,team);let N=0;for(const t of es)N+=t.n;const eff={};
+  for(const id of list){const c=AI_CLS[id];if(!c)continue;const s=cmbStackOf(id,1,{});let off=0,def=0;
+    for(const t of es){const sh=t.n/N;off+=sh*cmbDmg(s,t)/s.cd*t.cost/t.hp;def+=sh*cmbDmg(t,s)/t.cd/s.hp;}
+    const e=off/(Math.max(0.004,def)*aiVal(id));eff[c]=Math.max(eff[c]||0,e);}
+  return eff;
+}
+function aiUnitPick(ai,R,b,spend){
+  const th=ai.th,team=ai.team,list=prodList(b);
+  // composition target: theta weights x counter multipliers from the OBSERVED enemy army (Lanchester effectiveness per cost)
+  const recs=aiEnemyRecs(ai,150,true);
+  const have={},tot={v:0};for(const c of AI_CLASSES)have[c]=0;
+  for(const u of R.army){const c=AI_CLS[u.type];if(c){have[c]+=u.def.supply;tot.v+=u.def.supply;}}
+  for(const x of R.prod)for(const q of x.queue)if(q.k==='u'){const c=AI_CLS[q.id];if(c){have[c]+=UDEF[q.id].supply;tot.v+=UDEF[q.id].supply;}}
+  const W={};let wsum=0;
+  for(const c of AI_CLASSES){W[c]=Math.max(0.02,th[AI_CKEY[c]]);}
+  if(recs.length&&th.counter>0){const eff=aiCounterEff(recs,list,team);let me=0,n=0;for(const c in eff){me+=eff[c];n++;}
+    if(n){me/=n;for(const c in eff)W[c]*=Math.pow(Math.max(0.05,eff[c]/me),th.counter);}}
+  const menders=R.army.filter(u=>u.type==='mender').length,armySup=tot.v;
+  if(menders>=Math.max(1,armySup/9))W.sup=0.001;
+  for(const c of AI_CLASSES)wsum+=W[c];
+  let best=null,bs=-1e9;
+  for(const id of list){const c=AI_CLS[id];if(!c)continue;if(!reqUnit(team,id).ok)continue;const cc=uCost(team,id);if(cc.c>spend.c||cc.e>spend.e)continue;
+    const want=W[c]/wsum,share=tot.v?have[c]/tot.v:0;const s=want-share+airand(ai)*0.02;if(s>bs){bs=s;best=id;}}
+  return best;
+}
+function aiMacro(ai,R){
+  const team=ai.team,T=G.teams[team],th=ai.th,now=G.time,cfg=ai.cfg,B=R.B,workers=R.workers,hubs=R.hubs;
+  if(!hubs.length&&!B.length)return;
+  const pend=t=>{let n=0;for(const w of workers)if(w.order.t==='build'&&!w.order.bld&&w.order.type===t)n++;return n;};
+  const cnt=t=>{let n=0;for(const b of B)if(b.type===t)n++;return n+pend(t);};
+  const doneN=t=>{let n=0;for(const b of B)if(b.type===t&&b.done)n++;return n;};
+  const reserve={c:0,e:0};const spendable=()=>({c:T.c-reserve.c,e:T.e-reserve.e});
+  const canSpend=c=>T.c-reserve.c>=c.c&&T.e-reserve.e>=c.e;
+  const hold=(c)=>{reserve.c+=c.c;reserve.e+=c.e;};
+  const threatened=(ai.thrV||0)>150;
+  // tax (Caesar II rule kept from v3)
+  if(T.morale<36&&T.tax>0){if(aiAct(ai))setTax(team,T.tax-1);}else if(T.morale>74&&T.tax<2){if(aiAct(ai))setTax(team,T.tax+1);}
+  // stage point: in front of the most forward hub, towards the map centre
+  const anchor=hubs.length?hubs.reduce((a,h)=>hyp(h.x-WW/2,h.y-WH/2)<hyp(a.x-WW/2,a.y-WH/2)?h:a,hubs[0]):B[0];
+  if(!ai.stage||ai.stageHub!==anchor.id){const dx=WW/2-anchor.x,dy=WH/2-anchor.y,l=hyp(dx,dy)||1;
+    const f=nearestFree(clamp((anchor.x+dx/l*300)/TILE|0,3,MW-4),clamp((anchor.y+dy/l*300)/TILE|0,3,MH-4),10);
+    ai.stage=f?{x:(f[0]+.5)*TILE,y:(f[1]+.5)*TILE}:{x:anchor.x,y:anchor.y};ai.stageHub=anchor.id;}
+  let building=0;for(const w of workers)if(w.order.t==='build'&&!w.order.bld)building++;
+  // 1. supply
+  const prodN=R.prod.length,genPend=B.filter(b=>b.type==='generator'&&!b.done).length+pend('generator');
+  if(T.cap-T.used<=3+prodN*2+hubs.length&&T.cap<MAXSUP&&genPend<(T.cap>60?2:1)){
+    if(T.c>=100&&building<3)aiBuild2(ai,'generator',R);else hold({c:100,e:0});}
+  // 2. hero (before workers: the hub is nearly always training Haulers)
+  if(ai.P.hero&&hubs.length&&!T.hero.alive&&!T.hero.reviving&&(doneN('garrison')>0||T.hero.deaths>0)&&now>90){
+    const hc=heroCost(team),h0=hubs.find(h=>h.queue.length<2);
+    if(h0&&canSpend(hc)&&T.used+3<=T.cap){if(aiAct(ai))queueHero(h0);}else if(T.hero.deaths>0||now<500)hold(hc);}
+  // 3. workers (Ideal Free Distribution target: theta's per-base saturation; capped while we must out-produce an army we have seen)
+  const sip=doneN('siphon');let wq=workers.length;for(const h of hubs)for(const q of h.queue)if(q.id==='hauler')wq++;
+  let wantW=Math.min(th.wMax,hubs.length*th.wBase+sip*th.wEther+2);if(ai.eco==='mass')wantW=Math.min(wantW,Math.max(14,hubs.length*12+sip*2));
+  for(const h of hubs){if(h.queue.length<1&&wq<wantW&&canSpend(uCost(team,'hauler'))&&reqUnit(team,'hauler').ok&&aiAct(ai)&&queueUnit(h,'hauler'))wq++;}
+  if(wq<wantW&&ai.eco!=='mass')hold({c:50,e:0});
+  const hero=R.hero;if(hero&&skillPoints(team)>0&&ai.apm.tok>=1){for(const i of[2,1,0])if(learnSkill(team,i)){aiAct(ai);break;}}
+  // 4. era advancement (theta timings; deferred while a real attack is on unless overdue)
+  const eraDue=T.era===1?th.era2:T.era===2?th.era3:1e9;
+  if(T.era<3&&now>=eraDue&&(!threatened||now>eraDue+60)&&!B.some(x=>x.queue.some(q=>q.k==='era'))){
+    const E=ERAS[T.era+1],gate=T.era===1?doneN('garrison')>0:doneN('armory')>0;
+    if(gate){const h0=hubs.find(h=>h.queue.length===0)||hubs[0];if(h0&&canSpend(E.cost)){if(aiAct(ai))queueEra(h0);}else hold(E.cost);}}
+  // 5. buildings: a priority list; an unaffordable high-priority item reserves its cost (lower items only spend the rest)
+  // production capacity sized to income (IFD income model: ~98 crystals/min per miner up to saturation, ~52 ether/min per siphon worker);
+  // one busy production building spends ~300/min, theta.gar scales how much of the income goes through production
+  let inc=0;{let cw=0,ew=0;for(const w of workers)if(w.order.t==='gather'&&w.order.res){if(w.order.res.type==='geyser')ew++;else cw++;}inc=98*Math.min(cw,hubs.length*20)+52*ew;}
+  ai.inc=inc;
+  const otherProd=cnt('foundry')+cnt('airfield'),bankX=T.c>1600?2:T.c>900?1:0;
+  const gwant=clamp(Math.round(th.gar*inc/300)-otherProd+bankX+(ai.eco==='mass'?1:0),1,9);
+  const nb=Math.max(1,hubs.length);const sat=workers.length>=nb*th.wBase*0.85;
+  let baseWant=1+(now>th.expandAt?1:0)+(now>th.expandAt+150+300*(1-th.expandRate)?1:0)+(now>th.expandAt+400+400*(1-th.expandRate)?1:0);
+  if(sat&&now>th.expandAt*0.7)baseWant=Math.max(baseWant,hubs.length+1);
+  baseWant=Math.min(4,Math.round(baseWant+th.vW*(ai.V-0.5)));
+  const geys=G.res.filter(r=>!r.dead&&r.type==='geyser'&&R.hubs.some(h=>hyp(h.x-r.x,h.y-r.y)<520)).length;
+  const sipWant=Math.min(geys,Math.max(1,Math.round((T.era>=2?2:1.5)*nb*(0.7+0.5*(th.cAnti+th.cHeavy+th.cAir+th.cArt)/2)))+(T.e<120&&T.c>500?1:0));
+  const etherShort=T.c>1200&&T.e<200;                                  // floating crystals: the Exchange turns them into ether
+  const seq=[
+    ['garrison',cnt('garrison')<1&&(workers.length>=8||now>50),1],
+    ['siphon',cnt('garrison')>=1&&cnt('siphon')<1,1],
+    ['hub',cnt('hub')<baseWant&&workers.length>=10&&!threatened&&ai.eco!=='mass',1],
+    ['armory',doneN('garrison')>0&&cnt('armory')<1&&(now>th.era2-100||th.tech>0.6||now>240),1],
+    ['garrison',cnt('garrison')<gwant&&doneN('garrison')>0,th.bank>0.5?1:0],
+    ['siphon',cnt('siphon')<sipWant&&doneN('garrison')>0,0],
+    ['foundry',T.era>=2&&doneN('armory')>0&&cnt('foundry')<(th.cHeavy+th.cArt>0.6||now>620?Math.min(2,1+(T.c>1500?1:0)):0),1],
+    ['airfield',ai.P.air&&T.era>=2&&doneN('armory')>0&&cnt('airfield')<(th.cAir>0.35?1+(T.c>1500?1:0):0),1],
+    ['exchange',T.era>=2&&cnt('exchange')<1&&(th.trade>0.45||etherShort||now>720&&T.c>1200),0],
+    ['depot',cnt('depot')<1&&(hubs.length>=2||th.tech>0.6)&&now>200,0],
+    ['turret',doneN('garrison')>0&&cnt('turret')<Math.round(th.turret*2.6*nb)&&now>150,0],
+    ['forum',T.era>=2&&cnt('forum')<(T.morale<55?2:0),0],
+    ['habitat',th.trade>0.6&&cnt('habitat')<3&&now>300,0]];
+  if(building<2+(hubs.length>1?1:0)){
+    for(const[type,cond,must]of seq){
+      if(!cond)continue;const d=BDEF[type];if(d.era>T.era)continue;if(d.req&&!doneN(d.req))continue;
+      const c=bCost(team,type);
+      if(canSpend(c)){if(aiBuild2(ai,type,R)){hold({c:0,e:0});break;}}
+      else if(must||th.bank>0.65)hold(c);}}                              // reserve it; cheaper items below may still use the unreserved rest
+  // 6. research
+  for(const b of B){
+    if(!b.done||b.queue.length)continue;
+    if(b.type==='armory'){const ids=T.wl<=T.al?['weapons','armor','stims']:['armor','weapons','stims'];
+      for(const id of ids){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(id==='stims'&&!R.army.some(u=>u.def.stim))continue;
+        if(canSpend({c:L.c+Math.round(250*(1-th.tech)),e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}
+    else if(b.type==='depot'){for(const id of['mining','cargo','compress']){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(canSpend({c:L.c+100,e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}}
+  // 7. trade: freighters and the market
+  const ex=B.find(b=>b.type==='exchange'&&b.done);
+  if(ex){const fr=R.U.filter(u=>u.def.trade),frQ=ex.queue.filter(q=>q.id==='freighter').length,wantF=Math.round(th.trade*5);
+    if(fr.length+frQ<wantF&&ex.queue.length<2&&!threatened&&canSpend(uCost(team,'freighter'))&&aiAct(ai))queueUnit(ex,'freighter');
+    const posts=G.neutrals.filter(n=>n.type==='post');
+    for(const f of fr){if(f.order.t!=='idle')continue;let best=null,bs=-1;
+      for(const p of posts){const on=fr.filter(x=>x.order.t==='trade'&&x.order.post===p).length;if(on>=3)continue;const s=hyp(p.x-ex.x,p.y-ex.y)*p.demand/(1+on);if(s>bs){bs=s;best=p;}}
+      if(best&&aiAct(ai))setOrder(f,{t:'trade',post:best,st:'toPost'});}
+    if(T.c>1000&&T.e<250&&G.mkt.p<1.6){if(aiAct(ai))mktTrade(team,'buyE');}else if(T.e>1400&&T.c<250){if(aiAct(ai))mktTrade(team,'sellE');}}
+  // 8. army production: whatever is not reserved (macro efficiency < 1 skips some buildings: the lower tiers' sloppy macro)
+  const sp=spendable();
+  for(const b of R.prod){
+    if(b.queue.length>=2)continue;if(cfg.macro<1&&airand(ai)>cfg.macro)continue;
+    const s=spendable();if(s.c<50)break;
+    const id=aiUnitPick(ai,R,b,s);if(!id)continue;
+    if(aiAct(ai))queueUnit(b,id);
+    if(ai.stage&&(!b.rally||hyp(b.rally.x-ai.stage.x,b.rally.y-ai.stage.y)>90)&&aiAct(ai)){b.rally={x:ai.stage.x,y:ai.stage.y};}}
+  void sp;
+}
+
+/* ------------------------------------------------------------------ workers: Ideal Free Distribution + demand pheromone */
+function aiWorkers(ai,R){
+  const team=ai.team,T=G.teams[team],th=ai.th,hubs=R.hubs;if(!hubs.length)return;
+  const free=R.workers.filter(w=>!w.garr&&w.id!==ai.scout.id&&w.order.t!=='build'&&w.order.t!=='repair');
+  // shadow price of ether: high while we are short of it, low when it piles up
+  const lamE=T.e<150?1.6:T.e<400?1.0:T.e<900?0.45:0.12;
+  const sites=[];
+  for(const h of hubs){if(!G.res.some(r=>!r.dead&&r.type==='crystal'&&hyp(r.x-h.x,r.y-h.y)<560))continue;sites.push({kind:'c',h,sat:16,rate:98,w:1,n:0,L:[]});}
+  for(const b of R.B)if(b.type==='siphon'&&b.done&&b.res&&!b.res.dead)sites.push({kind:'e',s:b,res:b.res,sat:Math.round(th.wEther),rate:52,w:lamE*1.25,n:0,L:[]});
+  if(!sites.length)return;
+  const idle=[];
+  for(const w of free){
+    if(w.order.t!=='gather'||!w.order.res){idle.push(w);continue;}
+    const r=w.order.res;let site=null;
+    if(r.type==='geyser')site=sites.find(s=>s.kind==='e'&&s.res===r);
+    else{let bd=1e9;for(const s of sites)if(s.kind==='c'){const d=hyp(s.h.x-r.x,s.h.y-r.y);if(d<bd){bd=d;site=s;}}}
+    if(site){site.n++;site.L.push(w);}else idle.push(w);}
+  const want=ifdAlloc(sites,free.length);
+  const send=(w,s)=>{let r=null;if(s.kind==='e')r=s.res;else r=nearestRes(s.h.x,s.h.y,'crystal',true,560)||nearestRes(s.h.x,s.h.y,'crystal',false,560);
+    if(!r)return false;const o={t:'gather',res:r,st:w.carry>0&&(w.carryType==='c')===(r.type==='crystal')?'ret':'go',hx:r.x,hy:r.y};
+    if(!aiAct(ai))return false;setOrder(w,o);s.n++;return true;};
+  for(const w of idle){let b=null,bg=-1;for(let i=0;i<sites.length;i++){const g=want[i]-sites[i].n;if(g>bg){bg=g;b=sites[i];}}if(b&&!send(w,b))break;}
+  // rebalance: move workers from the most over-allocated site to the most under-allocated (one selection per move)
+  for(let k=0;k<2;k++){let hi=-1,lo=-1,hd=1,ld=-1;
+    for(let i=0;i<sites.length;i++){const d=sites[i].n-want[i];if(d>hd){hd=d;hi=i;}if(-d>ld&&d<0){ld=-d;lo=i;}}
+    if(hi<0||lo<0)break;const S=sites[hi];const mv=S.L.filter(w=>w.carry===0||sites[lo].kind==='c'&&w.carryType==='c').slice(0,Math.min(hd-1,ld));if(!mv.length)break;
+    let r=null;const D=sites[lo];if(D.kind==='e')r=D.res;else r=nearestRes(D.h.x,D.h.y,'crystal',true,560)||nearestRes(D.h.x,D.h.y,'crystal',false,560);if(!r)break;
+    if(!aiAct(ai))break;for(const w of mv){setOrder(w,{t:'gather',res:r,st:w.carry>0?'ret':'go',hx:r.x,hy:r.y});S.n--;D.n++;S.L.splice(S.L.indexOf(w),1);}}
+  // repair: send up to two miners to the strongest repair-demand cell (ant-colony style demand pheromone), only when safe
+  if((ai.thrV||0)<60&&T.c>200&&!R.workers.some(w=>w.order.t==='repair')){
+    const pm=ai.ph.dem;let bi=-1,bv=1.2;for(let i=0;i<BN;i++)if(pm[i]>bv){bv=pm[i];bi=i;}
+    if(bi>=0){let tgt=null,bd=1e9;for(const b of R.B)if(b.done&&b.hp<b.maxhp*0.85){const d=hyp(b.x-bcx(bi),b.y-bcy(bi));if(d<bd){bd=d;tgt=b;}}
+      if(tgt){const c=free.filter(w=>w.order.t==='gather'&&w.carry===0).sort((a,b)=>hyp(a.x-tgt.x,a.y-tgt.y)-hyp(b.x-tgt.x,b.y-tgt.y)).slice(0,2);
+        if(c.length&&aiAct(ai))for(const w of c)setOrder(w,{t:'repair',target:tgt});}}}
+}
+
+/* ------------------------------------------------------------------ scouting (belief x staleness) */
+function aiScout(ai,R){
+  const th=ai.th,now=G.time,S=ai.scout;
+  let u=S.id?R.U.find(x=>x.id===S.id):null;
+  if(S.id&&!u){S.id=0;S.last=now;}
+  const period=35+170*(1-th.scout);
+  if(!u){
+    if(now<60+70*(1-th.scout)||now-S.last<period||ai.mil==='defend')return;
+    const cands=R.army.filter(x=>(x.type==='raptor'||x.type==='skiff'||x.type==='reaver'||x.type==='rifleman')&&!ai.har.ids.includes(x.id)&&x.hp>x.maxhp*0.7);
+    cands.sort((a,b)=>b.def.speed-a.def.speed);
+    u=cands[0]||(now<420&&R.workers.length>9?R.workers.find(w=>w.order.t==='gather'&&w.carry===0):null);
+    if(!u)return;S.id=u.id;S.t=now;S.tgt=-1;}
+  const s=ai.bel.s,pv=ai.ph.vis;
+  const done=S.tgt>=0&&hyp(u.x-bcx(S.tgt),u.y-bcy(S.tgt))<160;
+  if(u.hp<u.maxhp*0.55||now-S.t>(u.def.worker?60:110)){ // back to work
+    if(u.def.worker){const r=nearestRes(R.hubs[0]?R.hubs[0].x:u.x,R.hubs[0]?R.hubs[0].y:u.y,'crystal',true,700);if(r&&aiAct(ai))setOrder(u,{t:'gather',res:r,st:'go',hx:r.x,hy:r.y});}
+    else if(ai.stage&&aiAct(ai))setOrder(u,{t:'move',x:ai.stage.x,y:ai.stage.y});
+    S.id=0;S.last=now;return;}
+  if(S.tgt<0||done||u.order.t==='idle'){
+    let bi=-1,bs=-1e9;
+    for(let i=0;i<BN;i++){const x=bcx(i),y=bcy(i);const t=G.TT[tileOf(x,y)];if(t===3)continue;
+      const site=ai.bel.sites.some(q=>q.i===i)?0.5:0;
+      const sc=(1-pv[i])*(0.12+s[i]+site)-hyp(x-u.x,y-u.y)/3200;if(sc>bs){bs=sc;bi=i;}}
+    if(bi>=0&&aiAct(ai)){S.tgt=bi;setOrder(u,{t:'move',x:bcx(bi),y:bcy(bi)});}}
+}
+
+/* ------------------------------------------------------------------ tactics */
+function aiNearEnemies(ai,R,x,y,rad){const L=[];for(const e of R.en){if(e.def.worker&&!e.target)continue;if(hyp(e.x-x,e.y-y)<rad)L.push(e);}return L;}
+function aiStaticNear(ai,R,x,y,rad){const L=[];for(const b of R.enB)if(b.done&&b.def.dmg&&hyp(b.x-x,b.y-y)<rad+b.def.range)L.push(b);return L;}
+function aiLocalP(ai,mine,enemies,statics,ownStatics){
+  if(!enemies.length&&!statics.length)return 1;
+  const own=aiStacksOf(mine,ai.team);const en=aiStacksOf(enemies,ai.team);
+  if(ownStatics)for(const b of ownStatics){const s=cmbStackOf(b.type,1,{hp:b.hp,garr:b.garr?b.garr.length:0,meridian:G.teams[ai.team].faction==='meridian'});s.cost=aiVal(b.type);own.push(s);}
+  for(const b of statics){const s=cmbStackOf(b.type,1,{hp:b.hp,garr:b.garr?b.garr.length:0});s.cost=aiVal(b.type);en.push(s);}
+  return cmbPredict(own,en).p;
+}
+function aiFocus(ai,mine,enemies){ // focus fire: threat per remaining HP, kill-securing; overkill-aware greedy assignment
+  const ranged=mine.filter(u=>!u.def.noWeapon&&rangeOf(u)>=90&&!u.sieged&&!u.def.hero);if(ranged.length<3||!enemies.length)return 0;
+  const sc=enemies.map(e=>{let dps=0;if(e.def.dmg)dps=e.def.dmg/(e.def.cd||1);const v=(dps+1)*(1+(e.def.hero?0.5:0)+(e.def.heal?1.2:0))/Math.max(10,e.hp);return{e,v};}).sort((a,b)=>b.v-a.v);
+  const used=new Set();let groups=0;
+  for(const{e}of sc){if(groups>=3)break;
+    const L=ranged.filter(u=>!used.has(u.id)&&canAttack(u.def,e)&&hyp(u.x-e.x,u.y-e.y)<rangeOf(u)+90).sort((a,b)=>hyp(a.x-e.x,a.y-e.y)-hyp(b.x-e.x,b.y-e.y));
+    let dmg=0;const G2=[];for(const u of L){if(dmg>=e.hp*1.25)break;G2.push(u);dmg+=dmgVs(baseDmgOf(u),bonOf(u),e,!!u.def.proj);}
+    if(G2.length<2)continue;for(const u of G2)used.add(u.id);
+    if(aiOrder(ai,G2,{t:'attack',target:e}))groups++;else break;}
+  if(groups)ai.st.focus+=groups;return groups;
+}
+function aiKite(ai,R,mine,enemies,home){ // stutter step: ranged units step back from melee while their weapon reloads
+  const melee=enemies.filter(e=>e.def.range<=30&&e.def.ground);if(!melee.length)return 0;
+  const K=mine.filter(u=>!u.def.noWeapon&&rangeOf(u)>=100&&!u.sieged&&u.cd>0.25&&melee.some(e=>hyp(e.x-u.x,e.y-u.y)<u.r+e.r+55));
+  if(K.length<2)return 0;const c=centroid(K),dir=fieldDir(c,home,melee.map(e=>({x:e.x,y:e.y,w:1})),0.6);
+  if(aiOrder(ai,K,{t:'move',x:c.x+dir.x*75,y:c.y+dir.y*75})){ai.st.kite++;return 1;}return 0;
+}
+function aiSiege(ai,R,army){
+  for(const u of army){if(u.type!=='howitzer')continue;
+    let nd=1e9;for(const e of R.en){if(e.flying)continue;const d=hyp(e.x-u.x,e.y-u.y);if(d<nd)nd=d;}
+    for(const b of R.enB){const d=rectDist(u.x,u.y,b);if(d<nd)nd=d;}
+    if(!u.sieged&&nd>195&&nd<=335&&u.siegeT<=0&&(u.order.t==='idle'||!u.target)){if(aiAct(ai))toggleSiege(u);}
+    else if(u.sieged&&nd>380&&u.siegeT<=0){if(aiAct(ai))toggleSiege(u,true);}}
+}
+/* one group's local engagement: returns true when the group is in contact (and has been handled) */
+function aiGroupFight(ai,R,units,home,key){
+  if(!units.length)return false;
+  const now=G.time,th=ai.th,cfg=ai.cfg,c=centroid(units),E=ai.eng||(ai.eng={});
+  const en=aiNearEnemies(ai,R,c.x,c.y,520),st=aiStaticNear(ai,R,c.x,c.y,380);
+  if(!en.length&&!st.length){if(E[key]&&now-(E[key+'T']||0)>2)E[key]=false;return false;}
+  const mine=units.filter(u=>hyp(u.x-c.x,u.y-c.y)<640);
+  const atHome=R.B.some(b=>hyp(b.x-c.x,b.y-c.y)<560);
+  const ownSt=atHome?R.B.filter(b=>b.done&&b.def.dmg&&hyp(b.x-c.x,b.y-c.y)<520):null;
+  const p=aiLocalP(ai,mine,en,st,ownSt);ai.pL=p;
+  // fight or flight with hysteresis (engaged: leave below th.retreat; not yet engaged: only enter above th.aggr-0.1).
+  // Fleeing only pays when there is somewhere better to fight: never from our own base, and not from faster pursuers already in range.
+  // Before contact the group may decline a fight it expects to lose (p < aggr-0.1); after contact it only disengages below th.retreat
+  // and only if it can outrun the enemy units in range (otherwise turning round just feeds free kills to faster pursuers).
+  let contact=false,vE=0,nE=0;for(const e of en){if(e.def.worker)continue;let near=false;for(const u of mine)if(hyp(e.x-u.x,e.y-u.y)<Math.max(rangeOf(u),e.def.range||0)+60){near=true;break;}
+    if(near){contact=true;vE+=e.def.speed;nE++;}}
+  let vM=0;for(const u of mine)vM+=u.def.speed*u.spdMul;vM/=mine.length;
+  const flee=!atHome&&(contact?(p<th.retreat&&vM>=0.9*vE/Math.max(1,nE)):p<th.aggr-0.1);
+  if(flee){ // retreat along the potential field (home attracts, enemies repel)
+    const dir=fieldDir(c,home,en.map(e=>({x:e.x,y:e.y,w:aiVal(e.type)/100})),1.4);
+    if(aiOrder(ai,mine,{t:'move',x:clamp(c.x+dir.x*420,40,WW-40),y:clamp(c.y+dir.y*420,40,WH-40)})){E[key]=false;ai.st.retreat++;
+      if(key==='atk'&&ai.mil==='attack'){ai.mil='retreat';ai.milT=now;ai.atkCool=now+18;}}
+    return true;}
+  if(!E[key]){E[key]=true;E[key+'T']=now;ai.st.engage++;
+    if(cfg.micro&&en.length&&mine.length>=6){ // concave: sub-groups of four take slots on an arc facing the enemy
+      const ec=centroid(en),rad=Math.max(90,0.75*mine.reduce((s,u)=>s+rangeOf(u),0)/mine.length),slots=arcSlots(c,ec,rad,Math.ceil(mine.length/4));
+      const sorted=mine.slice().sort((a,b)=>Math.atan2(a.y-ec.y,a.x-ec.x)-Math.atan2(b.y-ec.y,b.x-ec.x));
+      for(let i=0;i<slots.length;i++)aiOrder(ai,sorted.slice(i*4,i*4+4),{t:'attackmove',x:slots[i].x,y:slots[i].y,gs:0});}
+    else aiOrder(ai,mine,{t:'attackmove',x:(en[0]||st[0]).x,y:(en[0]||st[0]).y,gs:0});
+    return true;}
+  E[key+'T']=now;
+  if(cfg.kite)aiKite(ai,R,mine,en,home);
+  if(cfg.focus)aiFocus(ai,mine,en);
+  if(cfg.micro){const hurt=mine.filter(u=>(u.def.hero?u.hp<u.maxhp*0.3:u.hp<u.maxhp*0.22)&&en.some(e=>hyp(e.x-u.x,e.y-u.y)<220));
+    if(hurt.length)aiOrder(ai,hurt,{t:'move',x:home.x,y:home.y});}
+  const idle=mine.filter(u=>u.order.t==='idle'||u.order.t==='move'&&u.order.x===home.x&&u.hp>u.maxhp*0.5);
+  if(idle.length&&en.length){const e=en[0];aiOrder(ai,idle,{t:'attackmove',x:e.x,y:e.y,gs:0});}
+  return true;
+}
+/* march in formation: cohesion (regroup when strung out), alignment (group speed = slowest member), boids-style sub-group offsets */
+function aiMarch(ai,units,goal){
+  if(!units.length)return;const c=centroid(units),now=G.time;
+  const sp=spreadOf(units,c),R0=60+22*Math.sqrt(units.length);
+  if(sp>R0*2.2&&hyp(c.x-goal.x,c.y-goal.y)>700){ // no chokepoint stringing: the stragglers close up before the push goes on
+    aiOrder(ai,units.filter(u=>hyp(u.x-c.x,u.y-c.y)>R0),{t:'move',x:c.x,y:c.y,gs:0});return;}
+  if(now-(ai.marchT||0)<3&&units.every(u=>u.order.t==='attackmove'))return;   // re-plan the formation at most every 3 s (APM)
+  ai.marchT=now;let slow=1e9;for(const u of units)if(u.def.speed<slow)slow=u.def.speed;const gs=slow<1e9?slow*1.1:0;
+  if(!ai.cfg.micro||units.length<8){aiOrder(ai,units,{t:'attackmove',x:goal.x,y:goal.y,gs});return;}
+  const sorted=units.slice().sort((a,b)=>Math.atan2(a.y-c.y,a.x-c.x)-Math.atan2(b.y-c.y,b.x-c.x)),k=Math.ceil(units.length/4);
+  const subs=[];for(let i=0;i<k;i++)subs.push(sorted.slice(i*4,i*4+4));
+  const T=boidsTargets(subs.map(L=>centroid(L)),goal,0.5);
+  for(let i=0;i<k;i++)aiOrder(ai,subs[i],{t:'attackmove',x:clamp(T[i].x,40,WW-40),y:clamp(T[i].y,40,WH-40),gs});
+}
+function aiArmy(ai,R){
+  const now=G.time,team=ai.team;
+  const all=R.army.filter(u=>u.id!==ai.scout.id&&!u.garr);
+  const harIds=ai.har.ids,crewIds=ai.creep?ai.creep.ids:[];
+  const har=all.filter(u=>harIds.includes(u.id)),crew=all.filter(u=>crewIds.includes(u.id));
+  const rest=all.filter(u=>!harIds.includes(u.id)&&!crewIds.includes(u.id));
+  const home=ai.stage||(R.hubs[0]?{x:R.hubs[0].x,y:R.hubs[0].y}:{x:R.B[0].x,y:R.B[0].y});
+  aiSiege(ai,R,all);
+  if(R.hero)aiHeroCast2(ai,R.hero,R);
+  if(ai.mil==='attack'&&ai.tgt){
+    // the attack group fights / marches; new units gather at the stage and join in batches (no reinforcement trickle)
+    const g=new Set(ai.grp||[]),grp=rest.filter(u=>g.has(u.id)),res=rest.filter(u=>!g.has(u.id));
+    ai.grp=grp.map(u=>u.id);
+    if(!aiGroupFight(ai,R,grp,home,'atk'))aiMarch(ai,grp,ai.tgt);
+    if(!aiGroupFight(ai,R,res,home,'home')){
+      if(grp.length&&res.length>=Math.max(5,grp.length*0.3)){const c=centroid(grp);if(aiOrder(ai,res,{t:'attackmove',x:c.x,y:c.y,gs:0}))for(const u of res)ai.grp.push(u.id);}
+      else{const away=res.filter(u=>u.order.t==='idle'&&hyp(u.x-home.x,u.y-home.y)>300);if(away.length)aiOrder(ai,away,{t:'attackmove',x:home.x,y:home.y,gs:0});}}}
+  else{
+    ai.grp=[];
+    if(!aiGroupFight(ai,R,rest,home,'home')){
+      if(ai.mil==='defend'&&ai.tgt){aiOrder(ai,rest.filter(u=>hyp(u.x-ai.tgt.x,u.y-ai.tgt.y)<2600),{t:'attackmove',x:ai.tgt.x,y:ai.tgt.y,gs:0});}
+      else{const away=rest.filter(u=>hyp(u.x-home.x,u.y-home.y)>300&&(u.order.t==='idle'||ai.mil==='retreat'));
+        if(away.length)aiOrder(ai,away,{t:ai.mil==='retreat'?'move':'attackmove',x:home.x,y:home.y,gs:0});}}}
+  // Call to Arms when the defence of a hub is hopeless; release the haulers once the threat is gone
+  for(const h of R.hubs){
+    if(h.garr.length){if((ai.thrV||0)<30&&aiAct(ai))callToArms(team,h);continue;}
+    if(ai.mil!=='defend')continue;
+    const thr=R.en.filter(e=>!e.def.worker&&hyp(e.x-h.x,e.y-h.y)<420);
+    if(thr.length>=4&&aiLocalP(ai,rest.filter(u=>hyp(u.x-h.x,u.y-h.y)<600),thr,[],[h])<0.3){if(aiAct(ai))callToArms(team,h);}}
+  aiCrew(ai,R,har,crew,home);
+  if(ai.mil==='hold'&&ai.k%4===1)aiCreepPlan(ai,R,rest);
+}
+function aiCrew(ai,R,har,crew,home){
+  const H=ai.har;
+  if(har.length&&H.tgt){const c=centroid(har),en=aiNearEnemies(ai,R,c.x,c.y,420).filter(e=>!e.def.worker),st=aiStaticNear(ai,R,c.x,c.y,300);
+    const p=en.length||st.length?aiLocalP(ai,har,en,st):1;
+    if(p<0.45||har.reduce((s,u)=>s+u.hp/u.maxhp,0)/har.length<0.45){aiOrder(ai,har,{t:'move',x:home.x,y:home.y});H.ids=[];H.tgt=null;}
+    else{const wk=R.en.filter(e=>e.def.worker&&hyp(e.x-c.x,e.y-c.y)<360);
+      if(wk.length){wk.sort((a,b)=>a.hp-b.hp);aiOrder(ai,har,{t:'attack',target:wk[0]});}
+      else aiOrder(ai,har,{t:'attackmove',x:H.tgt.x,y:H.tgt.y,gs:0});}}
+  if(ai.creep){const C=ai.creep,camp=G.camps[C.camp],K=ai.mem.camps[C.camp];
+    const hero=R.hero;
+    if(!hero||G.time>C.until||hero.hp<hero.maxhp*0.35||K&&!K.alive&&G.time-K.t<1||ai.mil!=='hold'){
+      aiOrder(ai,crew,{t:'move',x:home.x,y:home.y});ai.creep=null;ai.lastCreep=G.time;}
+    else aiOrder(ai,crew,{t:'attackmove',x:camp.x,y:camp.y,gs:0});}
+}
+function aiCreepPlan(ai,R,army){
+  const th=ai.th,now=G.time,hero=R.hero;
+  if(ai.creep||!hero||th.creep<0.35||now-ai.lastCreep<30+60*(1-th.creep)||hero.hp<hero.maxhp*0.8||(ai.thrV||0)>0)return;
+  const H=G.teams[ai.team].hero,anchor=R.hubs[0]||R.B[0];let best=null,bd=1e9;
+  const crew=army.filter(u=>u.type!=='howitzer'&&u.type!=='titan'&&!u.def.noWeapon).slice(0,10);
+  for(const c of G.camps){const K=ai.mem.camps[c.id];if(K&&!K.alive)continue;
+    const st=aiStacksOf(crew,ai.team),cs=CAMP_TYPES[c.lvl].reduce((m,t)=>{m[t]=(m[t]||0)+1;return m;},{});
+    const en=[];for(const t in cs){const s=cmbStackOf(t,cs[t],{});s.cost=aiVal(t);en.push(s);}
+    if(H.level<(c.lvl===3?4:1))continue;if(cmbPredict(st,en).p<0.85)continue;
+    const d=hyp(c.x-anchor.x,c.y-anchor.y);if(d<bd&&d<1600){bd=d;best=c;}}
+  if(!best)return;
+  ai.creep={camp:best.id,until:now+80,ids:crew.map(u=>u.id)};
+}
+function aiHeroCast2(ai,h,R){ // v3's cluster logic, fed with perceived enemies only
+  const team=ai.team;if(h.stunned>0)return;
+  const en=R.en.filter(e=>hyp(e.x-h.x,e.y-h.y)<520&&!e.def.worker),bld=R.enB.filter(b=>hyp(b.x-h.x,b.y-h.y)<540);
+  const cluster=(list,rad)=>{let best=null,bn=0;for(const c of list){let n=0;for(const e of list)if(hyp(e.x-c.x,e.y-c.y)<=rad)n++;if(n>bn){bn=n;best=c;}}return{c:best,n:bn};};
+  for(let i=2;i>=1;i--){
+    if(!canCast(h,i))continue;const s=skillOf(h,i);
+    if(s.target==='point'){const pool=en.length?en:bld,cl=cluster(pool,s.radius*0.8),need=i===2?(en.length?4:3):2;
+      if(cl.c&&cl.n>=need&&hyp(cl.c.x-h.x,cl.c.y-h.y)<=s.range){if(aiAct(ai))castSkill(h,i,cl.c.x,cl.c.y);return;}}
+    else{let allies=0;forNear(h.x,h.y,s.radius,a=>{if(a.team===team&&!a.dead&&!a.def.worker)allies++;});
+      if(allies>=5&&en.length>=3){if(aiAct(ai))castSkill(h,i,h.x,h.y);return;}}}
+}
+
+/* ------------------------------------------------------------------ the think loop (time-sliced) */
+function aiThinkT2(ai){
+  const R=AI_RT[ai.team],now=G.time;
+  aiOwn(ai,R);if(!R.B.length)return;
+  ai.apm.tok=Math.min(ai.apm.burst,ai.apm.tok+ai.apm.rate*Math.max(0,now-ai.apm.t));ai.apm.t=now;
+  aiObserve(ai,R);
+  ai.k++;ai.st.thinks++;
+  if(ai.k%2===0){aiBelief(ai,R);aiStrategy(ai,R);}else{ai.tag='mac';aiMacro(ai,R);}
+  if(ai.k%4===3){ai.tag='wrk';aiWorkers(ai,R);ai.tag='sct';aiScout(ai,R);}
+  ai.tag='arm';aiArmy(ai,R);
 }
 
 /* =========================================================================
@@ -9764,12 +10614,12 @@ function hudUpdate(dt){
   infoTimer-=dt;if(ui.infoDirty||infoTimer<=0){infoTimer=0.22;renderInfo();}
   if(ui.cmdDirty)renderCmdCard();else{cmdTimer-=dt;if(cmdTimer<=0){cmdTimer=0.12;refreshCmdState();}}
 }
-const DIFF_NAMES={easy:'Easy',normal:'Normal',hard:'Hard'};
+const DIFF_NAMES={easy:'Easy',normal:'Normal',hard:'Hard',master:'Master'};
 
 /* =========================================================================
    MENUS — main menu, pause, settings, help and the post-game report
    ========================================================================= */
-const DIFF_DESC={easy:'Relaxed pace. No air units, no hero, no creeping.',normal:'A capable opponent: hero, air, expansions and counters.',hard:'Fast, efficient, relentless — and it reads your army.'};
+const DIFF_DESC={easy:'Slow reactions, loose macro, no unit micro.',normal:'Scouts, expands and counters what it has seen.',hard:'Quick reactions, focus fire and kiting.',master:'Strongest setting, tuned by self-play. Same fog, rules and income as you.'};
 const HELP_HTML=`
 <h3>Goal</h3><p>Destroy <b>every enemy structure</b>. Both sides play by the same rules: fog of war, supply, eras, upgrades. Lose all of your structures and you are out.</p>
 <h3>Touch controls <small>(phones &amp; tablets)</small></h3><div class="keys">
@@ -9848,7 +10698,7 @@ function buildMenus(){
     h+='<div class="fac" data-f="'+id+'" style="--c:'+F.col.base+';--g:'+F.col.glow+';--cr:'+hexRgb(F.col.base)+'"><div class="fic"><img src="'+iconURL('u:'+F.hero+':'+id)+'"><img src="'+iconURL('u:'+F.unique+':'+id)+'"><img src="'+iconURL('b:hub:'+id)+'"></div><b>'+F.name+'</b><i>'+F.tag+'</i><ul>'+F.bonus.map(x=>'<li>'+x+'</li>').join('')+'</ul><p>'+F.blurb+'</p></div>';}
   fr.innerHTML=h;
   $('enemyRow').innerHTML=['random'].concat(FACTION_IDS).map(id=>'<button class="btn" data-e="'+id+'">'+(id==='random'?'Random':FACTIONS[id].name.split(' ')[0])+'</button>').join('');
-  $('diffRow').innerHTML=['easy','normal','hard'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
+  $('diffRow').innerHTML=['easy','normal','hard','master'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
   $('helpBody').innerHTML=HELP_HTML;
   syncMenu();
 }

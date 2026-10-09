@@ -196,7 +196,7 @@ function norm(id){
     N.grid=raw.grid|0||16;N.swing=raw.swing||0;
     N.key=raw.key||'C';N.tonic=pcOf(N.key);if(N.tonic<0){N.w('bad key "'+raw.key+'"');N.tonic=0;}
     N.mode=raw.mode||'major';N.scale=scaleFor(N.mode,raw.scale);
-    N.loop=!!raw.loop;N.loopFrom=raw.loopFrom|0;N.tail=raw.tail===undefined?2.5:raw.tail;N.gain=raw.gain===undefined?1:raw.gain;N.sting=!!raw.sting;N.duck=raw.duck===undefined?0.35:raw.duck;N.room=raw.room||'hall';
+    N.loop=!!raw.loop;N.loopFrom=raw.loopFrom|0;N.tail=raw.tail===undefined?2.5:raw.tail;N.gain=raw.gain===undefined?1:raw.gain;N.intGain=Array.isArray(raw.intGain)&&raw.intGain.length===2?[+raw.intGain[0]||1,+raw.intGain[1]||1]:null;N.sting=!!raw.sting;N.duck=raw.duck===undefined?0.35:raw.duck;N.room=raw.room||'hall';
     N.fadeIn=raw.fadeIn;N.dlyBeats=raw.dly===undefined?0.75:raw.dly;N.dlyFb=raw.dlyFb===undefined?0.34:raw.dlyFb;
     N.stems={};N.order=[];
     const sdef=raw.stems||{};
@@ -401,6 +401,7 @@ function stemLevel(P,sm,sc){
   if(d.nightGain!==1)g*=mixv(1,d.nightGain,sc.night);
   const mm=P.S.mix[sm.name];if(mm!==undefined)g*=mm;
   if(P.solo&&P.solo.indexOf(sm.name)<0)g=0;if(P.mute&&P.mute.indexOf(sm.name)>=0)g=0;
+  const ig=P.N.intGain;if(ig)g*=mixv(ig[0],ig[1],sc.int);   // optional programme lift with intensity (cue field intGain:[at 0, at 1]): the calm layer is quieter than the battle layer
   return g*P.N.gain*P.vol;
 }
 /* push the stem levels to the graph (live: smoothed toward the target; offline: automation from absolute time `at`) */
