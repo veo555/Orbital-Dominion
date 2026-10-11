@@ -37,7 +37,7 @@ Bake cost (`tools/sprites3d.py`, 257 sprites = 3 factions x 22 units x 4 facings
 | a box's roof is >1.25x lighter than its south face; the dome side facing the light is >1.3x lighter than the shadow side | key light flipped (`L3` x or z sign): both fail |
 | a Juggernaut baked at 0 / 90 / 180 degrees gives three different images | facing bin forced to 0: 0 % pixels differ |
 | the emissive mask exists and adds light on the lit sprite | `em=0` in `bakeMesh`: gain -1 |
-| a Titan north of a Garrison is hidden by its roof, one south of it is drawn over it | buildings drawn before all units: 59 px of the "hidden" region change |
+| a Titan north of a Garrison is hidden by its roof, one south of it is drawn over it | buildings drawn before all units: 36 of 36 px of the "hidden" region change (the first version of this test sampled an off-screen region and could not fail; it now has a validity control) |
 | a selected unit gets green ring pixels on the ground (below the health bar) | `drawSelRing` returns: 0 -> 0 |
 | the fog edge falls off over >= 48 px | blur passes removed: 40 px |
 | damage: glowing orange cracks at 15 % hp | (v4 proof) |
