@@ -117,6 +117,8 @@ function* terrainPaint(g,T){
     q.addColorStop(0,tone[0]);q.addColorStop(.35,tone[1]);q.addColorStop(1,tone[2]);g.fillStyle=q;g.fillRect(x*TILE,y*TILE,TILE,TILE);
     g.strokeStyle='rgba(10,12,24,.30)';g.lineWidth=1.2;const px=-vy,py=vx;
     for(let k=0;k<4;k++){const o=(R()-.5)*TILE*.9,l0=-.2+R()*.4,l1=.35+R()*.45;g.beginPath();g.moveTo(cx+px*o+vx*TILE*l0,cy+py*o+vy*TILE*l0);g.lineTo(cx+px*o+vx*TILE*l1+ (R()-.5)*4,cy+py*o+vy*TILE*l1+(R()-.5)*4);g.stroke();}
+    for(let k=0;k<3;k++){const o=(k-.8)*TILE*.24,j=(R()-.5)*3;g.strokeStyle=k&1?'rgba(255,255,255,.10)':'rgba(6,8,20,.28)';g.lineWidth=1.3;g.beginPath();g.moveTo(cx+vx*o-px*TILE/2,cy+vy*o-py*TILE/2+j);g.lineTo(cx+vx*o+px*TILE/2,cy+vy*o+py*TILE/2-j);g.stroke();}   // rock strata parallel to the lip
+    if(vy>.5){const q2=g.createLinearGradient(0,y*TILE+TILE*.55,0,y*TILE+TILE);q2.addColorStop(0,'rgba(4,6,16,0)');q2.addColorStop(1,'rgba(4,6,16,.5)');g.fillStyle=q2;g.fillRect(x*TILE,y*TILE+TILE*.55,TILE,TILE*.45);}   // south faces (the ones the camera sees) darken towards the foot: ambient occlusion
     g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=1.4;g.beginPath();
     if(Math.abs(vx)>=Math.abs(vy)){const ex=vx>0?x*TILE+1:x*TILE+TILE-1;g.moveTo(ex,y*TILE);g.lineTo(ex,y*TILE+TILE);}else{const ey=vy>0?y*TILE+1:y*TILE+TILE-1;g.moveTo(x*TILE,ey);g.lineTo(x*TILE+TILE,ey);}g.stroke();}
 

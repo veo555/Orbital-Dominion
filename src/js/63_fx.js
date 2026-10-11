@@ -13,7 +13,7 @@ function fxVignette(){
   const q=g.createRadialGradient(w/2,h/2,r1*0.46,w/2,h/2,r1);
   q.addColorStop(0,'rgba(2,6,16,0)');q.addColorStop(.7,'rgba(2,6,16,.20)');q.addColorStop(1,'rgba(2,5,14,.52)');
   g.fillStyle=q;g.fillRect(0,0,w,h);
-  const l=g.createLinearGradient(0,0,0,h);l.addColorStop(0,'rgba(70,110,200,.055)');l.addColorStop(.5,'rgba(0,0,0,0)');l.addColorStop(1,'rgba(255,170,90,.04)');
+  const l=g.createLinearGradient(0,0,0,h);l.addColorStop(0,'rgba(120,160,230,.17)');l.addColorStop(.28,'rgba(100,140,215,.05)');l.addColorStop(.55,'rgba(0,0,0,0)');l.addColorStop(1,'rgba(255,170,90,.05)');   // distance haze at the top of the screen (tilted camera), warm bounce at the bottom
   g.fillStyle=l;g.fillRect(0,0,w,h);
   FX.vw=w;FX.vh=h;return FX.vig=c;
 }
