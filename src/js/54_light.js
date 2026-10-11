@@ -91,23 +91,24 @@ function drawLighting(t){
 
 /* ---------------------------------- shadows ---------------------------------- */
 /* blurred black silhouette of a sprite, baked once, lazily, 1 px per world unit (it is blurred, so no more is needed). */
-function shadowOf(sp,w,h){
+function shadowOf(sp,w,h){   // blurred ground footprint of a sprite (sp.fp, or its own alpha for legacy sprites), cached on the sprite
   if(sp.sh)return sp.sh;
-  const P=Math.round(5+Math.min(w,h)*.08),cw=Math.ceil(w)+2*P,ch=Math.ceil(h)+2*P,c=mkCanvas(cw,ch),g=c.getContext('2d'),off=cw*3;
-  g.shadowColor='#000';g.shadowBlur=P*.8;g.shadowOffsetX=off;g.drawImage(sp.cv,P-off,P,w,h);
-  return sp.sh={cv:c,P,w,h};
+  const x0=sp.x0===undefined?-w/2:sp.x0,y0=sp.y0===undefined?-h/2:sp.y0,W=sp.w||w,Hh=sp.h||h;
+  const P=Math.round(5+Math.min(W,Hh)*.08),cw=Math.ceil(W)+2*P,ch=Math.ceil(Hh)+2*P,c=mkCanvas(cw,ch),g=c.getContext('2d'),off=cw*3;
+  g.shadowColor='#000';g.shadowBlur=P*.8;g.shadowOffsetX=off;g.drawImage(sp.fp||sp.cv,P-off,P,W,Hh);
+  return sp.sh={cv:c,P,x0,y0,w:W,h:Hh};
 }
-/* a building shadow, drawn with the origin at the building centre (before the sprite). Stacked copies along the sun vector fake the long soft tail. */
+/* a building shadow, drawn with the origin at the building centre (before the sprite). Stacked copies along the sun vector fake the long soft tail;
+   the tail length follows the building's height. */
 function drawBuildingShadow(sp,w,h,b){
-  const sh=shadowOf(sp,w,h),P=sh.P,L=(10+h*.3)*LT.sl,n=Q.shd>=3?3:Q.shd>=2?2:1,a=LT.sa*(n>1?.95:.95);
-  for(let i=0;i<n;i++){const f=n>1?(i+1)/n:.6,o=L*f;ctx.globalAlpha=a*(1-i*.18);ctx.drawImage(sh.cv,-w/2-P+LT.sx*o,-h/2-P+LT.sy*o,w+2*P,h+2*P);}
+  const sh=shadowOf(sp,w,h),P=sh.P,L=(8+(sp.hz||h*.4)*.9)*LT.sl,n=Q.shd>=3?3:Q.shd>=2?2:1,a=LT.sa*.95;
+  for(let i=0;i<n;i++){const f=n>1?(i+1)/n:.6,o=L*f;ctx.globalAlpha=a*(1-i*.18);ctx.drawImage(sh.cv,sh.x0-P+LT.sx*o,sh.y0-P+LT.sy*o,sh.w+2*P,sh.h+2*P);}
   ctx.globalAlpha=1;
 }
-/* a unit shadow, drawn in world orientation but with the sprite's heading, origin at the unit centre */
+/* a unit shadow: the footprint of the baked facing, pushed along the sun vector (flyers: further, lighter) */
 function drawUnitShadow(sp,u,d){
-  const S=sp.S,sh=shadowOf(sp,S,S),P=sh.P,k=(u.flying?24:d.r*.55+2)*LT.sl;
-  ctx.save();ctx.translate(LT.sx*k,LT.sy*k+(u.flying?4:0));ctx.rotate(u.ang);
-  ctx.globalAlpha=LT.sa*(u.flying?.55:.8)*(ctx.globalAlpha||1);ctx.drawImage(sh.cv,-S/2-P,-S/2-P,S+2*P,S+2*P);ctx.restore();
+  const sh=shadowOf(sp,sp.w,sp.h),P=sh.P,k=(u.flying?24:(sp.hz||10)*.55+d.r*.3)*LT.sl;
+  ctx.globalAlpha=LT.sa*(u.flying?.55:.85)*(ctx.globalAlpha||1);ctx.drawImage(sh.cv,sh.x0-P+LT.sx*k,sh.y0-P+LT.sy*k+(u.flying?4:0),sh.w+2*P,sh.h+2*P);ctx.globalAlpha=1;
 }
 
 /* ------------------------------ particle pool -------------------------------- */
@@ -217,45 +218,10 @@ function drawBloom(){
 }
 
 /* ------------------------------ baked sprite lighting ------------------------------ */
-/* v5 bake primitive. The sprite's alpha, blurred twice, is a height field; its gradient is a surface normal, lit by a
-   north-west key light (the same light the shadows use). Result: hard-surface bevels on every plate edge, soft ambient
-   occlusion in the crevices, panel seams and rivets, and an emissive mask (saturated bright pixels = lamps/glass/team glow)
-   that the live draw adds back at glow strength. Runs once per sprite (cached), never per frame. */
-function boxBlur(a,W,H,r,tmp){
-  const inv=1/(2*r+1);
-  for(let y=0;y<H;y++){const o=y*W;let s=a[o]*(r+1);for(let x=0;x<r;x++)s+=a[o+Math.min(x,W-1)];
-    for(let x=0;x<W;x++){s+=a[o+Math.min(x+r,W-1)]-a[o+Math.max(x-r-1,0)];tmp[o+x]=s*inv;}}
-  for(let x=0;x<W;x++){let s=tmp[x]*(r+1);for(let y=0;y<r;y++)s+=tmp[Math.min(y,H-1)*W+x];
-    for(let y=0;y<H;y++){s+=tmp[Math.min(y+r,H-1)*W+x]-tmp[Math.max(y-r-1,0)*W+x];a[y*W+x]=s*inv;}}
-}
-function spritePolish(c,kind){
-  const W=c.width,H=c.height,g=c.getContext('2d'),b=kind==='b',m=Math.min(W,H),N=W*H;
-  const img=g.getImageData(0,0,W,H),d=img.data,h=new Float32Array(N),tmp=new Float32Array(N),R=mulberry32(W*7+H);
-  for(let i=0;i<N;i++)h[i]=d[i*4+3]/255;
-  const r1=Math.max(1,Math.round(m*(b?.012:.02)));boxBlur(h,W,H,r1,tmp);boxBlur(h,W,H,r1,tmp);
-  const K=b?9:5,lx=-.62,ly=-.78;
-  const ES=3,eW=Math.ceil(W/ES),eH=Math.ceil(H/ES),em=mkCanvas(eW,eH),eg=em.getContext('2d'),ei=eg.createImageData(eW,eH),ed=ei.data;let ne=0;
-  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,o=i*4,a=d[o+3];if(!a)continue;
-    const gx=h[i+1]-h[i-1],gy=h[i+W]-h[i-W],lit=-(gx*lx+gy*ly)*K,ao=.62+.38*Math.min(1,h[i]*1.6);
-    const r=d[o],gg=d[o+1],bl=d[o+2],mx=Math.max(r,gg,bl),mn=Math.min(r,gg,bl);
-    if(mx>175&&mx-mn>85){   // emissive pixel: keep it hot, copy into the glow mask
-      const j=((y/ES|0)*eW+(x/ES|0))*4;ed[j]=Math.max(ed[j],r);ed[j+1]=Math.max(ed[j+1],gg);ed[j+2]=Math.max(ed[j+2],bl);ed[j+3]=255;ne++;continue;}
-    const k=lit>0?1+Math.min(.55,lit):1+Math.max(-.5,lit*.9),add=lit>.08?lit*60:0;
-    d[o]=Math.min(255,r*k*ao+add);d[o+1]=Math.min(255,gg*k*ao+add);d[o+2]=Math.min(255,bl*k*ao+add*1.1);}
-  g.putImageData(img,0,0);
-  if(b){   // panel seams: engraved dark line + light lip on a coarse grid with random gaps, plus rivets (clipped to the sprite)
-    g.save();g.globalCompositeOperation='source-atop';const st=Math.round(W/(W/SC>110?7:5)),ln=Math.max(1,W/260);
-    for(let p=st;p<W-st/2;p+=st)for(let q=0;q<H;q+=st){if(R()<.35)continue;const l=st*(.4+R()*.6);
-      g.fillStyle='rgba(0,4,14,.30)';g.fillRect(p,q,ln,l);g.fillStyle='rgba(255,255,255,.10)';g.fillRect(p+ln,q,ln,l);
-      g.fillStyle='rgba(0,4,14,.30)';g.fillRect(q,p,l,ln);g.fillStyle='rgba(255,255,255,.10)';g.fillRect(q,p+ln,l,ln);}
-    for(let i=0;i<N/9000;i++){const x=R()*W,y=R()*H,rv=ln*1.5;g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.arc(x+ln*.6,y+ln*.6,rv,0,TAU);g.fill();g.fillStyle='rgba(235,245,255,.35)';g.beginPath();g.arc(x,y,rv*.8,0,TAU);g.fill();}
-    g.restore();}
-  if(ne>3){eg.putImageData(ei,0,0);c._em=em;}
-}
 /* additive glow of a sprite's emissive mask (soft because the mask is stored at 1/3 size and upscaled bilinearly) */
 function drawEmissive(sp,x,y,w,h,a){
   if(!sp.cv._em||Q.lit<1)return;const pa=ctx.globalAlpha;ctx.globalAlpha=pa*a;ctx.globalCompositeOperation='lighter';ctx.drawImage(sp.cv._em,x,y,w,h);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=pa;
 }
 
 /* test-side hook (same convention as window.__RTS in 90_main.js): lets tests/e2e/e2e_visual.py reach the lighting internals. Not used by the game. */
-if(window.__TEST)window.__RTSV={LT,PT,shadowOf,lightFrame,collectLights,drawLighting,drawBloom,spritePolish,drawEmissive,buildingSprite,unitSprite,lightSprite,ptAdd,ptStep,fxEmit,AMB_STOPS};
+
