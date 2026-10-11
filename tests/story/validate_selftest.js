@@ -16,7 +16,6 @@ const M=[
   ['no villain',S=>{for(const c of Object.values(S.characters))if(c.role==='villain')c.role='ally';},'main villain'],
   ['identical looks',S=>{S.characters.pip.look=JSON.parse(JSON.stringify(S.characters.ada.look));},'visually distinct'],
   ['bad motif',S=>{S.characters.pip.motif='nope';},'motif must be one of'],
-  ['bad voice pitch',S=>{S.characters.pip.voice.pitch=9;},'voice.pitch out of range'],
   ['unknown speaker',S=>{firstLine(S).who='nobody';},'unknown speaker'],
   ['line over 150 chars',S=>{firstLine(S).text='x'.repeat(151);},'chars (max'],
   ['line without text',S=>{delete firstLine(S).text;},'text missing'],
@@ -67,7 +66,6 @@ const M=[
   ['act list mismatch',S=>{S.acts[0].missions=['m01','m02','m09'];},'missions list must be'],
   ['unlock chain broken',S=>{S.missions[0].unlocks.next='m05';},'unlocks.next must be'],
   ['missing par',S=>{delete S.missions[0].stars;},'stars.par'],
-  ['bark for nobody',S=>{S.barks.ghost={select:['hi']};},'unknown character'],
   ['mission place unknown',S=>{S.missions[0].place='nowhere';},'is not in world.places']
 ];
 for(const[name,fn,want]of M){

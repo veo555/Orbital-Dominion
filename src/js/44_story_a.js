@@ -1,7 +1,7 @@
 /* =========================================================================
    STORY (1/n) - THE LANTERN TITHE. The campaign data root. Authored by the story workflow; see docs/CAMPAIGN_SPEC.md and docs/story/BIBLE.md.
-   Later files (44_story_b_* dispatches, 44_story_c_* missions, 44_story_d_* radio/barks) only add to these objects:
-     Object.assign(STORY.dispatch,{...})  STORY.missions.push(...)  Object.assign(STORY.radio,{...})  Object.assign(STORY.barks,{...})
+   Later files (44_story_b_* dispatches, 44_story_c_* missions, 44_story_d_* radio) only add to these objects:
+     Object.assign(STORY.dispatch,{...})  STORY.missions.push(...)  Object.assign(STORY.radio,{...})  
    Data only: no functions. Strings avoid double quotes inside text (use single quotes) so the file stays JSON-able.
    ========================================================================= */
 const STORY={
@@ -95,7 +95,6 @@ const STORY={
       want:"To keep the city safe, whatever it costs him.",
       flaw:"Martyr pride: he pays every price himself, in private, and never asks anyone to help carry it.",
       arc:"From a shield who pays alone and asks for nothing into a man who says the name aloud, asks for help for the first time, and chooses his price knowingly with company at his side.",
-      voice:{pitch:0.82,rate:0.92,timbre:"smooth",formant:0.42,ttsPitch:0.75,ttsRate:0.92},
       look:{skin:"#a9794f",hair:{style:"short",color:"#2b303b"},eyes:"#8fb4e8",armor:{style:"plate",col:"#3d8bff",trim:"#a6ceff"},mark:["none"],build:"broad",age:"adult",emblem:"faction"},
       motif:"idris",
       quote:"Someone pays for every light. I never asked who."
@@ -107,7 +106,6 @@ const STORY={
       want:"To wake his sister Ione.",
       flaw:"Obedience mistaken for faith: he hands his conscience up to the person who fed him, and calls the order a conviction.",
       arc:"From the Reckoner's best-loved weapon to the man who says 'I did that' aloud, carries Ione's pod down the field, and spends the rest of his life carrying what he burned.",
-      voice:{pitch:0.68,rate:0.9,timbre:"rough",formant:0.34,ttsPitch:0.58,ttsRate:0.9},
       look:{skin:"#7a4a30",hair:{style:"crest",color:"#2a1c1c"},eyes:"#ff9a3c",armor:{style:"plate",col:"#ff4d4d",trim:"#ffb0a8"},mark:["scar-l"],build:"massive",age:"adult",emblem:"faction"},
       motif:"kaz",
       quote:"I was never cruel. I did what I was told."
@@ -119,7 +117,6 @@ const STORY={
       want:"Freedom for her people, and to stop owing.",
       flaw:"She hedges: she sells the truth to the highest bidder, and once sold the one warning that mattered.",
       arc:"From a haggler who sees every ending but pays for none into a woman who pays full price, her sight, and finally cannot tell how it ends.",
-      voice:{pitch:1.18,rate:1.12,timbre:"bright",formant:0.64,ttsPitch:1.25,ttsRate:1.1},
       look:{skin:"#e3bd96",hair:{style:"long",color:"#b8f2e2"},eyes:"#4dffd0",armor:{style:"robe",col:"#0d6b55",trim:"#4dffd0"},mark:["glow-eye"],build:"slight",age:"adult",emblem:"faction"},
       motif:"lyra",
       quote:"I can see how every deal ends. It has never once helped me close one."
@@ -131,7 +128,6 @@ const STORY={
       want:"To undo Year 9: nine thousand for nine thousand.",
       flaw:"She counts everyone except herself: she has exempted herself as essential, and calls that fairness.",
       arc:"From a collector of other people's lives to a woman who watches one man pay in his own, tries too late to take his place and is refused by the machine, and then reads the names aloud.",
-      voice:{pitch:0.84,rate:0.82,timbre:"soft",formant:0.46,ttsPitch:0.8,ttsRate:0.8},
       look:{skin:"#d9c7b8",hair:{style:"hood",color:"#cfcfd8"},eyes:"#ffc86b",armor:{style:"robe",col:"#8a1717",trim:"#ff6a5a"},mark:["none"],build:"slight",age:"old",emblem:"crown"},
       motif:"villain",
       quote:"I am only collecting what was borrowed."
@@ -143,7 +139,6 @@ const STORY={
       want:"For Idris to feel Joren's death, and to be seen feeling it.",
       flaw:"He needs a witness more than he needs justice.",
       arc:"He gets his witness at the Spire when Idris says Joren's name, still owes for Brio and the Lamp Tower, and pays by refusing the Reckoner's last order at the Axis and leaving Idris his logs.",
-      voice:{pitch:1.0,rate:0.94,timbre:"hollow",formant:0.48,ttsPitch:0.95,ttsRate:0.94},
       look:{skin:"#c9a27e",hair:{style:"shaved",color:"#4a3326"},eyes:"#9fb36a",armor:{style:"coat",col:"#17408f",trim:"#ff6a5a"},mark:["cracks"],build:"lean",age:"adult",emblem:"faction"},
       motif:"villain",
       quote:"You counted my brother an acceptable loss. Count me."
@@ -155,7 +150,6 @@ const STORY={
       want:"Anselm back, and the next load delivered on time.",
       flaw:"'I just drive': she never asks what she carries and never says what she thinks.",
       arc:"From the one who carries to the one who decides: she names what she hauled, chooses what to haul next, and stays when it matters.",
-      voice:{pitch:0.96,rate:1.14,timbre:"rough",formant:0.6,ttsPitch:0.95,ttsRate:1.15},
       look:{skin:"#8f5f45",hair:{style:"bun",color:"#7a7a80"},eyes:"#c9a55a",armor:{style:"suit",col:"#4a3f66",trim:"#d9cdf2"},mark:["none"],build:"broad",age:"old",emblem:"none"},
       motif:"worker",
       quote:"Forty crates. Forty-one if you count the cat."
@@ -167,7 +161,6 @@ const STORY={
       want:"That the names are said aloud, and that no lamp is ever lit for the wrong reason.",
       flaw:"Precision as armour: she narrates so exactly that she never has to say what it cost her.",
       arc:"From neutral chronicler to the sleeper who was the reason a Warlord learned to carry.",
-      voice:{pitch:1.12,rate:0.88,timbre:"smooth",formant:0.6,ttsPitch:1.1,ttsRate:0.86},
       look:{skin:"#e3c9b0",hair:{style:"braid",color:"#e8e8ee"},eyes:"#7fa88c",armor:{style:"coat",col:"#6b5a3a",trim:"#e8c870"},mark:["none"],build:"slight",age:"old",emblem:"sun"},
       motif:"array",
       quote:"They tell it as a story about a light. It was a story about who we let carry it."
@@ -179,7 +172,6 @@ const STORY={
       want:"Peace, and the Council's comfortable silence.",
       flaw:"Cowardice: he will not finish the sentence that names a cost.",
       arc:"From the man who sealed the Roll to the man who reads it aloud, name by name, in the Forum.",
-      voice:{pitch:1.05,rate:1.08,timbre:"smooth",formant:0.52,ttsPitch:1.0,ttsRate:1.08},
       look:{skin:"#e0b99c",hair:{style:"bald",color:"#9a9aa2"},eyes:"#9ab0b8",armor:{style:"robe",col:"#17408f",trim:"#a6ceff"},mark:["none"],build:"broad",age:"old",emblem:"crown"},
       motif:"colony",
       quote:"I kept the peace. I did not say whose sleep paid for it."
@@ -191,7 +183,6 @@ const STORY={
       want:"A seat at every table, and every table in debt to her.",
       flaw:"She prices everything, and so never learns what some things are worth.",
       arc:"From selling to both sides to the day she voids a contract and opens the cold stores for nothing.",
-      voice:{pitch:0.98,rate:1.22,timbre:"smooth",formant:0.46,ttsPitch:1.02,ttsRate:1.2},
       look:{skin:"#c28d6a",hair:{style:"mane",color:"#e6c25a"},eyes:"#e6b84a",armor:{style:"coat",col:"#27d3a2",trim:"#a8ffe6"},mark:["tattoo"],build:"lean",age:"adult",emblem:"faction"},
       motif:"lyra",
       quote:"Nine hundred for the file, Seer. The advice is no charge."
@@ -203,7 +194,6 @@ const STORY={
       want:"A map with no blank places left on it.",
       flaw:"He trusts a written fact over the person standing next to him, and so does not see the betrayal coming.",
       arc:"From a man who draws the road to a man who stands on it: he dies holding the beacon, and the first new town is named for him.",
-      voice:{pitch:1.3,rate:1.2,timbre:"bright",formant:0.7,ttsPitch:1.35,ttsRate:1.18},
       look:{skin:"#d1a074",hair:{style:"short",color:"#c46a2a"},eyes:"#5b9bd5",armor:{style:"hood",col:"#9a8cb8",trim:"#d9cdf2"},mark:["none"],build:"lean",age:"young",emblem:"none"},
       motif:"colony",
       quote:"Technically it's a ring. Practically it's a very large door."
@@ -215,7 +205,6 @@ const STORY={
       want:"A balanced ledger.",
       flaw:"He believes that what is entered is true, and never asks whether it is right.",
       arc:"He sends one child's wagon out of the ring first, and dies inside the Third Bell, in Class Nine: a name he wrote and did not read.",
-      voice:{pitch:0.8,rate:0.9,timbre:"hollow",formant:0.4,ttsPitch:0.8,ttsRate:0.9},
       look:{skin:"#cdbba5",hair:{style:"shaved",color:"#161618"},eyes:"#a8a8b8",armor:{style:"suit",col:"#8a1717",trim:"#ffb0a8"},mark:["mask"],build:"slight",age:"adult",emblem:"none"},
       motif:"villain",
       quote:"Nothing is lost. It is merely entered."
@@ -227,7 +216,6 @@ const STORY={
       want:"A clean invoice and an uneventful pension.",
       flaw:"He treats loyalty as a service he can switch off at the end of the shift.",
       arc:"From a contract to a cause, though he would never use the word.",
-      voice:{pitch:0.95,rate:1.22,timbre:"rough",formant:0.58,ttsPitch:0.9,ttsRate:1.2},
       look:{skin:"#e0b890",hair:{style:"shaved",color:"#b4b4b4"},eyes:"#8aa0a8",armor:{style:"coat",col:"#5a4a3a",trim:"#d98a3a"},mark:["visor"],build:"lean",age:"adult",emblem:"none"},
       motif:"worker",
       quote:"That's two hours. Hours are billable."
@@ -239,7 +227,6 @@ const STORY={
       want:"To open his eyes and find Mags still there.",
       flaw:"He is asleep: the one thing he cannot do is choose.",
       arc:"He wakes into a winter that was thirty-one years long, and finds that she waited.",
-      voice:{pitch:1.0,rate:0.96,timbre:"soft",formant:0.56,ttsPitch:1.0,ttsRate:0.95},
       look:{skin:"#c99f7e",hair:{style:"short",color:"#6b4a2a"},eyes:"#7a9a6a",armor:{style:"robe",col:"#d9cdf2",trim:"#9a8cb8"},mark:["none"],build:"lean",age:"adult",emblem:"none"},
       motif:"array",
       quote:"I only closed my eyes for a winter."
@@ -251,7 +238,6 @@ const STORY={
       want:"Her grandmother Fenna awake, and for nobody to be sad.",
       flaw:"She trusts everyone who is kind to her.",
       arc:"From a volunteer for the Tithe to Kaz's first apprentice Hauler.",
-      voice:{pitch:1.5,rate:1.15,timbre:"bright",formant:0.8,ttsPitch:1.6,ttsRate:1.12},
       look:{skin:"#e8c4a0",hair:{style:"short",color:"#4a2c1a"},eyes:"#2e7bd1",armor:{style:"rags",col:"#ff4d4d",trim:"#8a1717"},mark:["none"],build:"slight",age:"young",emblem:"faction"},
       motif:"worker",
       quote:"Will it hurt?"
@@ -263,7 +249,6 @@ const STORY={
       want:"A lamp for Hale that nobody can take away, and to see the man who burned the Landing carry something.",
       flaw:"Grief as a verdict: she will not forgive, and she will not look away.",
       arc:"From the voice on the Council band that tells a Warlord to carry something to the face in the second row at the Forum that listens and does not forgive.",
-      voice:{pitch:0.9,rate:0.9,timbre:"rough",formant:0.46,ttsPitch:0.9,ttsRate:0.9},
       look:{skin:"#a8785a",hair:{style:"hood",color:"#4a3a30"},eyes:"#6f8f5a",armor:{style:"coat",col:"#6b4a2e",trim:"#e8c870"},mark:["none"],build:"broad",age:"adult",emblem:"none"},
       motif:"colony",
       quote:"Then carry something."
@@ -275,7 +260,6 @@ const STORY={
       want:"To complete every dispatch it was given.",
       flaw:"It cannot see anything that is not in its table.",
       arc:"None. Its last line is the same kind of line as its first: a status.",
-      voice:{pitch:0.9,rate:1.0,timbre:"metal",formant:0.2,ttsPitch:0.7,ttsRate:1.05},
       look:{skin:"#9aa3b2",hair:{style:"bald",color:"#555a66"},eyes:"#b79cff",armor:{style:"suit",col:"#d9cdf2",trim:"#4a3f66"},mark:["visor"],build:"lean",age:"adult",emblem:"none"},
       motif:"colony",
       quote:"RESERVE 6,067. DISPATCH CONTINUES."
@@ -291,5 +275,4 @@ const STORY={
   missions:[],
   dispatch:{},
   radio:{},
-  barks:{}
 };

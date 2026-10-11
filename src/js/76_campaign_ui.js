@@ -310,12 +310,11 @@ function radioShow(ln){
   el.classList.remove('hidden');el.style.animation='none';void el.offsetWidth;el.style.animation='';
   $('crBar').style.transform='scaleX(1)';
   rootEl.classList.add('cr-on');rootEl.style.setProperty('--crH',el.offsetHeight+'px');
-  try{if(typeof speak==='function')speak(ln.who,ln.text,{style:ln.style||'radio'});}catch(e){}
 }
 function radioNext(){const R=CU.radio;R.cur=null;if(R.q.length)radioShow(R.q.shift());else radioHide();}
 function radioHide(){$('campRadio').classList.add('hidden');rootEl.classList.remove('cr-on');}
-function campRadioClear(){const R=CU.radio;const had=!!R.cur;R.cur=null;R.q=[];radioHide();if(had)try{if(typeof speakStop==='function')speakStop();}catch(e){}}
-function campRadioSkip(){if(CU.radio.cur){try{if(typeof speakStop==='function')speakStop();}catch(e){}radioNext();}}
+function campRadioClear(){const R=CU.radio;R.cur=null;R.q=[];radioHide();}
+function campRadioSkip(){if(CU.radio.cur)radioNext();}
 
 /* ------------------------------- runtime events (45_campaign.js delivers them synchronously from inside step() / newGame()) ------------------------------- */
 function cuName(kind,id){

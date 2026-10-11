@@ -308,13 +308,6 @@ for (const id of Object.keys(RADIO)) {
 }
 
 /* ---------------------------------------------------------------- the cast */
-function voiceSay(v) {
-  v = v || {};
-  const p = num(v.pitch, 1), r = num(v.rate, 1);
-  const pw = p < 0.85 ? 'low' : p < 1.15 ? 'mid-range' : 'high';
-  const rw = r < 0.95 ? 'slow' : r < 1.1 ? 'measured' : 'quick';
-  return `${cap(pw)}, ${rw} voice with a ${esc(v.timbre || 'neutral')} timbre. Speech blips: pitch ${p}, rate ${r}, formant ${num(v.formant, 0.5)}. Text-to-speech: pitch ${num(v.ttsPitch, 1)}, rate ${num(v.ttsRate, 1)}.`;
-}
 function lookSay(c) {
   const l = c.look || {}, bits = [];
   if (l.armor) bits.push(`${colourWord(l.armor.col) || 'grey'} ${esc(l.armor.style)} armor${colourWord(l.armor.trim) ? ' with ' + colourWord(l.armor.trim) + ' trim' : ''}`);
@@ -343,7 +336,6 @@ function personEntry(id) {
     `- **Wants:** ${esc(c.want)}`,
     `- **Flaw:** ${esc(c.flaw)}`,
     `- **Arc:** ${esc(c.arc)}`,
-    `- **Voice:** ${voiceSay(c.voice)}`,
     `- **Look:** ${lookSay(c)}`,
     `- **Signature line:** “${esc(c.quote)}”`,
     `- **Appears:** ${screenSay(id)}.`,
@@ -520,7 +512,7 @@ const body = [];
 const S = computeStats();
 
 body.push(H(2, 'Dramatis personae'));
-body.push('Each entry gives the character brief as recorded in the story data, with the voice and look notes for casting and the first place the character appears on screen.');
+body.push('Each entry gives the character brief as recorded in the story data, with the look notes for casting and the first place the character appears on screen.');
 body.push(...castParas());
 
 body.push(H(2, 'Opening'));

@@ -53,14 +53,10 @@ const SFX_BUILDING_EVENTS=['place','done','die','fire'];                        
 const SFX_SKILLS=['barrage','orbital','shock','rampage','veil','sing','banner','bloodlust','regen'];   // hero_* skills (skill:<id>)
 const SFX_GLOBAL=['click','err','tab','cancel','toast','coin','mine','deliver','trade','train','done','place','level','era','win','lose','alert','alertBase','supply','research','hero','heroFall','heroRevive','siege','cloak','heal','stim',
   'ack','select','shoot','bolt','rocket','shell','acid','melee','boom','boomBig'];   // legacy names stay valid: they resolve through the unit-aware dispatcher
-/* non-positional effects on the 'cine' bus (80/81 audio engine; kept for the Sound Lab, no story data uses them any more) */
-const CINE_SFX=['whoosh','impact','boom','explosion','alarm','comms','door','engine','laser','rumble','glitch','heartbeat','chime','thunder','stinger','crowd','wind','powerup','powerdown','click','warp','siren','static','gong'];
 
-/* ------------------------------- characters / voices ------------------------------- */
+/* ------------------------------- characters ------------------------------- */
 const SIDES=['good','evil','gray'];
 const STORY_FACTIONS=['meridian','obsidian','aurora','neutral','none'];
-/* voice descriptor used by 84_voice: how a character's speech blips and TTS are shaped */
-const VOICE_KEYS={pitch:[0.5,1.6],rate:[0.8,1.3],timbre:['soft','bright','rough','smooth','hollow','metal'],formant:[0,1],ttsPitch:[0.4,1.8],ttsRate:[0.7,1.4]};
 
 /* ----------------------------------- dispatches (owner: 76_campaign_ui, data in 44_story_b_dispatch_*) ---------------------------------- */
 /* A dispatch is a static text card: STORY.dispatch[id]={id,kind,title,mood?,lines:[{who,text,style,expr?}]}. 'heading' lines are datelines / chapter cards. */

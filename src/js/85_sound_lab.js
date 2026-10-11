@@ -1,12 +1,11 @@
 /* =========================================================================
    SOUND LAB — the audition panel behind Settings -> "Sound lab" (docs/AUDIO_SPEC.md §7).
-   Lists every registered SFX voice (audioVoices) in five groups (Units, Buildings, Heroes & skills, UI & economy,
-   Cinematic) with a faction switch; every music cue and intro section (MUSIC_CUES, musicInfo) with play and stop;
-   live scene controls (musicScene, musicMood); every character voice reading a sample line (speak); and live peak /
-   RMS meters on the master bus (audioMeter, an AnalyserNode).
+   Lists every registered sound effect (audioVoices) in four groups (Units, Buildings, Heroes & skills, UI & economy)
+   with a faction switch; every music cue and intro section (MUSIC_CUES, musicInfo) with play and stop;
+   live scene controls (musicScene, musicMood); and live peak / RMS meters on the master bus (audioMeter, an AnalyserNode).
    Public globals only, so the lab shows whatever is registered and needs no test hook. The panel is rendered on each
    open and its meter timer runs only while it is open. Zero network. Controls are native buttons and range inputs
-   (Tab, Enter and Space work); Escape closes the lab and stops music and speech; while the lab is open no key reaches
+   (Tab, Enter and Space work); Escape closes the lab and stops the music; while the lab is open no key reaches
    the game and Tab stays inside the lab.
    Every button has its own click handler (no delegation): a cloned button is dead, which the E2E gate relies on.
    The only top-level names are SOUNDLAB and soundLabInit; everything else lives in the closure.
@@ -17,10 +16,10 @@ const FAC=['meridian','obsidian','aurora','wild'];
 const FACNAME={meridian:'Meridian',obsidian:'Obsidian',aurora:'Aurora',wild:'Wild'};
 /* the generic fallback voices play with the faction pitch bias the engine applies to them (80_audio.js FACP) */
 const FACP={meridian:1,obsidian:0.84,aurora:1.22,wild:0.72};
-const GROUPS=[['Units','Units'],['Buildings','Buildings'],['Heroes','Heroes & skills'],['UI','Interface & economy'],['Cinematic','Cinematic']];
-const ST={root:null,card:null,entry:null,fac:'meridian',playing:null,timer:0,ticks:0,active:false,frozen:false,snap:null,style:'normal',
-  voices:[],rows:[],groups:[],facBtns:[],cueBtns:[],secBtns:[],styleBtns:[],sl:{},m:{},
-  shown:{peak:-Infinity,rms:-Infinity},last:{},status:null,now:null,caption:null,infos:{}};
+const GROUPS=[['Units','Units'],['Buildings','Buildings'],['Heroes','Heroes & skills'],['UI','Interface & economy']];
+const ST={root:null,card:null,entry:null,fac:'meridian',playing:null,timer:0,ticks:0,active:false,frozen:false,snap:null,
+  voices:[],rows:[],groups:[],facBtns:[],cueBtns:[],secBtns:[],sl:{},m:{},
+  shown:{peak:-Infinity,rms:-Infinity},last:{},status:null,now:null,infos:{}};
 
 /* ------------------------------------------------------------------ small helpers (all reads are guarded: the lab works before any module lands) */
 const isOpen=()=>!!ST.root&&!ST.root.classList.contains('hidden');
@@ -29,7 +28,6 @@ const cap=s=>String(s).charAt(0).toUpperCase()+String(s).slice(1);
 const UT=()=>typeof UNIT_TYPES!=='undefined'?UNIT_TYPES:[];
 const BT=()=>typeof BUILDING_TYPES!=='undefined'?BUILDING_TYPES:[];
 const EVO=()=>[].concat(typeof SFX_UNIT_EVENTS!=='undefined'?SFX_UNIT_EVENTS:[],typeof SFX_BUILDING_EVENTS!=='undefined'?SFX_BUILDING_EVENTS:[],['amb','deliver','mine']);
-const STYLES=()=>typeof LINE_STYLES!=='undefined'?LINE_STYLES:['normal','radio','whisper','shout','narration','thought'];
 const MOODL=()=>typeof MOODS!=='undefined'?MOODS:['calm','tension','battle','dread','victory'];
 function vi(){try{return(typeof audioVoices==='function'&&audioVoices({info:true}))||[];}catch(e){return[];}}
 function musicStateSafe(){try{return typeof musicState==='function'?musicState():null;}catch(e){return null;}}
@@ -47,7 +45,6 @@ function setStatus(t){if(ST.status)ST.status.textContent=t;}
 /* ------------------------------------------------------------------ classification: id -> group, row (unit / building / hero / skills), label, faction */
 function classify(v){
   const p=v.id.split('.'),last=p[p.length-1],fac=p.length>=3&&FAC.indexOf(last)>=0?last:null,core=fac?p.slice(0,-1):p,head=core[0],rest=core.slice(1).join('.');
-  if(head==='cine')return{group:'Cinematic',row:null,label:rest,fac};
   if(head==='global'||head==='ui')return{group:'UI',row:null,label:rest,fac};
   if(head==='skill')return{group:'Heroes',row:'skills',rowTitle:'Skills',label:rest,fac};
   if(head.indexOf('hero_')===0)return{group:'Heroes',row:head,rowTitle:cap(head.slice(5)),label:rest||'play',fac};
@@ -78,13 +75,8 @@ function sectionClick(id,i){
   try{musicPlay(id,{section:i});}catch(e){}
   ST.playing=id;setStatus('Cue '+id+', section '+(s?s.name:String(i+1))+'.');refresh();
 }
-function stopAll(){try{musicStop(0.2);}catch(e){}try{speakStop();}catch(e){}ST.playing=null;setStatus('Stopped music and speech.');refresh();}
-function sayChar(id,co){
-  const nm=co.short||co.name||id,line=(co.quote&&String(co.quote).trim())||('This is a sample line for '+nm+'.');
-  let r=null;try{r=typeof speak==='function'?speak(id,line,{style:ST.style}):null;}catch(e){r=null;}
-  ST.caption.textContent=r?nm+' ('+ST.style+'): "'+line+'"':'Speech is not available in this build.';
-}
-/* the faction switch: a voice with a faction in its id shows only for that faction; faction-less voices (UI, cinematic, skills) always show */
+function stopAll(){try{musicStop(0.2);}catch(e){}ST.playing=null;setStatus('Stopped the music.');refresh();}
+/* the faction switch: a voice with a faction in its id shows only for that faction; faction-less voices (UI, skills) always show */
 function applyFaction(){
   for(const v of ST.voices){const vf=v.dataset.fac;v.classList.toggle('hidden',!!vf&&vf!==ST.fac);}
   for(const r of ST.rows)r.el.classList.toggle('hidden',!r.btns.some(b=>!b.classList.contains('hidden')));
@@ -142,7 +134,7 @@ function buildHead(){
   const stop=mk('button','btn sl-stop','Stop all');stop.type='button';stop.dataset.lab='stop';stop.addEventListener('click',stopAll);
   const shut=mk('button','btn sl-close','Close');shut.type='button';shut.dataset.lab='close';shut.addEventListener('click',closeLab);
   tools.append(stop,shut);top.append(t,tools);
-  const note=mk('p','sl-note','Every registered voice, music cue and character. Nothing here changes the game.');
+  const note=mk('p','sl-note','Every sound effect and music cue. Nothing here changes the game.');
   const facs=mk('div','sl-facs');facs.setAttribute('role','group');facs.setAttribute('aria-label','Faction');
   for(const f of FAC){
     const b=mk('button','sl-fac',FACNAME[f]);b.type='button';b.dataset.faction=f;
@@ -217,32 +209,11 @@ function buildMusic(body){
   for(const id of cues){const info=infoOf(id);if(info&&info.sections&&info.sections.length>1)sec.append(sectionRow(id,info));}
   body.append(sec);
 }
-function buildChars(body){
-  const sec=mk('section','sl-sec'),h=mk('h3','sl-h','Character voices');
-  h.id='slh-chars';sec.setAttribute('aria-labelledby','slh-chars');sec.append(h);
-  const sty=mk('div','sl-chips');sty.setAttribute('role','group');sty.setAttribute('aria-label','Line style');
-  for(const s of STYLES()){
-    const b=mk('button','btn sl-chip',cap(s));b.type='button';b.dataset.style=s;b.setAttribute('aria-pressed',String(s===ST.style));
-    b.addEventListener('click',()=>{ST.style=s;for(const x of ST.styleBtns)x.setAttribute('aria-pressed',String(x.dataset.style===s));});
-    ST.styleBtns.push(b);sty.append(b);
-  }
-  sec.append(sty);
-  const grid=mk('div','sl-chips');grid.setAttribute('role','group');grid.setAttribute('aria-label','Characters');
-  const chars=(typeof STORY!=='undefined'&&STORY&&STORY.characters)||{};
-  for(const id of Object.keys(chars)){
-    const co=chars[id]||{},nm=co.name||co.short||id,b=mk('button','btn sl-char',co.short||co.name||id);
-    b.type='button';b.dataset.char=id;b.title=co.title||nm;b.setAttribute('aria-label','Read a sample line as '+nm);
-    b.addEventListener('click',()=>sayChar(id,co));grid.append(b);
-  }
-  sec.append(grid);
-  ST.caption=mk('p','sl-caption');ST.caption.setAttribute('aria-live','polite');sec.append(ST.caption);
-  body.append(sec);
-}
 function build(){
-  ST.voices=[];ST.rows=[];ST.groups=[];ST.facBtns=[];ST.cueBtns=[];ST.secBtns=[];ST.styleBtns=[];ST.sl={};ST.m={};
+  ST.voices=[];ST.rows=[];ST.groups=[];ST.facBtns=[];ST.cueBtns=[];ST.secBtns=[];ST.sl={};ST.m={};
   const card=ST.card;card.textContent='';
   const body=mk('div','sl-body');
-  buildVoices(body);buildMusic(body);buildChars(body);
+  buildVoices(body);buildMusic(body);
   card.append(buildHead(),body);
 }
 
@@ -293,12 +264,10 @@ function hush(){
   try{ST.snap=typeof musicState==='function'?musicState():null;}catch(e){}
   try{if(typeof G!=='undefined'&&G&&!G.paused&&typeof ui!=='undefined'&&ui.running){G.paused=true;ST.frozen=true;}}catch(e){}
   try{musicStop(0.3);}catch(e){}
-  try{speakStop();}catch(e){}
 }
 function unhush(){
   if(!ST.active)return;ST.active=false;
   try{musicStop(0.2);}catch(e){}
-  try{speakStop();}catch(e){}
   if(ST.frozen&&typeof G!=='undefined'&&G)G.paused=false;
   ST.frozen=false;
   const sn=ST.snap;ST.snap=null;
@@ -341,27 +310,11 @@ function onKey(e){
   if(e.key==='Escape'){e.preventDefault();closeLab();return;}
   if(e.key==='Tab')trapTab(e);
 }
-/* Settings row for the OPTIONAL recorded-voice pack (84_voice.js, tools/voicepack/README.md). File picker only: nothing is requested from the network. */
-function buildPackRow(){
-  const row=ST.entry&&ST.entry.parentNode;if(!row||!row.parentNode||document.getElementById('bVoicePack'))return;
-  const r=mk('div','row'),b=mk('button','btn','Load voice pack...'),rm=mk('button','btn','Remove'),info=mk('span','dim small','Optional recorded voices (none loaded)'),inp=document.createElement('input');
-  b.id='bVoicePack';b.type='button';rm.id='bVoicePackX';rm.type='button';rm.hidden=true;info.id='voicePackInfo';info.setAttribute('aria-live','polite');
-  inp.type='file';inp.id='voicePackFile';inp.multiple=true;inp.hidden=true;inp.accept='.json,.zip,.ogg,.opus,.m4a,.mp3,.wav,application/json,application/zip,audio/*';
-  const show=()=>{const s=typeof voicepackStatus==='function'?voicepackStatus():null;
-    if(!s||!s.loaded||!s.accepted){info.textContent=s&&s.reasons&&s.reasons.length?'Voice pack rejected: '+s.reasons[0]:'Optional recorded voices (none loaded)';rm.hidden=true;return;}
-    info.textContent='Voice pack: '+s.accepted+' lines'+(s.rejected?' ('+s.rejected+' rejected)':'')+(s.license&&s.license.statement?'. '+s.license.statement:'');rm.hidden=false;};
-  b.addEventListener('click',()=>inp.click());
-  inp.addEventListener('change',()=>{const f=inp.files;if(!f||!f.length)return;info.textContent='Checking voice pack...';
-    voicepackLoadFiles(f).then(show,e=>{info.textContent='Voice pack not loaded: '+(e&&e.message||e);}).then(()=>{try{inp.value='';}catch(e){}});});
-  rm.addEventListener('click',()=>{voicepackClear();show();});
-  r.append(b,rm,info,inp);row.parentNode.insertBefore(r,row.nextSibling);
-}
 function init(){
   ST.root=document.getElementById('soundLab');ST.card=document.getElementById('slCard');ST.entry=document.getElementById('bSoundLab');
   if(!ST.root||!ST.card||!ST.entry)return;
   ST.fac=typeof SET!=='undefined'&&SET&&FAC.indexOf(SET.faction)>=0?SET.faction:'meridian';
   ST.entry.addEventListener('click',openLab);
-  buildPackRow();
   document.addEventListener('keydown',onKey,true);
 }
 return{init,open:openLab,close:closeLab,isOpen};

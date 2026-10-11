@@ -305,7 +305,7 @@ function updateBuilding(b,dt){
   if(!b.done){
     if(b.nb>0){const dp=dt*(b.nb+2)/(3*d.time);b.prog=Math.min(1,b.prog+dp);b.hp=Math.min(b.maxhp,b.hp+b.maxhp*0.9*dp);}
     if(b.prog>=1){b.prog=1;b.done=true;if(G.camp)campNote('built',b.team,b.type);   // `built` condition counter (45_campaign.js)
-      if(b.team===0&&!G.ais[0]){toast(d.name+' complete','good');sfx('done',undefined,undefined,b);if(b.type==='generator')say('Supply increased');}
+      if(b.team===0&&!G.ais[0]){toast(d.name+' complete','good');sfx('done',undefined,undefined,b);}
       uiDirty();G.fx.push({x:b.x,y:b.y,t:0,max:0.8,kind:'ring',r:b.r*1.2,col:'#9fe8ff'});}
     return;}
   if(d.dmg){
@@ -323,10 +323,10 @@ function updateBuilding(b,dt){
       if(q.k==='u'){const nu=spawnUnit(b,q.id);if(b.team===0&&!G.ais[0])sfx('done',undefined,undefined,nu);}
       else if(q.k==='r'){const R=TECH[q.id];T[R.key]++;if(b.team===0&&!G.ais[0]){toast(R.name+' researched','good');sfx('research',undefined,undefined,b);}}
       else if(q.k==='era'){T.era=q.to;G.events.push({t:G.time,team:b.team,txt:'Era '+ERAS[q.to].rom});
-        if(b.team===0&&!G.ais[0]){toast('Era '+ERAS[q.to].rom+': '+ERAS[q.to].name+' — new technology unlocked!','good');sfx('era',undefined,undefined,{faction:T.faction});say('Era advanced');}
+        if(b.team===0&&!G.ais[0]){toast('Era '+ERAS[q.to].rom+': '+ERAS[q.to].name+' — new technology unlocked!','good');sfx('era',undefined,undefined,{faction:T.faction});}
         G.fx.push({x:b.x,y:b.y,t:0,max:1.4,kind:'ring',r:b.r*2.5,col:'#ffe27a'});}
       else if(q.k==='hero'){T.hero.reviving=false;const u=spawnUnit(b,FACTIONS[T.faction].hero);
-        if(b.team===0&&!G.ais[0]){toast(u.def.name+' has arrived','good');sfx(q.revive?'heroRevive':'hero',undefined,undefined,u);say(q.revive?'Hero revived':'Hero ready');}}
+        if(b.team===0&&!G.ais[0]){toast(u.def.name+' has arrived','good');sfx(q.revive?'heroRevive':'hero',undefined,undefined,u);}}
       uiDirty();}}
 }
 function neutralsStep(dt){

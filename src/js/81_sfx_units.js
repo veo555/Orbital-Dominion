@@ -166,7 +166,7 @@ const SELECT={
   brute:F=>mk(.55,Vo(F,{f:68,f2:55,vowel:'a',to:'o',morph:.35,scale:.55,a:.05,d:.45,g:1,drive:.3}),S(F,{f:58,f2:42,d:.4,g:.7}),B(F,{c:'brown',type:'lp',f0:500,f1:200,d:.4,g:.4})),
   hero_idris:MU({k:'horn',d:[0,3,4],o:0,st:.12,len:.14,a:.015,dur:.56}),
   hero_kaz:F=>mk(.58,H(F,{abs:1,f:nt(F,0,-1),len:.52,a:.09,g:1,cut:.9}),T(F,{abs:1,f:nt(F,6,-1),a:.08,s:.5,len:.4,r:.1,g:.4,del:.1,cut:.8}),S(F,{f:75,f2:55,d:.3,g:.9})),
-  hero_lyra:F=>mk(.58,Vo(F,{abs:1,f:nt(F,4,0),vowel:'o',to:'a',morph:.4,a:.08,s:.65,len:.46,r:.12,g:.9}),K(F,{abs:1,f:nt(F,0,1),t60:.5,modal:1,n:3,g:.7,del:.02}),K(F,{abs:1,f:nt(F,4,1),t60:.5,modal:1,n:3,g:.5,del:.14}))
+  hero_lyra:F=>mk(.58,K(F,{abs:1,f:nt(F,0,1),t60:.5,modal:1,n:3,g:.7,del:.02}),K(F,{abs:1,f:nt(F,4,1),t60:.5,modal:1,n:3,g:.5,del:.14}))
 };
 /* ------------------------------------------------------------------ ACK (<= 0.3 s, class ui): command acknowledged, two takes alternate (seq) */
 const ACK={
@@ -188,7 +188,7 @@ const ACK={
   brute:F=>mk(.26,Vo(F,{f:75,f2:62,vowel:'o',scale:.55,a:.03,d:.2,g:1,drive:.3}),S(F,{f:60,f2:46,d:.2,g:.6})),
   hero_idris:MU({k:'horn',d:[0,4],d2:[0,3],o:0,st:.08,len:.1,a:.012,dur:.24}),
   hero_kaz:F=>mk(.26,H(F,{abs:1,f:nt(F,0,-1),len:.22,a:.03,g:1,cut:.9}),S(F,{f:80,f2:60,d:.16,g:.7})),
-  hero_lyra:F=>mk(.28,Vo(F,{abs:1,f:nt(F,4,0),vowel:'o',a:.03,d:.2,g:.8}),K(F,{abs:1,f:nt(F,4,1),t60:.3,modal:1,n:3,g:.6}))
+  hero_lyra:F=>mk(.28,K(F,{abs:1,f:nt(F,4,1),t60:.3,modal:1,n:3,g:.6}))
 };
 /* ------------------------------------------------------------------ FIRE (<= 0.36 s, <= 4 source nodes; class fire, heavy cannons class impact) */
 const FIRE={
@@ -209,7 +209,7 @@ const FIRE={
   spitter:F=>mk(.22,T(F,{f:320,f2:700,t:.14,d:.15,g:.7,vib:80,sq:0}),B(F,{type:'hp',f0:3200,d:.1,g:.4}),Vo(F,{f:230,vowel:'o',d:.15,g:.35})),
   brute:F=>mk(.35,Vo(F,{f:75,f2:55,vowel:'a',scale:.55,a:.03,d:.3,g:1,drive:.35,trem:13}),B(F,{c:'brown',type:'lp',f0:400,d:.3,g:.5}),S(F,{f:60,f2:40,d:.25,g:.6})),
   hero_idris:F=>mk(.22,T(F,{f:1200,f2:260,t:.1,d:.18,g:1,solo:1}),S(F,{f:90,f2:50,d:.15,g:.6}),C(F,{g:.45})),
-  hero_kaz:F=>mk(.3,Vo(F,{f:120,f2:95,vowel:'a',to:'o',morph:.2,d:.26,a:.015,g:1,scale:.8,drive:.5}),B(F,{c:'pink',type:'bp',f0:1800,f1:900,d:.2,g:.5}),S(F,{f:70,f2:45,d:.22,g:.7})),
+  hero_kaz:F=>mk(.3,B(F,{c:'pink',type:'bp',f0:1800,f1:900,d:.2,g:.5}),S(F,{f:70,f2:45,d:.22,g:.7})),
   hero_lyra:F=>mk(.3,T(F,{f:2400,f2:1300,t:.15,d:.28,g:.8,idx:1}),B(F,{type:'hp',f0:7000,d:.05,g:.25}),T(F,{f:3600,f2:2400,d:.2,g:.25,sine:1,solo:1}))
 };
 /* ------------------------------------------------------------------ MELEE (<= 0.34 s, class impact) */
@@ -253,15 +253,15 @@ const HIT={
   spitter:F=>mk(.14,B(F,{type:'bp',f0:500,q:1.5,d:.09,g:1}),T(F,{f:260,f2:140,d:.08,g:.6,vib:60,sq:0})),
   brute:F=>mk(.2,Vo(F,{f:80,f2:60,vowel:'o',scale:.55,d:.14,g:1}),S(F,{f:70,f2:45,d:.12,g:.8}),B(F,{c:'brown',type:'lp',f0:500,d:.1,g:.5})),
   hero_idris:F=>mk(.14,K(F,{f:520,t60:.25,modal:1,rt:[1,2.7,4.7],n:3,g:1}),C(F,{g:.3,f:4000}),S(F,{f:120,f2:80,d:.05,g:.4})),
-  hero_kaz:F=>mk(.18,Vo(F,{f:110,f2:72,vowel:'o',to:'a',morph:.5,d:.13,g:1,scale:.8,drive:.5}),K(F,{f:240,t60:.2,modal:1,rt:[1,1.5,2.6],n:3,g:.4}),S(F,{f:95,f2:55,d:.09,g:.8})),
+  hero_kaz:F=>mk(.18,K(F,{f:240,t60:.2,modal:1,rt:[1,1.5,2.6],n:3,g:.4}),S(F,{f:95,f2:55,d:.09,g:.8})),
   hero_lyra:F=>mk(.2,K(F,{f:2000,t60:.3,modal:1,n:3,g:1}),B(F,{type:'hp',f0:6000,d:.04,g:.3}),T(F,{f:1500,d:.12,g:.3,sine:1,solo:1}))
 };
 /* ------------------------------------------------------------------ DIE (organic / mechanical / hero; impact <= 0.9 s, boom <= 2.4 s with a held body so the transient cannot dominate the peak, hero alert) */
 const DIE={
   hauler:F=>mkx({dur:.5},T(F,{f:1100,f2:300,t:.35,d:.4,g:1}),B(F,{type:'lp',f0:4000,f1:500,t:.4,d:.4,g:.5}),S(F,{f:120,f2:60,d:.2,g:.8,del:.15})),
-  rifleman:F=>mkx({dur:.6},Vo(F,{f:220,f2:110,vowel:'a',to:'o',morph:.4,a:.015,d:.45,g:1}),B(F,{type:'bp',f0:1200,d:.2,g:.4}),B(F,{type:'bp',f0:700,f1:400,a:.1,d:.3,g:.5,del:.15}),S(F,{f:100,f2:50,d:.25,g:.8,del:.1})),
+  rifleman:F=>mkx({dur:.6},B(F,{type:'bp',f0:1200,d:.2,g:.4}),B(F,{type:'bp',f0:700,f1:400,a:.1,d:.3,g:.5,del:.15}),S(F,{f:100,f2:50,d:.25,g:.8,del:.1})),
   raptor:F=>mkx({dur:.55},Vo(F,{f:650,f2:250,vowel:'i',to:'e',morph:.3,a:.01,d:.4,g:1}),B(F,{type:'bp',f0:3000,f1:1200,q:2,d:.25,g:.5}),C(F,{g:.4,f:3800}),C(F,{g:.3,f:3200,del:.07})),
-  rocketeer:F=>mkx({dur:.6},Vo(F,{f:200,f2:90,vowel:'a',to:'uh',morph:.4,a:.015,d:.3,g:.5}),B(F,{type:'lp',f0:3000,f1:300,d:.4,g:.9,del:.05}),S(F,{f:90,f2:45,d:.3,g:1,del:.05}),C(F,{g:.3,f:3000,del:.06})),
+  rocketeer:F=>mkx({dur:.6},B(F,{type:'lp',f0:3000,f1:300,d:.4,g:.9,del:.05}),S(F,{f:90,f2:45,d:.3,g:1,del:.05}),C(F,{g:.3,f:3000,del:.06})),
   mender:F=>mkx({dur:.8},K(F,{f:660,t60:.5,n:3,g:.8}),K(F,{f:495,t60:.5,n:3,g:.7,del:.12}),K(F,{f:330,t60:.5,n:3,g:.6,del:.26}),B(F,{type:'hp',f0:5000,d:.3,g:.2})),
   howitzer:F=>mkx({dur:1.2,cls:'boom'},C(F,{g:.35,f:3000}),C(F,{g:.25,f:2500,del:.04}),B(F,{type:'lp',f0:3500,f1:250,t:.95,a:.01,s:.45,dd:.2,len:.95,r:.5,g:[1.3,1.3,.85]}),S(F,{f:80,f2:30,a:.01,s:.7,dd:.15,len:.9,r:.6,g:[.5,.5,.8]}),K(F,{f:900,t60:.5,modal:1,rt:[1,2.9,5.6],n:3,g:.25,del:[.03,.03,.07]}),B(F,{type:'hp',f0:4500,a:.05,d:.5,g:.35,del:.15})),
   juggernaut:F=>mkx({dur:1.5,cls:'boom'},S(F,{f:55,f2:26,a:.015,s:.7,dd:.2,len:.9,r:.5,g:.45}),B(F,{c:'brown',type:'lp',f0:600,f1:80,t:1.1,a:.02,s:.5,dd:.3,len:1.0,r:.5,g:.45}),K(F,{f:150,t60:.6,modal:1,rt:[1,1.6,2.7,4.1],n:4,g:.6,del:.08}),K(F,{f:230,t60:.45,modal:1,rt:[1,1.6,2.7,4.1],n:4,g:.5,del:.3}),K(F,{f:190,t60:.45,modal:1,rt:[1,1.6,2.7,4.1],n:4,g:.45,del:.55}),B(F,{type:'hp',f0:2000,a:.04,s:.4,dd:.2,len:.7,r:.4,g:[.4,.4,.7],del:[.05,.05,.11]}),B(F,{type:'bp',f0:1400,f1:700,t:.9,q:1,a:.05,s:.5,dd:.2,len:.9,r:.4,g:[.35,.35,.7],trem:22,del:.1})),
@@ -274,9 +274,9 @@ const DIE={
   crawler:F=>mkx({dur:.35},Vo(F,{f:1500,f2:500,vowel:'i',to:'e',morph:.2,d:.22,a:.01,g:.9}),C(F,{g:.4,f:2800}),SKT(F,{f0:2000,trem:25,d:.3,g:.8}),B(F,{type:'bp',f0:2500,q:2,d:.15,g:.4,del:.1})),
   spitter:F=>mkx({dur:.5},T(F,{f:600,f2:150,t:.35,d:.35,g:.7,vib:70,sq:0}),B(F,{type:'bp',f0:900,f1:300,d:.4,g:.8}),Vo(F,{f:240,f2:110,vowel:'o',to:'uh',d:.35,g:.5,vib:60})),
   brute:F=>mkx({dur:.9},Vo(F,{f:80,f2:40,vowel:'a',to:'o',morph:.6,scale:.55,a:.04,d:.7,g:1,drive:.4}),B(F,{c:'brown',type:'lp',f0:500,f1:120,d:.7,g:.6}),S(F,{f:60,f2:30,d:.4,g:1,del:.35})),
-  hero_idris:F=>mkx({dur:1.6,cls:'alert',prio:'hero',vary:{}},T(F,{abs:1,f:nt(F,4,0),f2:nt(F,0,-1),t:1.3,s:.7,len:1.3,a:.04,r:.3,g:1,cut:.8}),Vo(F,{abs:1,f:nt(F,0,0),vowel:'o',a:.1,s:.5,len:1.2,r:.3,g:.5}),K(F,{abs:1,f:nt(F,0,1),t60:1.2,modal:1,rt:[1,2.7,4.7],n:3,g:.6,del:.1}),K(F,{abs:1,f:nt(F,0,1),t60:1.2,modal:1,rt:[1,2.7,4.7],n:3,g:.5,del:.7})),
+  hero_idris:F=>mkx({dur:1.6,cls:'alert',prio:'hero',vary:{}},T(F,{abs:1,f:nt(F,4,0),f2:nt(F,0,-1),t:1.3,s:.7,len:1.3,a:.04,r:.3,g:1,cut:.8}),K(F,{abs:1,f:nt(F,0,1),t60:1.2,modal:1,rt:[1,2.7,4.7],n:3,g:.6,del:.1}),K(F,{abs:1,f:nt(F,0,1),t60:1.2,modal:1,rt:[1,2.7,4.7],n:3,g:.5,del:.7})),
   hero_kaz:F=>mkx({dur:1.9,cls:'alert',prio:'hero',vary:{}},H(F,{abs:1,f:nt(F,0,0),len:1.5,a:.08,g:1,cut:.8}),S(F,{f:65,f2:30,d:.5,g:1,del:.3}),S(F,{f:60,f2:30,d:.5,g:.9,del:.75}),S(F,{f:55,f2:28,d:.6,g:.8,del:1.2}),B(F,{c:'brown',type:'lp',f0:600,f1:100,t:1.4,d:1.5,g:.3})),
-  hero_lyra:F=>mkx({dur:2,cls:'alert',prio:'hero',vary:{}},K(F,{abs:1,f:nt(F,4,1),t60:.9,modal:1,n:3,g:.7}),K(F,{abs:1,f:nt(F,2,1),t60:.9,modal:1,n:3,g:.6,del:.15}),K(F,{abs:1,f:nt(F,0,1),t60:1.2,modal:1,n:3,g:.6,del:.3}),Vo(F,{abs:1,f:nt(F,0,0),vowel:'o',a:.15,s:.5,len:1.5,r:.5,g:.5}))
+  hero_lyra:F=>mkx({dur:2,cls:'alert',prio:'hero',vary:{}},K(F,{abs:1,f:nt(F,4,1),t60:.9,modal:1,n:3,g:.7}),K(F,{abs:1,f:nt(F,2,1),t60:.9,modal:1,n:3,g:.6,del:.15}),K(F,{abs:1,f:nt(F,0,1),t60:1.2,modal:1,n:3,g:.6,del:.3}))
 };
 /* ------------------------------------------------------------------ READY (<= 0.6 s, class impact): unit trained, a short rising jingle in the faction's key that ends on a bell ring */
 const RING=(deg,o,len)=>F=>K(F,{abs:1,f:nt(F,deg,o),t60:len||.3,modal:1,n:3,g:.5,del:.0});
@@ -299,7 +299,7 @@ const READY={
   brute:F=>mk(.55,Vo(F,{f:60,f2:80,vowel:'o',to:'a',morph:.4,scale:.55,a:.08,d:.45,g:1,drive:.3}),S(F,{f:50,f2:40,d:.4,g:.8}),B(F,{c:'brown',type:'lp',f0:400,d:.4,g:.4})),
   hero_idris:MU({k:'horn',d:[0,3,4],o:0,st:.12,len:.2,a:.015,dur:.58}),
   hero_kaz:MU({k:'horn',d:[0,6],o:-1,st:.2,len:.3,a:.04,dur:.58,x:F=>[S(F,{f:75,f2:50,d:.2,g:.9}),S(F,{f:75,f2:50,d:.2,g:.8,del:.2}),C(F,{g:.4})]}),
-  hero_lyra:MU({k:'bell',d:[0,4,7,9],o:1,st:.1,len:.2,dur:.58,x:F=>[Vo(F,{abs:1,f:nt(F,4,0),vowel:'o',a:.08,s:.5,len:.4,r:.1,g:.3})]})
+  hero_lyra:MU({k:'bell',d:[0,4,7,9],o:1,st:.1,len:.2,dur:.58,x:F=>[]})
 };
 
 /* ------------------------------------------------------------------ MINE / DELIVER (hauler only; class ui, quiet, built to survive a 30 s loop of 4-10 workers)

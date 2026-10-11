@@ -525,7 +525,7 @@ function provokeCamp(e,src){
 function alertPlayer(e){
   if(G.ais[0])return;
   G.alertPos={x:e.x,y:e.y};G.alertT=G.time;G.fightT=G.time;
-  if(G.time-G.lastAlertT>9){G.lastAlertT=G.time;toast(e.kind==='building'?'Your base is under attack!':'Your forces are under attack!','bad');sfx('alert',undefined,undefined,e);say('Your forces are under attack');}
+  if(G.time-G.lastAlertT>9){G.lastAlertT=G.time;toast(e.kind==='building'?'Your base is under attack!':'Your forces are under attack!','bad');sfx('alert',undefined,undefined,e);}
 }
 function giveXP(team,x,y,amt){
   if(team>1)return;const H=G.teams[team].hero;if(!H.alive||H.level>=HERO_MAXLVL)return;
@@ -535,7 +535,7 @@ function giveXP(team,x,y,amt){
   while(H.level<HERO_MAXLVL&&H.xp>=HERO_LVL_XP[H.level+1]){
     H.level++;heroApply(u,false);u.hp=Math.min(u.maxhp,u.hp+u.maxhp*0.25);u.mana=heroMaxMana(u);
     G.fx.push({x:u.x,y:u.y,t:0,max:1.1,kind:'levelup',r:60});
-    if(team===0&&!G.ais[0]){toast(u.def.name+' reached level '+H.level+'!  Press Z to learn a skill.','good');sfx('level',undefined,undefined,u);say('Hero level up');}
+    if(team===0&&!G.ais[0]){toast(u.def.name+' reached level '+H.level+'!  Press Z to learn a skill.','good');sfx('level',undefined,undefined,u);}
     G.events.push({t:G.time,team,txt:'Hero level '+H.level});
   }
 }
@@ -548,7 +548,7 @@ function kill(e,by){
     if(by!==undefined&&by!==e.team&&by<2)G.teams[by].kills++;
     if(e.team<2){T.lost++;T.rl+=e.def.supply;
       if(by!==undefined&&by<2&&by!==e.team){const k=G.teams[by];k.rk+=e.def.supply;giveXP(by,e.x,e.y,Math.round((e.def.cost.c+e.def.cost.e)*0.4)+(e.def.hero?150:0));}
-      if(e.def.hero){const H=T.hero;H.alive=false;H.deaths=(H.deaths||0)+1;H.reviving=false;if(e.team===0&&!G.ais[0]){toast('Your hero has fallen. Revive them at the Hub.','bad');sfx('heroFall',undefined,undefined,e);say('Hero has fallen');}G.events.push({t:G.time,team:e.team,txt:'Hero fell'});}
+      if(e.def.hero){const H=T.hero;H.alive=false;H.deaths=(H.deaths||0)+1;H.reviving=false;if(e.team===0&&!G.ais[0]){toast('Your hero has fallen. Revive them at the Hub.','bad');sfx('heroFall',undefined,undefined,e);}G.events.push({t:G.time,team:e.team,txt:'Hero fell'});}
     }else if(by!==undefined&&by<2){
       const K=G.teams[by];K.c+=e.def.bounty;K.kills++;K.creeps=(K.creeps||0)+1;giveXP(by,e.x,e.y,e.def.xp);
       G.fx.push({x:e.x,y:e.y-14,t:0,max:1.3,kind:'text',txt:'+'+e.def.bounty,col:'#ffd45a'});

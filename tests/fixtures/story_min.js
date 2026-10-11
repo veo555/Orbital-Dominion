@@ -4,7 +4,6 @@
 module.exports=function makeMinStory(){
   const chars={},mk=(id,o)=>{chars[id]=Object.assign({id,name:o.name||id[0].toUpperCase()+id.slice(1)+' Test',short:o.short||id[0].toUpperCase()+id.slice(1),title:o.title||'Test character',
     side:'good',faction:'meridian',role:'ally',hero:null,bio:'A fixture character used to exercise the engines.',want:'To test.',flaw:'Is a fixture.',arc:'Passes the tests.',
-    voice:{pitch:1,rate:1,timbre:'smooth',formant:.5,ttsPitch:1,ttsRate:1},
     look:{skin:'#c58c6a',hair:{style:'short',color:'#222222'},eyes:'#66ccff',armor:{style:'plate',col:'#3d8bff',trim:'#a6ceff'},mark:['none'],build:'lean',age:'adult',emblem:'faction'},
     motif:'hope',quote:'Fixture line.'},o);};
   const skins=['#c58c6a','#8d5524','#e0ac69','#f1c27d','#a0674b','#6b4630','#d9a679','#b88a6a','#e8c4a0','#7a5a44','#caa07a','#9b6b4d','#5c3a2a','#efc9a8'];
@@ -47,5 +46,5 @@ module.exports=function makeMinStory(){
       win:['structs','enemy','==',0],lose:['hubs','me','==',0],stars:{par:900},unlocks:{next:i<8?'m0'+(i+2):null},hints:['Build Generators early.']});}
   const radio={};ms.forEach((m,i)=>[1,2,3,4].forEach(k=>{radio['r'+(i+1)+k]={who:speakers[(i+k)%speakers.length],text:'Fixture radio line '+k+' for mission '+(i+1)+'.',style:'radio',dur:3.5};}));
   const acts=[0,1,2].map(a=>({id:'act'+(a+1),title:'Act '+(a+1),summary:'Fixture act.',missions:ms.slice(a*3,a*3+3).map(m=>m.id)}));
-  return{meta:{title:'Fixture',tagline:'t',version:1,rating:'PG-13',logline:'l'},world:{places:[{id:'p1',name:'Fixture Ridge',desc:'d'}],factions:{},glossary:[]},characters:chars,acts,missions:ms,dispatch,radio,barks:{}};
+  return{meta:{title:'Fixture',tagline:'t',version:1,rating:'PG-13',logline:'l'},world:{places:[{id:'p1',name:'Fixture Ridge',desc:'d'}],factions:{},glossary:[]},characters:chars,acts,missions:ms,dispatch,radio};
 };
