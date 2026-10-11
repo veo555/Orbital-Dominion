@@ -127,11 +127,11 @@ with sync_playwright() as p:
     pg.evaluate("()=>{for(const u of window.__u)u.dead=true;window.__g.dead=true}")
     # selection ring: a thin bright circle in the team colour appears under a selected unit
     pg.evaluate("""()=>{const R=__RTS,h=window.__h,u=R.addUnit('rifleman',0,h.x-90,h.y+150);u.order={t:'idle'};window.__s=u;R.setSel([]);R.centerOn(u.x,u.y);R.G.fx.length=0}""")
-    RING = """()=>{const R=__RTS,u=window.__s,s=R.w2s(u.x,u.y),k=R.DPR,c=document.querySelector('canvas'),g=c.getContext('2d'),n=Math.round(26*k),d=g.getImageData(Math.round(s.x*k)-n,Math.round(s.y*k)-n,2*n,2*n).data;let m=0;
+    RING = """()=>{const R=__RTS,u=window.__s,s=R.w2s(u.x,u.y),k=R.DPR,c=document.querySelector('canvas'),g=c.getContext('2d'),n=Math.round(26*k),d=g.getImageData(Math.round(s.x*k)-n,Math.round((s.y+9)*k),2*n,Math.round(18*k)).data;let m=0;   /* below the unit's centre: the health bar (also green) sits above it */
       for(let i=0;i<d.length;i+=4)if(d[i+1]>200&&d[i]<190&&d[i+2]>110&&d[i+1]-d[i]>55)m++;return m}"""
     pg.evaluate(FRAME, 61); n0 = pg.evaluate(RING)
     pg.evaluate("()=>{const R=__RTS;R.setSel([window.__s])}"); pg.evaluate(FRAME, 61); n1 = pg.evaluate(RING)
-    ok(n1 > n0 + 20, f'selection: a selected unit gets a green team-colour ring on the ground ({n0} -> {n1} ring pixels)')
+    ok(n1 > n0 + 10, f"selection: a selected unit gets a green team-colour ring on the ground ({n0} -> {n1} ring pixels)")
     pg.evaluate("()=>{window.__s.dead=true;__RTS.setSel([])}")
     # fog: the boundary of the visible area is a soft gradient (>= 48 px wide), not a tile stair step
     fw = pg.evaluate("""()=>{const R=__RTS,G=R.G,h=window.__h,tx=h.tx,ty=h.ty;R.cam.z=R.cam.tz=1;R.centerOn(h.x,h.y);G.time=61;G.daylight=1;

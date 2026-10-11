@@ -302,7 +302,7 @@ function render(t,dt){
   for(const n of G.neutrals){if(!onScreen(n.x,n.y,60))continue;if(!ui.demo&&G.vis[0][(n.ty)*MW+n.tx]===0)continue;
     const sp=neutralSprite(n.type);ctx.save();ctx.translate(n.x,n.y);if(Q.shd>0)drawBuildingShadow(sp,64,64);else{ctx.fillStyle='rgba(0,0,0,.3)';rrp(ctx,-26,-20,60,60,10);ctx.fill();}ctx.drawImage(sp.cv,sp.x0,sp.y0,sp.w,sp.h);drawEmissive(sp,sp.x0,sp.y0,sp.w,sp.h,.7);ctx.save();ctx.translate(0,-sp.hz*K3*.8);drawNeutralLive(ctx,n,t);ctx.restore();
     if(ui.selSet.has(n)||ui.hover===n){ctx.strokeStyle=ui.selSet.has(n)?'#ffe28a':'rgba(255,226,138,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,36,0,TAU);ctx.stroke();}ctx.restore();}
-  drawPools(t);drawFxUnder(t);drawOrders();swDrawWorld(t);
+  if(Q.fx>=1)drawPools(t);drawFxUnder(t);drawOrders();swDrawWorld(t);
   const gu=[],au=[];   // buildings and ground units share one depth sort (key = the foot line, so a tall building hides what stands behind it and is overlapped by what stands in front)
   for(const b of G.buildings)if(!b.dead&&entVisible(b))gu.push(b);
   for(const u of G.units){if(u.dead||u.hidden||!onScreen(u.x,u.y,50)||!entVisible(u))continue;(u.flying?au:gu).push(u);}

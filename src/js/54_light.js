@@ -220,7 +220,7 @@ function drawBloom(){
 /* ------------------------------ baked sprite lighting ------------------------------ */
 /* additive glow of a sprite's emissive mask (soft because the mask is stored at 1/3 size and upscaled bilinearly) */
 function drawEmissive(sp,x,y,w,h,a){
-  if(!sp.cv._em||Q.lit<1)return;const pa=ctx.globalAlpha;ctx.globalAlpha=pa*a;ctx.globalCompositeOperation='lighter';ctx.drawImage(sp.cv._em,x,y,w,h);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=pa;
+  if(!sp.cv._em||Q.fx<1)return;const pa=ctx.globalAlpha;ctx.globalAlpha=pa*a;ctx.globalCompositeOperation='lighter';ctx.drawImage(sp.cv._em,x,y,w,h);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=pa;
 }
 
 /* test-side hook (same convention as window.__RTS in 90_main.js): lets tests/e2e/e2e_visual.py reach the lighting internals. Not used by the game. */
