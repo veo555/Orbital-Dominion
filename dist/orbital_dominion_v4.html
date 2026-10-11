@@ -523,6 +523,44 @@ html.wc-expanded .card.wide{width:min(1040px,96vw)}
 
 .pmini{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:2px 0}.pmini .btn{flex:1 1 auto;border-radius:var(--md-shape-full);background:var(--md-secondary-container);min-height:40px}
 html.compact #pauseMenu>.card{align-self:center}
+/* ------------------------------ 13. Console skin (v5): a sci-fi RTS command console ------------------------------
+   Pure visual layer on top of sections 3-6: same geometry and ids, so measureHud(), the touch layouts and every test keep working.
+   Language: brushed-metal base, chamfered (cut-corner) inset panels with a lit top edge and a dark bottom edge, a thin glowing accent line in the faction colour,
+   glassy command buttons that light up on hover, segmented health bars, bright numerals with a soft glow. Chamfers use clip-path (corners only), colour comes from tokens. */
+:root{--ch:7px;--metal1:#1a2433;--metal2:#0c121c;--metal3:#06090f;--bevel-hi:rgba(190,220,255,.22);--bevel-lo:rgba(0,0,0,.65)}
+html.compact{--ch:5px}
+.ch,#mmWrap,#info,#cmd .cb,.chip,#objectives,.gi{clip-path:polygon(0 var(--ch),var(--ch) 0,calc(100% - var(--ch)) 0,100% var(--ch),100% calc(100% - var(--ch)),calc(100% - var(--ch)) 100%,var(--ch) 100%,0 calc(100% - var(--ch)))}
+#bottom{background:
+  linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,0) 14%),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,rgba(0,0,0,0) 2px 5px),
+  linear-gradient(var(--metal1),var(--metal2) 55%,var(--metal3));
+  border-top:3px solid #2c3b52;box-shadow:0 -6px 22px rgba(0,0,0,.7),inset 0 1px 0 var(--bevel-hi)}
+#bottom::before{height:2px;top:-3px;opacity:.9;box-shadow:0 0 12px rgba(var(--acc-rgb),.7)}
+#top{background:linear-gradient(180deg,rgba(30,43,64,.97),rgba(9,14,23,.94));border-bottom:2px solid #2c3b52;box-shadow:0 3px 16px rgba(0,0,0,.65),inset 0 1px 0 var(--bevel-hi)}
+#top::after{opacity:.9;box-shadow:0 0 10px rgba(var(--acc-rgb),.6)}
+.chip{border:0;background:linear-gradient(180deg,#223149,#0d1522 62%,#0a111b);box-shadow:inset 0 1px 0 var(--bevel-hi),inset 0 -2px 0 var(--bevel-lo);border-radius:0}
+.chip b{text-shadow:0 0 8px rgba(255,255,255,.18)}
+.chip.res b{font-size:16px;letter-spacing:.3px}
+#mmWrap{border:0;border-radius:0;padding:3px;background:linear-gradient(135deg,#3c516e,#141d2b 40%,#2a3a52);box-shadow:none}
+#mmWrap::after{content:"";position:absolute;inset:3px;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.8),inset 0 0 14px rgba(0,0,0,.7)}
+#mm{background:#000}
+#info{border:0;border-radius:0;background:linear-gradient(180deg,rgba(24,36,54,.96),rgba(7,12,20,.97));box-shadow:inset 0 1px 0 var(--bevel-hi),inset 0 0 0 1px rgba(60,90,130,.35),inset 0 -14px 24px rgba(0,0,0,.45)}
+#cmd{gap:4px}
+#cmd .cb{border:0;border-radius:0;background:linear-gradient(180deg,#2a3c58,#121c2c 55%,#0b121d);box-shadow:inset 0 1px 0 var(--bevel-hi),inset 0 0 0 1px rgba(80,120,170,.35),inset 0 -3px 6px rgba(0,0,0,.55)}
+#cmd .cb::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 42%)}
+#cmd .cb.empty{background:linear-gradient(180deg,#0d1522,#080d15);box-shadow:inset 0 0 0 1px rgba(40,60,90,.35)}
+#cmd .cb.empty::after{display:none}
+@media (hover:hover){#cmd .cb:not(.empty):not(.dis):hover{box-shadow:inset 0 0 0 1px rgba(var(--acc-rgb),.9),inset 0 0 14px rgba(var(--acc-rgb),.45),0 0 12px rgba(var(--acc-rgb),.5);filter:brightness(1.12)}}
+#cmd .cb:not(.empty):active{filter:brightness(1.3)}
+.cb .hk{left:auto;right:3px;top:2px;color:#e6f2ff;font-size:10.5px}
+.cb .co{left:3px;right:auto;bottom:2px}
+.pbar{border:0;border-radius:2px;background:#03060b;box-shadow:inset 0 0 0 1px rgba(60,90,130,.45),inset 0 2px 3px rgba(0,0,0,.8)}
+.pbar::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,rgba(0,0,0,.55) 0 1px,rgba(0,0,0,0) 1px 6px),linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%)}
+.pbar i{border-radius:0}
+.ip .big{border:0;border-radius:0;box-shadow:inset 0 0 0 1px rgba(110,150,200,.55),0 0 10px rgba(0,0,0,.6)}
+#objectives{border:0;border-radius:0;background:linear-gradient(180deg,rgba(24,36,54,.88),rgba(7,12,20,.86));box-shadow:inset 0 1px 0 var(--bevel-hi),inset 0 0 0 1px rgba(60,90,130,.35)}
+html.rm #cmd .cb{transition:none}
+
 /* AUDIO:BEGIN (WF-audio only) */
 /* ---- Sound lab entry (body.html, Settings card): the hint sits level with its button ---- */
 #setMenu #bSoundLab~.small{align-self:center}
@@ -1033,7 +1071,7 @@ html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
 
 <script>
 (function(){
-const BUILD={"variant": "standalone", "id": "2417a748ce", "version": "4.0.0"};
+const BUILD={"variant": "standalone", "id": "61b78f0a0f", "version": "4.0.0"};
 const SUPPORT_CFG={"enabled":false,"_help":"Optional 'support the game' payments through Stripe. OFF by default. See docs/MONETIZATION.md. Everything here is PUBLIC (it ships in the page): never put a Stripe secret key in this file.","title":"Support Orbital Dominion","blurb":"Orbital Dominion is free to play. If you enjoy it you can chip in, which pays for development. Payments are handled by Stripe on its own page; the game never sees your card details. Supporting unlocks cosmetic extras only: no gameplay advantage, and in-game currency is never sold.","tiers":[{"id":"coffee","label":"Coffee","amount":"$3","paymentLink":""},{"id":"backer","label":"Backer","amount":"$9","paymentLink":""},{"id":"founder","label":"Founder","amount":"$25","paymentLink":""}],"checkoutEndpoint":"","verifyEndpoint":"","entitlementEndpoint":"","perks":["Supporter badge on the title screen","Three extra interface colour themes"]};
 'use strict';
 /* =========================================================================
