@@ -128,7 +128,7 @@ function drawBuilding(b,t){
   if(!b.done){
     drawScaffold(sp,b,w,h,t);
   }else{
-    ctx.drawImage(sp.cv,-w/2,-h/2,w,h);drawBuildingLive(ctx,b,t,col,f);
+    ctx.drawImage(sp.cv,-w/2,-h/2,w,h);drawEmissive(sp,-w/2,-h/2,w,h,.55+.3*Math.sin(t*2.2+b.id));drawBuildingLive(ctx,b,t,col,f);
     const dmg=1-b.hp/b.maxhp;
     if(dmg>0.35){ctx.fillStyle='rgba(10,6,4,'+(0.12+0.3*(dmg-0.35)/0.65)+')';rrp(ctx,-w/2+3,-h/2+3,w-6,h-6,6);ctx.fill();
       const crk=()=>{ctx.beginPath();const sd=b.id*7;for(let i=0;i<3+Math.floor(dmg*4);i++){const x=Math.sin(sd+i*2.3)*w*.36,y=Math.cos(sd*1.3+i*1.9)*h*.36;ctx.moveTo(x,y);ctx.lineTo(x+Math.sin(i*4+sd)*9,y+Math.cos(i*3+sd)*9);ctx.lineTo(x+Math.sin(i*5+sd)*14,y+Math.cos(i*2+sd)*14);}ctx.stroke();};
@@ -159,7 +159,7 @@ function drawUnit(u,t){
   if(d.siege&&(u.sieged||u.siegeT>0)){const k=u.sieged?Math.min(1,1-u.siegeT/1.6):Math.max(0,u.siegeT/1.2);
     ctx.fillStyle='#232c3a';ctx.strokeStyle=OUT;ctx.lineWidth=1;for(const sx of[-1,1])for(const sy of[-1,1]){ctx.beginPath();ctx.rect(sx*(9+8*k)-4,sy*(10+6*k)-3,8,6);ctx.fill();ctx.stroke();}}
   if(u.type==='skiff'){ctx.fillStyle='rgba(255,170,60,'+(0.55+0.3*Math.sin(t*30+u.id))+')';circ(ctx,-12,0,2.6+Math.sin(t*25));}
-  ctx.drawImage(sp.cv,-sp.S/2,-sp.S/2,sp.S,sp.S);
+  ctx.drawImage(sp.cv,-sp.S/2,-sp.S/2,sp.S,sp.S);drawEmissive(sp,-sp.S/2,-sp.S/2,sp.S,sp.S,.75);
   if(u.type==='hauler'&&u.carry>0){ctx.fillStyle=u.carryType==='c'?'#f6c04a':'#b985ff';ctx.beginPath();ctx.moveTo(-8,-3.4);ctx.lineTo(-12.4,0);ctx.lineTo(-8,3.4);ctx.lineTo(-5.4,0);ctx.closePath();ctx.fill();ctx.strokeStyle=OUT;ctx.lineWidth=.8;ctx.stroke();}
   if(u.type==='hauler'&&u.order.t==='build'&&u.order.bld&&!u.order.bld.done&&rectDist(u.x,u.y,u.order.bld)<u.r+18){ctx.strokeStyle='#9fe8ff';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(18+Math.sin(t*30)*2,Math.sin(t*20)*3);ctx.stroke();}
   if(u.flash>0){ctx.fillStyle='rgba(255,255,255,.45)';circ(ctx,0,0,d.r);}

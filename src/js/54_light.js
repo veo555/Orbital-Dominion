@@ -209,20 +209,45 @@ function drawBloom(){
 }
 
 /* ------------------------------ baked sprite lighting ------------------------------ */
-/* One pass over a freshly drawn sprite (clipped to its own alpha with 'source-atop'): edge occlusion, bevel rim light,
-   a directional key light for buildings (they never rotate) or a rotation-free dome highlight for units (they do). */
+/* v5 bake primitive. The sprite's alpha, blurred twice, is a height field; its gradient is a surface normal, lit by a
+   north-west key light (the same light the shadows use). Result: hard-surface bevels on every plate edge, soft ambient
+   occlusion in the crevices, panel seams and rivets, and an emissive mask (saturated bright pixels = lamps/glass/team glow)
+   that the live draw adds back at glow strength. Runs once per sprite (cached), never per frame. */
+function boxBlur(a,W,H,r,tmp){
+  const inv=1/(2*r+1);
+  for(let y=0;y<H;y++){const o=y*W;let s=a[o]*(r+1);for(let x=0;x<r;x++)s+=a[o+Math.min(x,W-1)];
+    for(let x=0;x<W;x++){s+=a[o+Math.min(x+r,W-1)]-a[o+Math.max(x-r-1,0)];tmp[o+x]=s*inv;}}
+  for(let x=0;x<W;x++){let s=tmp[x]*(r+1);for(let y=0;y<r;y++)s+=tmp[Math.min(y,H-1)*W+x];
+    for(let y=0;y<H;y++){s+=tmp[Math.min(y+r,H-1)*W+x]-tmp[Math.max(y-r-1,0)*W+x];a[y*W+x]=s*inv;}}
+}
 function spritePolish(c,kind){
-  const W=c.width,H=c.height,g=c.getContext('2d'),m=Math.min(W,H),b=kind==='b';
-  const t=mkCanvas(W,H),tg=t.getContext('2d');tg.fillStyle='#000';tg.fillRect(0,0,W,H);tg.globalCompositeOperation='destination-out';tg.drawImage(c,0,0);   // t = everything OUTSIDE the sprite
-  g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';const off=W*3,d=Math.max(1,m*(b?.007:.012));
-  g.shadowColor='rgba(0,0,0,'+(b?.5:.55)+')';g.shadowBlur=m*(b?.022:.045);g.shadowOffsetX=off;g.shadowOffsetY=0;g.drawImage(t,-off,0);             // ambient occlusion inside the outline
-  if(b){g.shadowColor='rgba(255,255,255,.34)';g.shadowBlur=d*1.6;g.shadowOffsetX=off+d;g.shadowOffsetY=d;g.drawImage(t,-off,0);                       // light rim on the top-left edges
-    g.shadowColor='rgba(0,0,0,.32)';g.shadowOffsetX=off-d;g.shadowOffsetY=-d;g.drawImage(t,-off,0);}                                                  // dark lip on the bottom-right edges
-  g.shadowColor='transparent';g.shadowBlur=0;g.shadowOffsetX=0;g.shadowOffsetY=0;
-  if(b){const q=g.createLinearGradient(0,0,W,H);q.addColorStop(0,'rgba(255,255,255,.13)');q.addColorStop(.5,'rgba(255,255,255,0)');q.addColorStop(1,'rgba(0,0,12,.22)');g.fillStyle=q;g.fillRect(0,0,W,H);}
-  else{const q=g.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,m*.5);q.addColorStop(0,'rgba(255,255,255,.12)');q.addColorStop(.6,'rgba(255,255,255,0)');q.addColorStop(1,'rgba(0,0,10,.12)');g.fillStyle=q;g.fillRect(0,0,W,H);}
-  g.restore();
+  const W=c.width,H=c.height,g=c.getContext('2d'),b=kind==='b',m=Math.min(W,H),N=W*H;
+  const img=g.getImageData(0,0,W,H),d=img.data,h=new Float32Array(N),tmp=new Float32Array(N),R=mulberry32(W*7+H);
+  for(let i=0;i<N;i++)h[i]=d[i*4+3]/255;
+  const r1=Math.max(1,Math.round(m*(b?.012:.02)));boxBlur(h,W,H,r1,tmp);boxBlur(h,W,H,r1,tmp);
+  const K=b?9:5,lx=-.62,ly=-.78;
+  const ES=3,eW=Math.ceil(W/ES),eH=Math.ceil(H/ES),em=mkCanvas(eW,eH),eg=em.getContext('2d'),ei=eg.createImageData(eW,eH),ed=ei.data;let ne=0;
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,o=i*4,a=d[o+3];if(!a)continue;
+    const gx=h[i+1]-h[i-1],gy=h[i+W]-h[i-W],lit=-(gx*lx+gy*ly)*K,ao=.62+.38*Math.min(1,h[i]*1.6);
+    const r=d[o],gg=d[o+1],bl=d[o+2],mx=Math.max(r,gg,bl),mn=Math.min(r,gg,bl);
+    if(mx>175&&mx-mn>85){   // emissive pixel: keep it hot, copy into the glow mask
+      const j=((y/ES|0)*eW+(x/ES|0))*4;ed[j]=Math.max(ed[j],r);ed[j+1]=Math.max(ed[j+1],gg);ed[j+2]=Math.max(ed[j+2],bl);ed[j+3]=255;ne++;continue;}
+    const k=lit>0?1+Math.min(.55,lit):1+Math.max(-.5,lit*.9),add=lit>.08?lit*60:0;
+    d[o]=Math.min(255,r*k*ao+add);d[o+1]=Math.min(255,gg*k*ao+add);d[o+2]=Math.min(255,bl*k*ao+add*1.1);}
+  g.putImageData(img,0,0);
+  if(b){   // panel seams: engraved dark line + light lip on a coarse grid with random gaps, plus rivets (clipped to the sprite)
+    g.save();g.globalCompositeOperation='source-atop';const st=Math.round(W/(W/SC>110?7:5)),ln=Math.max(1,W/260);
+    for(let p=st;p<W-st/2;p+=st)for(let q=0;q<H;q+=st){if(R()<.35)continue;const l=st*(.4+R()*.6);
+      g.fillStyle='rgba(0,4,14,.30)';g.fillRect(p,q,ln,l);g.fillStyle='rgba(255,255,255,.10)';g.fillRect(p+ln,q,ln,l);
+      g.fillStyle='rgba(0,4,14,.30)';g.fillRect(q,p,l,ln);g.fillStyle='rgba(255,255,255,.10)';g.fillRect(q,p+ln,l,ln);}
+    for(let i=0;i<N/9000;i++){const x=R()*W,y=R()*H,rv=ln*1.5;g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.arc(x+ln*.6,y+ln*.6,rv,0,TAU);g.fill();g.fillStyle='rgba(235,245,255,.35)';g.beginPath();g.arc(x,y,rv*.8,0,TAU);g.fill();}
+    g.restore();}
+  if(ne>3){eg.putImageData(ei,0,0);c._em=em;}
+}
+/* additive glow of a sprite's emissive mask (soft because the mask is stored at 1/3 size and upscaled bilinearly) */
+function drawEmissive(sp,x,y,w,h,a){
+  if(!sp.cv._em||Q.lit<1)return;const pa=ctx.globalAlpha;ctx.globalAlpha=pa*a;ctx.globalCompositeOperation='lighter';ctx.drawImage(sp.cv._em,x,y,w,h);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=pa;
 }
 
 /* test-side hook (same convention as window.__RTS in 90_main.js): lets tests/e2e/e2e_visual.py reach the lighting internals. Not used by the game. */
-if(window.__TEST)window.__RTSV={LT,PT,shadowOf,lightFrame,collectLights,drawLighting,drawBloom,spritePolish,buildingSprite,unitSprite,lightSprite,ptAdd,ptStep,fxEmit,AMB_STOPS};
+if(window.__TEST)window.__RTSV={LT,PT,shadowOf,lightFrame,collectLights,drawLighting,drawBloom,spritePolish,drawEmissive,buildingSprite,unitSprite,lightSprite,ptAdd,ptStep,fxEmit,AMB_STOPS};
