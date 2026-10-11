@@ -43,7 +43,7 @@ function makeAIT2(team,P,opt){
   T.mult=opt.handicap||P.handicap||1;                                   // income handicap: 1.0 on every tier (the v3 'hard' +25 % cheat is gone)
   const style=FACTIONS[T.faction].style,u=aiThetaFor(tier,style,opt.theta);
   const ai={kind:'t2',team,enemy:1-team,tier:tierName,cfg:tier,style,thu:u,th:thetaDecode(u),
-    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false},next:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
+    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false,wave:1,first:0},   // wave / first: campaign aimod hooks (waveMult, firstWave); neutral in skirmishnext:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
     apm:{rate:tier.apm/60,burst:Math.max(3,tier.apm/60*5),tok:3,t:0,n:0,denied:0},delay:tier.delay,
     mem:{u:{},b:{},camps:{},armySeenT:-99,heroLvl:0,heroT:-99,eraSeen:1},
     bel:{s:new Float32Array(BN),a:new Float64Array(BN),t:0},ph:{vis:new Float32Array(BN),dem:new Float32Array(BN),def:new Float32Array(BN)},
@@ -295,9 +295,10 @@ function aiStrategy(ai,R){
     const c=centroid(thr);ai.tgt={x:c.x,y:c.y,id:0};}
   else if(ai.mil==='defend'&&now-ai.milT>4){ai.mil='hold';ai.milT=now;}
   // 2. attack decision: predicted win probability against the estimated army, V(s) shifts the threshold (adaptive aggression)
-  if(ai.mil==='hold'&&(PA>=0||now>th.firstAtk)&&now>ai.atkCool){
+  const wv=ai.P.wave===undefined?1:Math.max(0.05,ai.P.wave);              // campaign waveMult: < 1 = smaller, rarer attacks
+  if(ai.mil==='hold'&&(PA>=0||now>th.firstAtk)&&now>ai.atkCool&&now>=(ai.P.first||0)){
     const U=(ai.pG-th.aggr)+0.25*th.vW*(ai.V-0.5);
-    if((PA>=0?PA===PA_ATTACK&&sup>=6:U>0&&sup>=th.atkSup)||T.used>=MAXSUP-8&&sup>=30){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;ai.grp=army.map(u=>u.id);}}
+    if((PA>=0?PA===PA_ATTACK&&sup>=6/wv:U>0&&sup>=th.atkSup/wv)||T.used>=MAXSUP-8&&sup>=30/wv){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;ai.grp=army.map(u=>u.id);}}
   else if(ai.mil==='attack'){
     const g=new Set(ai.grp||[]),alive=army.filter(u=>g.has(u.id)).length;
     if(alive<Math.max(3,ai.atkN*0.35)||ai.pG<th.retreat*0.8||PA===PA_DEFEND){ai.mil='retreat';ai.milT=now;ai.atkCool=now+20;ai.st.retreat++;}
@@ -498,7 +499,7 @@ function aiMacro(ai,R){
   // 8. army production: whatever is not reserved (macro efficiency < 1 skips some buildings: the lower tiers' sloppy macro)
   const sp=spendable();
   for(const b of R.prod){
-    if(b.queue.length>=2)continue;if(cfg.macro<1&&airand(ai)>cfg.macro)continue;
+    if(b.queue.length>=2)continue;const mEff=cfg.macro*Math.min(1,ai.P.wave===undefined?1:ai.P.wave);if(mEff<1&&airand(ai)>mEff)continue;
     const s=spendable();if(s.c<50)break;
     const id=aiUnitPick(ai,R,b,s);if(!id)continue;
     if(aiAct(ai))queueUnit(b,id);
