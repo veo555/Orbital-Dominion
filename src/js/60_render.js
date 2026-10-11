@@ -145,7 +145,7 @@ function drawBuilding(b,t){
     drawScaffold(sp,b,w,h,t);
   }else{
     ctx.drawImage(sp.cv,sp.x0,sp.y0,sp.w,sp.h);drawEmissive(sp,sp.x0,sp.y0,sp.w,sp.h,.55+.3*Math.sin(t*2.2+b.id));
-    ctx.save();ctx.translate(0,-sp.hz*K3*.8);drawBuildingLive(ctx,b,t,col,f);ctx.restore();
+    drawBuildingLive(ctx,b,t,col,f);
     if(b.type==='turret'){const hd=partSprite('turrethead',f,b.ang||0);ctx.drawImage(hd.cv,hd.x0,hd.y0-8*K3,hd.w,hd.h);drawEmissive(hd,hd.x0,hd.y0-8*K3,hd.w,hd.h,.8);}
     const dmg=1-b.hp/b.maxhp;
     if(dmg>0.35){const k=(dmg-.35)/.65;ctx.globalAlpha=.14+.34*k;ctx.drawImage(sp.dk||(sp.dk=silMask(sp,'#0a0604')),sp.x0,sp.y0,sp.w,sp.h);ctx.globalAlpha=1;

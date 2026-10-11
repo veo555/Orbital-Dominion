@@ -122,12 +122,13 @@ const RN={post(B,M){B.fr(0,0,0,58,58,56,56,4,M.d);B.fr(0,-8,4,50,34,46,30,14,M.b
  tower(B,M){B.cy(0,0,0,29,26,6,14,M.d);B.cy(0,0,6,22,18,10,12,M.h);B.cy(0,0,16,14,10,14,10,M.d);B.sp(0,0,30,9,9,8,8,M.tl,true);B.sp(0,0,32,4,4,4,6,M.g);for(let i=0;i<4;i++){const a=i/4*TAU;B.fr(Math.cos(a)*22,Math.sin(a)*22,0,5,5,2,2,16,M.s);B.sp(Math.cos(a)*22,Math.sin(a)*22,16,2.4,2.4,2.4,5,M.g);}}};
 
 /* ------------------------------ lazy sprite bakers ------------------------------ */
-const meshCache={};
+const meshCache={},US=1.2;
 let bakeMs=0,bakeFrame=0,bakeLog=null;   // bakeLog (tests/perf): per-kind bake times in ms
 function meshFor(kind,type,f,w,h){
   const k=kind+'|'+type+'|'+f;if(meshCache[k])return meshCache[k];
   const B=Mesh3(),c=f==='neutral'?NEUTRAL_COL:FACTIONS[f].col,M=bakeMats(B,c,f);
   (kind==='u'?RU:kind==='p'?RP:kind==='n'?RN:RB)[type](B,M,f,w,h);
+  if(kind==='u'||kind==='p')for(const t of B.t)t.p=t.p.map(p=>[p[0]*US,p[1]*US,p[2]*US]);   // units are drawn 1.2x their simulation size so they read at 0.7x zoom
   B.bd=meshBounds(B);return meshCache[k]=B;
 }
 let spritePx=0,spriteTick=0;
