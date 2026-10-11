@@ -146,6 +146,11 @@ function fxEmit(dt,t){
   for(const p of G.proj){
     if(!onScreen(p.x,p.y,40))continue;
     const kind=p.kind;
+    if(!PT.seen.has(p)){PT.seen.add(p);   // muzzle flash: a hot core, a coloured halo and two sparks along the barrel
+      const a=Math.atan2(p.ty-p.y,p.tx-p.x),ca=Math.cos(a),sa=Math.sin(a),pc=p.team<2?G.teams[p.team].pal.glow:'#ffd27a';
+      if(kind!=='shell'){ptAdd(0,p.x+ca*7,p.y+sa*7,0,0,.1,kind==='bolt'?26:20,gl(kind==='bolt'?rgbOf(pc):'255,214,130'));ptAdd(0,p.x+ca*7,p.y+sa*7,0,0,.06,10,gl('255,255,235'));
+        for(let i=0;i<2;i++){const sp=140+R()*120,sj=(R()-.5)*.5;ptAdd(3,p.x+ca*8,p.y+sa*8,Math.cos(a+sj)*sp,Math.sin(a+sj)*sp,.12+R()*.1,0,'rgba(255,230,160,1)');}}
+      else{ptAdd(0,p.x,p.y,0,0,.14,34,gl('255,190,110'));for(let i=0;i<3;i++)ptAdd(1,p.x,p.y,(R()-.5)*24,(R()-.5)*24,.8,8+R()*4,null);}}
     if(kind==='bolt')ptAdd(0,p.x,p.y,0,0,.28,13,gl(rgbOf((p.team<2?G.teams[p.team].pal:NEUTRAL_COL).glow)));
     else if(kind==='rocket'){ptAdd(0,p.x,p.y,0,0,.22,11,gl('255,170,90'));if(R()<.7)ptAdd(1,p.x,p.y,(R()-.5)*14,(R()-.5)*14,.7,6+R()*3,null);}
     else if(kind==='shell'){const pr=clamp(1-hyp(p.tx-p.x,p.ty-p.y)/p.total,0,1);ptAdd(0,p.x,p.y-Math.sin(pr*Math.PI)*58,0,0,.3,10,gl('255,190,110'));}
@@ -160,7 +165,10 @@ function fxEmit(dt,t){
     if(f.kind!=='flash'||PT.seen.has(f))continue;PT.seen.add(f);
     if(!onScreen(f.x,f.y,100))continue;const big=f.r>=60,n=big?14:6;
     for(let i=0;i<n;i++){const a=R()*TAU,v=60+R()*(big?260:140);ptAdd(3,f.x,f.y,Math.cos(a)*v,Math.sin(a)*v,.28+R()*.3,0,R()<.5?'rgba(255,224,150,1)':'rgba(255,160,80,1)');}
-    if(big){ptAdd(4,f.x,f.y,0,0,.45,f.r*1.3,null);for(let i=0;i<6;i++){const a=R()*TAU,v=10+R()*34;ptAdd(1,f.x+Math.cos(a)*10,f.y+Math.sin(a)*10,Math.cos(a)*v,Math.sin(a)*v-8,1.1+R()*.8,12+R()*8,null);}}
+    if(big){for(let i=0;i<8;i++){const a=R()*TAU,d=R()*f.r*.35;ptAdd(0,f.x+Math.cos(a)*d,f.y+Math.sin(a)*d,Math.cos(a)*30,Math.sin(a)*30,.5+R()*.35,f.r*(.7+R()*.5),gl(R()<.5?'255,150,60':'255,200,110'));}   // fireball lobes
+      for(let i=0;i<10;i++){const a=R()*TAU,v=40+R()*130;ptAdd(2,f.x,f.y,Math.cos(a)*v,Math.sin(a)*v-30,.7+R()*.7,9,gl('255,140,60'));}                  // glowing debris
+      for(let i=0;i<4;i++)ptAdd(1,f.x+(R()-.5)*18,f.y,(R()-.5)*10,-26-R()*22,1.8+R()*.8,16+R()*10,null);                                                  // smoke column
+      ptAdd(4,f.x,f.y,0,0,.45,f.r*1.3,null);for(let i=0;i<6;i++){const a=R()*TAU,v=10+R()*34;ptAdd(1,f.x+Math.cos(a)*10,f.y+Math.sin(a)*10,Math.cos(a)*v,Math.sin(a)*v-8,1.1+R()*.8,12+R()*8,null);}}
     else if(R()<.5)ptAdd(1,f.x,f.y,(R()-.5)*12,-6,.7,6+R()*4,null);
   }
   for(const b of G.buildings){

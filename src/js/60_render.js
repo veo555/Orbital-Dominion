@@ -91,20 +91,30 @@ function updateFog(dt,force){
 }
 
 /* ---------------------------- unit / building draw -------------------- */
-function drawBar(x,y,w,frac,col,h){
-  h=h||3;frac=clamp(frac,0,1);const bg=h/2+1.2;
-  ctx.fillStyle='rgba(5,9,18,.8)';rrp(ctx,x-1.2,y-1.2,w+2.4,h+2.4,bg);ctx.fill();
-  const fw=Math.max(w*frac,h);
-  if(frac>0.002){ctx.fillStyle=col||(frac>0.5?'#58e68b':frac>0.25?'#f0c040':'#ff5d5d');rrp(ctx,x,y,fw,h,h/2);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,.3)';rrp(ctx,x+.6,y+.4,Math.max(fw-1.2,1),h*.4,h*.2);ctx.fill();}
-  ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=.6;rrp(ctx,x-1.2,y-1.2,w+2.4,h+2.4,bg);ctx.stroke();
+function drawBar(x,y,w,frac,col,h){   // SC2-style: dark plate, fill in blocks (one block per ~4 px), top sheen
+  h=h||3;frac=clamp(frac,0,1);const bh=h+1;
+  ctx.fillStyle='rgba(4,8,16,.86)';ctx.fillRect(x-1,y-1,w+2,bh+1);
+  const fw=w*frac;
+  if(frac>0.002){ctx.fillStyle=col||(frac>0.5?'#4fe07e':frac>0.25?'#f0c040':'#ff4d4d');ctx.fillRect(x,y,fw,bh-1);
+    ctx.fillStyle='rgba(255,255,255,.32)';ctx.fillRect(x,y,fw,Math.max(1,(bh-1)*.38));}
+  const n=Math.max(2,Math.round(w/5)),st=w/n;ctx.fillStyle='rgba(4,8,16,.9)';
+  for(let i=1;i<n;i++)ctx.fillRect(x+i*st-.5,y-1,1,bh+1);
+  ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=.6;ctx.strokeRect(x-1,y-1,w+2,bh+1);
 }
 function selCol(e){return e.team===0?'#6dff9d':e.team===1?'#ff6b6b':'#ffd45a';}
 /* selection ring: soft tinted disc, crisp outline, and (when selected) four bright arcs that slowly circle */
-function drawSelRing(x,y,rx,ry,col,sel,t){
-  const pa=ctx.globalAlpha;ctx.globalAlpha=pa*(sel?.13:.07);ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill();
-  ctx.globalAlpha=pa*(sel?.9:.5);ctx.strokeStyle=col;ctx.lineWidth=sel?1.5:1;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.stroke();
-  if(sel){ctx.globalAlpha=pa;ctx.lineWidth=2.6;const per=TAU*Math.sqrt((rx*rx+ry*ry)/2),seg=per/8;ctx.setLineDash([seg,seg]);ctx.lineDashOffset=SET.rm?0:-t*14;ctx.beginPath();ctx.ellipse(x,y,rx+1.4,ry+1.4,0,0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.lineDashOffset=0;}
+function drawSelRing(x,y,rx,ry,col,sel,t){   // SC2: a thin bright circle on the ground with a soft inner glow; hover = dimmer
+  const pa=ctx.globalAlpha;ctx.globalAlpha=pa*(sel?.16:.08);ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill();
+  ctx.globalAlpha=pa*(sel?.35:.2);ctx.strokeStyle=col;ctx.lineWidth=sel?4:2.5;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.stroke();
+  ctx.globalAlpha=pa*(sel?1:.65);ctx.lineWidth=sel?1.4:1;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.stroke();
+  ctx.globalAlpha=pa;
+}
+/* building ground ring: thicker, an ellipse around the footprint with four brighter arcs on the diagonals */
+function drawBldRing(w,h,col,sel){
+  const rx=w*.6,ry=h*.6,pa=ctx.globalAlpha;ctx.fillStyle=col;ctx.strokeStyle=col;
+  ctx.globalAlpha=pa*(sel?.12:.06);ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,TAU);ctx.fill();
+  ctx.globalAlpha=pa*(sel?.3:.18);ctx.lineWidth=sel?7:4;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,TAU);ctx.stroke();
+  ctx.globalAlpha=pa*(sel?1:.6);ctx.lineWidth=sel?2.4:1.4;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,TAU);ctx.stroke();
   ctx.globalAlpha=pa;
 }
 /* a building that is still going up: faint ghost, revealed from the ground upwards, blueprint grid above the build line,
@@ -128,6 +138,7 @@ function drawBuilding(b,t){
   const f=G.teams[b.team].faction,col=G.teams[b.team].pal,w=b.w*TILE,h=b.h*TILE,sp=buildingSprite(b.type,f),sel=ui.selSet.has(b),vis=b.team===0||ui.demo||seen(0,b);
   ctx.save();ctx.translate(b.x,b.y);
   if(Q.shd>0)drawBuildingShadow(sp,w,h,b);else{ctx.fillStyle='rgba(0,0,0,.30)';rrp(ctx,-w/2+6,-h/2+9,w,h,8);ctx.fill();}
+  if(sel||ui.hover===b)drawBldRing(w,h,selCol(b),sel);
   if(!b.done){
     drawScaffold(sp,b,w,h,t);
   }else{
