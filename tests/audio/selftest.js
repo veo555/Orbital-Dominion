@@ -57,8 +57,8 @@ function sustained(db,sec){const x=C.sine(440,sec,0.5,SR,10),lv=O.levels(C.stere
   ok(codes(O.checkVoice(im)).indexOf('impure')>=0,"control: a builder that touches Math.random/Date/performance.now is rejected as 'impure'");
   const lng=Object.assign({},good,{id:'rifleman.fire.obsidian',dur:0.6}),sel=Object.assign({},good,{id:'rifleman.select.aurora',dur:0.9,cls:'ui'});
   ok(codes(O.checkVoice(lng)).indexOf('budget')>=0&&codes(O.checkVoice(sel)).indexOf('budget')>=0,"control: a fire voice of 0.6 s and a select voice of 0.9 s break the duration budget (fire <= 0.35 s, select/ack <= 0.6 s)");
-  const clsOk=['ui','fire','impact','boom','voice','alert','cine','music','amb'].every(k=>{const r=rec('ctl.cls.'+k,k,cleanVoice(O.CLASS_DB[k]+0.3,k,0.2),{dur:0.2});return O.checkVoice(r).filter(f=>f.code==='level').length===0&&O.checkVoice(Object.assign({},r,{lv:Object.assign({},r.lv,{activeDb:O.CLASS_DB[k]+4.5})})).some(f=>f.code==='level');});
-  ok(clsOk,'class windows: every class accepts its target +0.3 dB and rejects +4.5 dB (ui -26, fire -22, impact -18, boom -14, voice -20, alert -17, cine -18, music -20, amb -30)');
+  const clsOk=['ui','fire','impact','boom','alert','music','amb'].every(k=>{const r=rec('ctl.cls.'+k,k,cleanVoice(O.CLASS_DB[k]+0.3,k,0.2),{dur:0.2});return O.checkVoice(r).filter(f=>f.code==='level').length===0&&O.checkVoice(Object.assign({},r,{lv:Object.assign({},r.lv,{activeDb:O.CLASS_DB[k]+4.5})})).some(f=>f.code==='level');});
+  ok(clsOk,'class windows: every class accepts its target +0.3 dB and rejects +4.5 dB (ui -26, fire -22, impact -18, boom -14, alert -17, music -20, amb -30)');
   const noTail=rec('ctl.tail','fire',sustained(-22,0.25),{dur:0.1,tail:0});
   ok(codes(O.checkVoice(noTail)).indexOf('duration')>=0,"control: a 0.25 s sound that declares dur 0.1 s is rejected as 'duration'");
 }
@@ -88,10 +88,10 @@ function sustained(db,sec){const x=C.sine(440,sec,0.5,SR,10),lv=O.levels(C.stere
   ok(caught>=0.7*48,`control: deliberately CLONED voices (same sound, +-3-5 % pitch and duration, -1 dB) are rejected against their original: ${caught}/48 (>= 70 %; a clone shifted by 5 % can legitimately cross into another Bark band)`);
   let gainCaught=0;for(let i=0;i<arche.length;i++){const g=C.stereo(arche[i]().map(v=>v*0.5)),zg=O.zproj(O.voiceFeatures(g,SR).v,zn);if(O.dist(zg,Z['a'+i])<cal.tau)gainCaught++;}
   ok(gainCaught===12,`control: the same twelve sounds 6 dB quieter are all rejected as clones (${gainCaught}/12): the features are level-independent, the level is gated separately`);
-  const grp=O.distinctGroups(['rifleman.ack.meridian','raptor.ack.meridian','rifleman.ack.obsidian','raptor.ack.obsidian','hub.done.meridian','hub.done.obsidian','hub.done.aurora','skill.barrage','skill.orbital','skill.shock','ui.click','global.click','global.err','cine.boom','cine.gong','crawler.melee.wild'],
+  const grp=O.distinctGroups(['rifleman.ack.meridian','raptor.ack.meridian','rifleman.ack.obsidian','raptor.ack.obsidian','hub.done.meridian','hub.done.obsidian','hub.done.aurora','skill.barrage','skill.orbital','skill.shock','ui.click','global.click','global.err','crawler.melee.wild'],
     {factions:['meridian','obsidian','aurora','wild'],units:['rifleman','raptor','crawler'],buildings:['hub']},{cls:{'ui.click':'ui','global.click':'ui','global.err':'ui'}});
   const sig=grp.map(g=>g.rule+':'+g.key+'='+g.ids.length).sort().join(' | ');
-  ok(sig.indexOf('a:ack|meridian=2')>=0&&sig.indexOf('a:ack|obsidian=2')>=0&&sig.indexOf('b:unit|rifleman|ack=2')>=0&&sig.indexOf('b:building|hub|done=3')>=0&&sig.indexOf('c:skills=3')>=0&&sig.indexOf('d:ui/global ui=2')>=0&&sig.indexOf('d:cinematic=2')>=0&&grp.length===8,'groups: (a) same event+faction across unit types, (b) faction variants, (c) skills, (d) UI (ui.click shadows global.click) and cinematic voices: '+sig);
+  ok(sig.indexOf('a:ack|meridian=2')>=0&&sig.indexOf('a:ack|obsidian=2')>=0&&sig.indexOf('b:unit|rifleman|ack=2')>=0&&sig.indexOf('b:building|hub|done=3')>=0&&sig.indexOf('c:skills=3')>=0&&sig.indexOf('d:ui/global ui=2')>=0&&sig.indexOf('d:cinematic')<0&&grp.length===7,'groups: (a) same event+faction across unit types, (b) faction variants, (c) skills, (d) UI (ui.click shadows global.click); the cinematic group no longer exists: '+sig);
 }
 
 /* ------------------------------------------------------------------ TRUTH + CONTROLS: music (§6.5-6.8) */

@@ -6,7 +6,7 @@
 Implements docs/AUDIO_SPEC.md §6 for EVERY voice in audioVoices() and EVERY cue in MUSIC_CUES. Nobody can listen to the result here, so quality means these measurements:
   voices   1  finite, peak <= 0.98, not silent (>= -60 dBFS active RMS), |DC| < 0.01, first sample < 0.05, last 20 ms < -60 dBFS, duration within dur+tail (and <= 6 s;
               unit events: fire <= 0.35 s, select/ack <= 0.6 s, boom class <= 2.5 s)
-           2  active-window RMS within +-4 dB of its class (ui -26, fire -22, impact -18, boom -14, voice -20, alert -17, cine -18, music -20, amb -30)
+           2  active-window RMS within +-4 dB of its class (ui -26, fire -22, impact -18, boom -14, alert -17, music -20, amb -30)
            3  deterministic (identical FNV-1a hash of two renders with the same seed) and pure (the builders run with Math.random / Date.now / performance.now stubbed to throw);
               repeatable sounds (fire/melee/select/ack/hit) must vary with the seed (no machine-gunning)
            4  distinct: 28-D feature vector (20 Bark-like bands, centroid, flatness, attack, decay, zcr, pitch-contour slope + voiced fraction + duration), z-normalised over the corpus,
@@ -59,7 +59,7 @@ def vocab(name):
     return re.findall(r"'([^']+)'", re.sub(r'//[^\n]*', '', m.group(1)))
 
 
-VOC = {'units': vocab('UNIT_TYPES'), 'buildings': vocab('BUILDING_TYPES'), 'factions': vocab('SFX_FACTIONS'), 'skills': vocab('SFX_SKILLS'), 'global': vocab('SFX_GLOBAL'), 'cine': vocab('CINE_SFX')}
+VOC = {'units': vocab('UNIT_TYPES'), 'buildings': vocab('BUILDING_TYPES'), 'factions': vocab('SFX_FACTIONS'), 'skills': vocab('SFX_SKILLS'), 'global': vocab('SFX_GLOBAL'), 'cine': []}   # v5: the cinematic set was removed
 LEGACY_UNIT_NAMES = 'ack select shoot bolt rocket shell acid melee boom boomBig'.split()   # these resolve through the unit-aware dispatcher; their generic voice is the deliberate fallback
 FACTION_IDS = ['meridian', 'obsidian', 'aurora']
 VARIATION_EVENTS = {'fire', 'melee', 'select', 'ack', 'hit'}
@@ -150,7 +150,7 @@ with sync_playwright() as p:
     nfall = sum(1 for v in info if v['fallback'])
     ok(len(ids_all) > 0, f'{len(ids_all)} voices registered ({nfall} generic fallbacks, {len(ids_all)-nfall} designed)')
     classes = pg.evaluate("()=>__RTS.AUD.classes()")
-    ok(all(classes[k]['db'] == v for k, v in {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'voice': -20, 'alert': -17, 'cine': -18, 'music': -20, 'amb': -30}.items()), 'the engine\'s class table equals docs/AUDIO_SPEC.md §6 (ui -26, fire -22, impact -18, boom -14, voice -20, alert -17, cine -18, music -20, amb -30)')
+    ok(all(classes[k]['db'] == v for k, v in {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'alert': -17, 'music': -20, 'amb': -30}.items()), 'the engine\'s class table equals docs/AUDIO_SPEC.md §6 (ui -26, fire -22, impact -18, boom -14, alert -17, music -20, amb -30)')
 
     # ---------------------------------------------------------------- 1. the matrix
     if not ARGS.no_voices and not ARGS.only:

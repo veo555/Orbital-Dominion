@@ -17,7 +17,7 @@ this package; line counts are approximate (5,900 lines of JS in 18 modules, 27 K
   `spriteCache` (scale `SC`); terrain is pre-rendered once per map (`52_terrain.js`); fog of war is a low-resolution
   canvas (`FQ = 4` sub-cells per tile) composited each frame. Icons are generated the same way (`iconURL`, `glyph`).
 * Audio is **synthesised with WebAudio** (`80_audio.js`): SFX bursts, a generative score (chords/scale/drums, echo
-  bus), plus optional `speechSynthesis` voice lines (`say`). No audio files.
+  bus). No speech (removed in v5), no audio files.
 * Persistence: `localStorage` — settings (`SETKEY`) and, if payments are enabled, a supporter flag (`SUPKEY`); all reads/writes are try/catch-wrapped. **There is no save game** (a match is lost if the OS kills the page; BACKLOG M-07).
 * Fixed constants (`00_core.js`): `TILE = 32 px`, map `88 × 88` tiles (`WW = WH = 2816 px`), `TICK = 1/30 s`,
   `MAXSUP = 120` supply, `TOPBAR = 44`, `BOTTOM = 198` (**JS constants, used in camera math** — they must become

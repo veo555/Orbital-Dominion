@@ -17,7 +17,6 @@ const STORY={
   missions:[ ... ],                    // §3 (declared in 44_story_c_*.js with STORY.missions.push)
   dispatch:{ id:{id,kind,title,mood?,lines:[{who,text,style,expr?}]} },   // text dispatches, docs/DISPATCH_SPEC.md (declared in 44_story_b_dispatch_*.js: Object.assign(STORY.dispatch,{...}))
   radio:{ id:{who,text,style?,dur?} }, // in-mission comm lines (§4)
-  barks:{ charId:{select:[..],ack:[..],levelup:[..],fall:[..]} }   // optional hero voice lines (spoken via 84_voice)
 };
 ```
 Other `44_story_*.js` files only `Object.assign(STORY.dispatch,{...})`, `STORY.missions.push(...)`, `Object.assign(STORY.radio,{...})` — so authors work in separate files without conflicts.

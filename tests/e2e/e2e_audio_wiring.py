@@ -2,8 +2,8 @@
 
 Do the game's events REACH the audio engine, with the right arguments?  (docs/AUDIO_SPEC.md §2/§3/§4, docs/CAMPAIGN_SPEC.md §3.4)
 It drives the REAL game code in an instrumented COPY of the build (the source is never touched):
-  * every call of musicPlay / musicStop / musicScene / musicStinger / musicDuck / musicMood / speak / speakStop is logged (the function declarations are wrapped in the copy;
-    they must therefore stay plain `function name(...){}` declarations - the engine's own sfx family is observed through AUD.log, which records sfx / sfxUnit / sfxBuilding / cineSfx)
+  * every call of musicPlay / musicStop / musicScene / musicStinger / musicDuck / musicMood is logged (the function declarations are wrapped in the copy;
+    they must therefore stay plain `function name(...){}` declarations - the engine's own sfx family is observed through AUD.log, which records sfx / sfxUnit / sfxBuilding)
   * window.__EV(s)=eval(s) gives the scenarios access to the closure (kill, castSkill, damageEnt, campDo ...)
 
 WHAT MUST BE WIRED (each line below is one check; the contract is the spec, the thresholds are in the scenario code tests/audio/wiring_page.js)
@@ -14,7 +14,7 @@ WHAT MUST BE WIRED (each line below is one check; the contract is the spec, the 
   vocabulary                 every SFX_GLOBAL name has at least one call site in the sources (a sound nothing can trigger is dead content)
   match -> musicScene        the running match tells the music engine the player's faction, era, intensity (combat) and night; musicStinger plays sting_victory / sting_defeat / sting_era / sting_hero /
                              sting_alarm; the menu plays the `title` cue
-  campaign                   a mission's `mood` action reaches the music (musicMood / musicScene({mood}) / musicPlay(<cue>)), its `radio` action is voiced with speak(who,text,{style}), its `strike`
+  campaign                   a mission's `mood` action reaches the music (musicMood / musicScene({mood}) / musicPlay(<cue>)), its `radio` action shows the line on the silent radio strip (campRadio -> radioShow, no sound), its `strike`
                              action warns through sfx
   dispatch card              campDispatch starts the dispatch's mood cue with musicPlay; closing it calls musicStop (v4.0: the text card replaced the cinematic player)
 CONTROLS (CLAUDE.md rule 15: a check that cannot fail is worthless):
@@ -47,8 +47,8 @@ def vocab(name):
     return re.findall(r"'([^']+)'", re.sub(r'//[^\n]*', '', m.group(1)))
 
 
-SFX_GLOBAL, CINE_SFX = vocab('SFX_GLOBAL'), vocab('CINE_SFX')
-PROBED = ['musicPlay', 'musicStop', 'musicScene', 'musicStinger', 'musicDuck', 'musicMood', 'speak', 'speakStop']
+SFX_GLOBAL = vocab('SFX_GLOBAL')
+PROBED = ['musicPlay', 'musicStop', 'musicScene', 'musicStinger', 'musicDuck', 'musicMood']
 
 
 # ------------------------------------------------------------------ the instrumented copies
@@ -80,11 +80,11 @@ REF_PATCHES = [
     ('the match loop feeds musicScene', "function frame(ts){\n  requestAnimationFrame(frame);",
      "function frame(ts){\n  requestAnimationFrame(frame);if(G&&!ui.demo&&(ts-(window.__mst||0))>400){window.__mst=ts;musicScene({faction:G.teams[0].faction,era:G.teams[0].era,intensity:(G.time-G.fightT<9)?1:0.2,night:1-G.daylight});}", ['music.faction', 'music.era', 'music.fight', 'music.night']),
     ('game over plays a sting', "function onGameOver(res){", "function onGameOver(res){musicStinger(res==='victory'?'sting_victory':'sting_defeat');", ['sting.victory', 'sting.defeat']),
-    ('an era-up plays sting_era', "sfx('era');say('Era advanced');", "sfx('era');musicStinger('sting_era');say('Era advanced');", ['sting.era']),
-    ('a hero arriving plays sting_hero', "say(q.revive?'Hero revived':'Hero ready');", "musicStinger('sting_hero');say(q.revive?'Hero revived':'Hero ready');", ['sting.hero']),
-    ('an attack on the base plays sting_alarm', "sfx('alert');say('Your forces are under attack');", "sfx('alert');musicStinger('sting_alarm');say('Your forces are under attack');", ['sting.alarm']),
-    ('the menu plays the title cue', "function toMenu(){stopSpeech();", "function toMenu(){musicPlay('title');stopSpeech();", ['title']),
-    ('the campaign UI voices radio and mood', "function onCampaignEvent(e){}", "function onCampaignEvent(e){if(e&&e.type==='mood')musicMood(e.mood);if(e&&e.type==='radio'){const r=STORY.radio&&STORY.radio[e.id];if(r)speak(r.who,r.text,{style:r.style});}}", ['camp.mood', 'camp.radio']),
+    ('an era-up plays sting_era', "sfx('era',undefined,undefined,{faction:T.faction});}", "sfx('era',undefined,undefined,{faction:T.faction});musicStinger('sting_era');}", ['sting.era']),
+    ('a hero arriving plays sting_hero', "sfx(q.revive?'heroRevive':'hero',undefined,undefined,u);}", "sfx(q.revive?'heroRevive':'hero',undefined,undefined,u);musicStinger('sting_hero');}", ['sting.hero']),
+    ('an attack on the base plays sting_alarm', "sfx('alert',undefined,undefined,e);}", "sfx('alert',undefined,undefined,e);musicStinger('sting_alarm');}", ['sting.alarm']),
+    ('the menu plays the title cue', "function toMenu(){", "function toMenu(){musicPlay('title');", ['title']),
+    ('the campaign UI reacts to mood', "function onCampaignEvent(e){}", "function onCampaignEvent(e){if(e&&e.type==='mood')musicMood(e.mood);}", ['camp.mood']),
 ]
 NOWHO = ("function sfx(name,x,y,who){return AUDIO.sfx(name,x,y,who);}", "function sfx(name,x,y,who){return AUDIO.sfx(name,x,y);}")
 
@@ -206,7 +206,7 @@ def judge(o):
         mood = any((e['f'] == 'musicMood' and e['a'][:1] == ['tension']) or (e['f'] == 'musicScene' and isinstance(e['a'][0], dict) and e['a'][0].get('mood') == 'tension') or (e['f'] == 'musicPlay' and e['a'][:1] == ['tension']) for e in cp.get('mood', []))
         add('camp', 'camp.mood', mood, f"mission action ['mood','tension']: music saw {[(e['f'], e['a'][:1]) for e in cp.get('mood', [])][:3] or 'nothing'} {cp.get('moodError', '')}")
         ex = cp.get('radioExpect', {}); sp = cp.get('radio', [])
-        add('camp', 'camp.radio', any(s['who'] == ex.get('who') and s['text'] == ex.get('text') for s in sp), f"mission action ['radio',id]: speak saw {[(s['who'], (s['text'] or '')[:24]) for s in sp][:2] or 'nothing'}, expected {ex.get('who')}: {(ex.get('text') or '')[:24]} {cp.get('radioError', '')}")
+        add('camp', 'camp.radio', any(s['who'] == ex.get('who') and s['text'] == ex.get('text') for s in sp) and cp.get('speechApi') == [False, False], f"mission action ['radio',id]: the silent radio strip showed {[(s['who'], (s['text'] or '')[:24]) for s in sp][:2] or 'nothing'}, expected {ex.get('who')}: {(ex.get('text') or '')[:24]}; speech API present {cp.get('speechApi')} {cp.get('radioError', '')}")
         add('camp', 'strike', 'alert' in cp.get('strike', []), f"mission action strike: sfx saw {cp.get('strike')}")
     cd = o['dispatch']
     if 'error' in cd: add('dispatch', 'dispatch.music', False, cd['error']); add('dispatch', 'dispatch.stop', False, cd['error'])
@@ -221,7 +221,7 @@ GROUPS = [('fire', 'sim: a unit that fires passes itself as `who` and reaches it
           ('made', 'sim: a trained unit, a finished building and a placed building pass themselves (done / place -> <type>.ready|done|place.<faction>)'), ('selack', 'ui: selecting a unit plays its select voice, ordering it plays its ack voice'),
           ('skill', 'sim: every active hero skill is cast through sfx(\'skill:<id>\',x,y,hero)'), ('resolve', 'end to end: every wired entity above then plays THEIR OWN voice (<type>.<event>.<faction> / skill.<id>) - needs the voice content of 81_sfx_*.js'), ('glob', 'ui/sim: err, train, click, alert, level, win and lose reach sfx'),
           ('music', 'match -> musicScene carries faction / era / combat intensity / night; the menu plays `title`'), ('sting', 'musicStinger plays sting_victory / defeat / era / hero / alarm'),
-          ('camp', 'campaign: `mood` reaches the music, `radio` is voiced by speak(who,text,{style}), `strike` warns through sfx'), ('dispatch', 'dispatch card: mood cue via musicPlay, close -> musicStop')]
+          ('camp', 'campaign: `mood` reaches the music, `radio` shows on the silent strip (no sound), `strike` warns through sfx'), ('dispatch', 'dispatch card: mood cue via musicPlay, close -> musicStop')]
 
 
 def report(C, prefix=''):
@@ -253,11 +253,11 @@ def call_sites():
     names = collections.defaultdict(list); fn_sites = collections.Counter()
     for f in files:
         t = f.read_text(encoding='utf-8')
-        for m in re.finditer(r'\b(sfx|sfxUnit|sfxBuilding|cineSfx)\(', t):
+        for m in re.finditer(r'\b(sfx|sfxUnit|sfxBuilding)\(', t):
             a = balanced_args(t, m.end() - 1)
             for q in re.findall(r"'([^']+)'", a): names[q].append(f.name)
             fn_sites[m.group(1)] += 1
-        for fn in ('musicScene', 'musicStinger', 'musicPlay', 'musicMood', 'speak', 'cineSfx', 'sfxUnit', 'sfxBuilding'):
+        for fn in ('musicScene', 'musicStinger', 'musicPlay', 'musicMood', 'sfxUnit', 'sfxBuilding'):
             fn_sites['ref:' + fn] += len(re.findall(r'(?<![\w.])' + fn + r'\b(?!\s*:)', t))
     return names, fn_sites
 
@@ -268,7 +268,7 @@ with sync_playwright() as p:
     if URL.startswith('file:'): html = pathlib.Path(unquote(urlparse(URL).path)).read_text(encoding='utf-8')
     else: html = urllib.request.urlopen(URL, timeout=10).read().decode('utf-8')
     real, missing = probe(html)
-    ok(not missing, 'the music / voice functions are plain `function` declarations (so calls to them can be observed)' + (f' - NOT FOUND exactly once: {missing}' if missing else ''))
+    ok(not missing, 'the music functions are plain `function` declarations (so calls to them can be observed)' + (f' - NOT FOUND exactly once: {missing}' if missing else ''))
 
     # ---------------------------------------------------------------- 1. the real build
     t1 = time.time(); obs = run_page(b, real, 'real', track=True); note(f'scenarios ran in {time.time()-t1:.0f} s')
@@ -279,8 +279,8 @@ with sync_playwright() as p:
     names, fn = call_sites()
     dead = [n for n in SFX_GLOBAL if n not in names]
     ok(not dead, f'every SFX_GLOBAL name has a call site in the sources ({len(SFX_GLOBAL) - len(dead)}/{len(SFX_GLOBAL)})' + (f' - NO call site for: {", ".join(dead)}' if dead else ''))
-    reach = {'sfx': fn['sfx'] > 0, 'sfxUnit/sfxBuilding': (fn['ref:sfxUnit'] + fn['ref:sfxBuilding'] > 0) or (res.get('fire', (False,))[0] and res.get('made', (False,))[0]), 'cineSfx': fn['ref:cineSfx'] > 0, 'musicScene': fn['ref:musicScene'] > 0, 'speak': fn['ref:speak'] > 0}
-    ok(all(reach.values()), 'every audio entry point is reachable from game code: ' + ', '.join(f"{k} {'yes' if v else 'NO'}" for k, v in reach.items()) + f"  (call sites: sfx {fn['sfx']}, musicScene {fn['ref:musicScene']}, speak {fn['ref:speak']}, cineSfx {fn['ref:cineSfx']}, musicStinger {fn['ref:musicStinger']})")
+    reach = {'sfx': fn['sfx'] > 0, 'sfxUnit/sfxBuilding': (fn['ref:sfxUnit'] + fn['ref:sfxBuilding'] > 0) or (res.get('fire', (False,))[0] and res.get('made', (False,))[0]), 'musicScene': fn['ref:musicScene'] > 0}
+    ok(all(reach.values()), 'every audio entry point is reachable from game code: ' + ', '.join(f"{k} {'yes' if v else 'NO'}" for k, v in reach.items()) + f"  (call sites: sfx {fn['sfx']}, musicScene {fn['ref:musicScene']}, musicStinger {fn['ref:musicStinger']})")
 
     # ---------------------------------------------------------------- 3. controls
     if NOWHO[0] in html:

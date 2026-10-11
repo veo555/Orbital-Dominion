@@ -16,8 +16,11 @@
               that does not use the store's own billing.
 
 Optional payments (Stripe) are configured in src/support.config.json and are OFF unless you enable them there.
+
+Minification (v5): the JavaScript, the CSS and the HTML body of every distribution go through tools/minify.js (comments and redundant whitespace only; no identifier is
+renamed, so window.__RTS hooks and the tests keep working).  OD_MIN=0 disables it for debugging; the Node sim harness and tests/sim always load the readable sources.
 """
-import base64, glob, hashlib, json, os, shutil, sys
+import base64, glob, hashlib, json, os, re, shutil, subprocess, sys
 
 root = os.path.dirname(os.path.abspath(__file__))
 src = os.path.join(root, 'src')
@@ -28,6 +31,26 @@ VERSION = pkg.get('version', '0.0.0')
 
 js = ''.join(open(f, encoding='utf-8').read() + '\n' for f in sorted(glob.glob(os.path.join(src, 'js', '*.js'))))
 css, body = read('style.css'), read('body.html')
+
+MINIFY = os.environ.get('OD_MIN', '1') != '0'
+
+def minify(kind, text):
+    """kind: 'js' | 'css'.  tools/minify.js (Node): comments + whitespace only.  Falls back to the readable text (with a warning) when Node is unavailable."""
+    try:
+        r = subprocess.run(['node', os.path.join(root, 'tools', 'minify.js'), kind, '-'], input=text.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        return r.stdout.decode('utf-8')
+    except (OSError, subprocess.CalledProcessError) as e:
+        sys.exit('build: minification failed (%s). Install Node, or build with OD_MIN=0 for a readable, unminified file.\n%s' % (type(e).__name__, getattr(e, 'stderr', b'').decode('utf-8', 'replace')))
+
+def minify_html(text):
+    """body.html: drop HTML comments and the indentation at the start of each line (browsers collapse that whitespace anyway; the body has no <pre>/<textarea>)."""
+    assert '<pre' not in text and '<textarea' not in text, 'build: body.html contains <pre>/<textarea>: the HTML minifier must not touch their whitespace'
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.S)
+    return '\n'.join(l.strip() for l in text.split('\n') if l.strip())
+
+if MINIFY:
+    js, css, body = minify('js', js), minify('css', css), minify_html(body)
+    assert '</script' not in js.lower() and '<!--' not in js, 'build: the script text would end/escape the inline <script> element'
 _sp = os.environ.get('OD_SUPPORT_CONFIG') or os.path.join(src, 'support.config.json')   # OD_SUPPORT_CONFIG: alternative payment config (tests, staging)
 support = json.load(open(_sp, encoding='utf-8')) if os.path.exists(_sp) else {'enabled': False}
 

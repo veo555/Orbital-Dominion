@@ -1,6 +1,6 @@
 """Audio engine gate (Playwright + Chromium). Exit code != 0 on failure.   python3 tests/e2e/e2e_audio_engine.py   (about 70 s)
 Asserts the ENGINE contract of docs/AUDIO_SPEC.md §1/§2/§8 (not the content of any voice):
-  * the AudioContext exists only after a user gesture, Voice slider (#setVoice / SET.voiceVol) works, visibility suspend/resume
+  * the AudioContext exists only after a user gesture, there is no Voice slider and old saved voice settings are ignored, visibility suspend/resume
   * resolution order exact id -> unit/building voice from `who` -> generic fallback, registry, cache invalidation
   * mute silences, a burst of 500 sfx calls keeps activeNodes <= cap, priorities admit alert/ui while fire is saturated,
     identical-voice spam compresses (merged calls -> ONE louder voice), per-voice polyphony
@@ -34,9 +34,9 @@ def vocab(name):
 
 
 LEGACY = 'click ack err coin boom boomBig train done alert place melee level era shoot bolt rocket shell acid win lose'.split()
-SFX_GLOBAL = vocab('SFX_GLOBAL'); CINE_SFX = vocab('CINE_SFX')
+SFX_GLOBAL = vocab('SFX_GLOBAL')
 
-CLASS_DB = {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'voice': -20, 'alert': -17, 'cine': -18, 'music': -20, 'amb': -30}
+CLASS_DB = {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'alert': -17, 'music': -20, 'amb': -30}
 
 # ---------------------------------------------------------------- page helpers
 def new_page(b, url, track=True, boot='live', nocontent=False):
@@ -72,7 +72,7 @@ def go_live(pg, fast=False):
     quiet_engine(pg)
 
 
-# The engine-only page: the full build registers content voices (81_sfx_*), the 'cue' renderer (82 music) and 'speech' (84) while it loads, so the
+# The engine-only page: the full build registers content voices (81_sfx_*), the 'cue' renderer (82 music) while it loads, so the
 # engine's own pre-registration contract (generic fallback voices, legacy score, generic-before-unit-voice resolution) can only be observed on a build in which
 # those load-time registrations are skipped. The variant makes the public registerVoice()/registerRenderer() wrappers no-ops while window.__NOCONTENT is set
 # (new_page(nocontent=True) sets it before load and deletes it right after, 80_audio.js registers its own fallbacks through the closure-private function).
@@ -92,7 +92,7 @@ def engine_html(html):
 # ---------------------------------------------------------------- checks (each takes a recorder so mutation runs can reuse them)
 def chk_determinism(pg, rec):
     r = pg.evaluate("""async()=>{const A=__RTS.AUD,out={};
-      for(const id of ['global.shoot','global.boom','global.heal','global.ack','cine.boom','cine.gong','cine.crowd','cine.engine','cine.stinger','cine.explosion']){
+      for(const id of ['global.shoot','global.boom','global.heal','global.ack','global.boomBig','global.win','global.era','global.lose','global.level','global.rocket']){
         const hs=[],qs=[];for(let k=0;k<3;k++){const r=await A.render({sfx:id},0,44100);hs.push(A.hash(r.channels,true));qs.push(A.hash(r.channels));}out[id]=[hs,qs];}
       return out;}""")
     rec(all(len(set(h)) == 1 and len(set(q)) == 1 for h, q in r.values()), 'offline renders are bit-reproducible (3 renders of 10 voices incl. noise/pluck/modal/formant/unison/reverb: identical float32 bits and 16-bit hash): ' + json.dumps({k: v[0][0] for k, v in r.items()}))
@@ -108,7 +108,7 @@ def chk_pure(pg, rec):
       const boom=n=>()=>{throw new Error(n+' used while rendering');};
       Math.random=boom('Math.random');Date.now=boom('Date.now');performance.now=boom('performance.now');
       try{ // builders run synchronously inside the call: stubs can be restored before awaiting
-        for(const id of ['global.boom','global.heal','cine.crowd','cine.gong','global.toast','cine.stinger'])ps.push(A.render({sfx:id},0,44100));
+        for(const id of ['global.boom','global.heal','global.era','global.win','global.toast','global.level'])ps.push(A.render({sfx:id},0,44100));
         ps.push(A.render({voice:{dur:0.3,cls:'fire',layers:[{k:'noise',color:'pink',filter:{type:'bp',f0:900,q:2},rm:{f:80},drive:0.4}]}},0,44100));
       }catch(e){err=String(e);}finally{Math.random=mr;Date.now=dn;performance.now=pn;}
       if(err)return{err};
@@ -118,7 +118,7 @@ def chk_pure(pg, rec):
 
 def chk_gates(pg, rec):
     info = pg.evaluate("""()=>__RTS.AUD.voices({info:true}).filter(v=>v.fallback)""")
-    rec(len(info) >= 61, f'{len(info)} generic fallback voices registered (>= 61: legacy + SFX_GLOBAL + CINE_SFX)')
+    rec(len(info) >= 30, f'{len(info)} generic fallback voices registered (>= 30: legacy + SFX_GLOBAL)')
     res = pg.evaluate("""async()=>{const A=__RTS.AUD,cls=A.classes(),out=[];
       for(const v of A.voices({info:true}).filter(v=>v.fallback)){
         const r=await A.render({sfx:v.id},0,44100),a=A.analyse(r.channels,r.sampleRate),h2=A.hash((await A.render({sfx:v.id},0,44100)).channels,true);
@@ -297,8 +297,8 @@ def chk_hooks(pg, rec):
       // direct playback + meter
       o.play=[A.play('global.click'),A.play({dur:0.1,cls:'ui',layers:[{k:'osc',f:500,gain:0.1}]}),A.play('definitely.not.a.voice')];
       A.play('global.boom');await sl(60);const m=A.meter();o.meter=[typeof m.peak,typeof m.rms,m.peak>=0];
-      // announcer is counted; legacy helpers do not throw
-      const says0=A.stats().counters.says;R.SET.voice=true;A.say('Engine test line');o.says=A.stats().counters.says-says0;
+      // v5: no announcer (A.say is gone, there is no speech counter); legacy helpers do not throw
+      o.noSpeech=[typeof A.say,typeof R.speak,typeof window.speechSynthesis==='undefined'||!window.speechSynthesis.speaking,'says' in A.stats().counters];
       let err=null;try{A.tone(440,0.05,'sine',0.01);A.noiseBurst(0.05,0.01,1000);}catch(e){err=String(e);}o.compat=err;
       // a music module registers its renderer
       A.registerRenderer('probe',(spec,sec,sr)=>A.offline(sec,sr,(Ax)=>{K.layer(Ax,0,{k:'osc',type:'sine',f:261.6,dur:0.4,gain:0.2,send:{rev:0.2,room:'hall'}},Ax.p);K.layer(Ax,0.1,{k:'noise',dur:0.2,gain:0.1},Ax.p);}));
@@ -313,7 +313,7 @@ def chk_hooks(pg, rec):
     rec(h['musicNodes'] == 2 and h['sfxNodes'] == 0 and h['musicNodesAfter'] == 0, f"notes scheduled through the music A count against the music budget only ({h['musicNodes']} music / {h['sfxNodes']} sfx nodes) and are released ({h['musicNodesAfter']} left)")
     rec(h['duckLow'] < 0.55 and h['duckBack'] > 0.97, f"audioDuck dips the music bus ({h['duckLow']:.2f}) and recovers ({h['duckBack']:.2f})")
     rec(h['play'] == [True, True, False] and h['meter'] == ['number', 'number', True], f"audioPlay plays an id or a def (and refuses unknown ids), audioMeter reads the master {h['play']}")
-    rec(h['says'] == 1 and h['compat'] is None, f"say() is counted ({h['says']}), legacy tone()/noiseBurst() helpers still work {h['compat']}")
+    rec(h['noSpeech'] == ['undefined', 'undefined', True, False] and h['compat'] is None, f"no announcer / speech API exists {h['noSpeech']}, legacy tone()/noiseBurst() helpers still work {h['compat']}")
     # STALE-TEST FIX: the full build already has the music module's 'cue' renderer, so the fallback-score hand-over is checked on the engine-only page (main run, below);
     # here a private renderer kind ('probe') exercises registerRenderer + audioRender without replacing the real 'cue' renderer the rest of the run depends on.
     rec(h['legacy0'] is False and 'cue' in h['renderers0'] and 'probe' in h['renderers'], "full build: the music module has registered its 'cue' renderer at load, so the fallback score is already off; registerRenderer('probe') adds a kind")
@@ -365,7 +365,7 @@ def chk_resolution(pg, ok):
       A.reset(true);A.sfxUnit('rifleman','fire',cx,cy,'obsidian');o.sfxUnit=last().voice;
       A.reset(true);A.sfxBuilding('turret','fire',cx,cy,'meridian');o.sfxBuilding=last().voice;
       A.reset(true);A.sfxUnit('nosuchunit','die',cx,cy,'aurora');o.sfxUnitGeneric=last().voice;
-      o.cinePlays=(A.reset(true),A.cineSfx('whoosh'));o.cineRow=last();
+      o.cineGone=typeof A.cineSfx;
       o.unknown=call('definitely_not_a_sound').r;
       o.gen1=A.resolve('tab').id;A.registerVoice('ui.tab',simple(800));o.gen2=A.resolve('tab').id;
       A.registerVoice('global.click',simple(900),{fallback:false});o.override=A.voices({info:true}).find(v=>v.id==='global.click').fallback===false&&A.resolve('click').id==='global.click';
@@ -381,7 +381,7 @@ def chk_resolution(pg, ok):
     ok(res['bldDone'] == 'hub.done.' + res['fac'] and res['bldBoom'] == 'hub.die.' + res['fac'], "building `who`: 'done' -> <type>.done, boomBig -> <type>.die")
     ok(res['creepFireFallsToMelee'] == res['creep'] + '.melee.wild' and res['creepFac'] == 'wild', f"creeps are faction 'wild'; fire falls back to melee ({res['creepFireFallsToMelee']})")
     ok(res['sfxUnit'] == 'rifleman.fire.obsidian' and res['sfxBuilding'] == 'global.bolt' and res['sfxUnitGeneric'] == 'global.boom', f"sfxUnit/sfxBuilding resolve ({res['sfxUnit']}, {res['sfxBuilding']}, {res['sfxUnitGeneric']})")
-    ok(res['cinePlays'] is True and res['cineRow']['voice'] == 'cine.whoosh', 'cineSfx plays cine.<name> non-positionally')
+    ok(res['cineGone'] == 'undefined', 'cineSfx is gone (the cinematic sound set was removed in v5)')
     ok(res['unknown'] == 'nosound', 'an unknown name is a counted no-op')
     ok(res['gen1'] == 'global.tab' and res['gen2'] == 'ui.tab' and res['override'] is True and res['skill'] == 'skill.barrage', f"ui.<name> precedes global.<name>, re-registering an id replaces it, 'skill:x' maps to skill.x")
     ok(res['log'] == 0 and res['log2'] == 200 and res['keys'] == 'faction,name,pan,r,t,voice,vol,who,x,y', f"AUD.log is a 200-entry ring with {{t,name,voice,who,faction,x,y}} (+pan,vol,r): {res['keys']}")
@@ -404,28 +404,26 @@ with sync_playwright() as p:
     st = pg.evaluate("()=>__RTS.AUD.stats()")
     ok(st['state'] == 'running' and st['sampleRate'] > 0, f"context is created by the first user gesture and is running ({st['state']}, {st['sampleRate']} Hz)")
 
-    # settings: Voice slider
+    # settings: no Voice slider / toggle; old saved voice keys are ignored; the sfx / music sliders drive their buses
     pg.click('#bSet'); pg.wait_for_timeout(200)
-    ok(pg.evaluate("()=>{const e=document.getElementById('setVoice');return !!e&&+e.value===90&&__RTS.SET.voiceVol===0.9;}"), '#setVoice slider exists in Settings and shows SET.voiceVol (default 0.9)')
-    pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=37;e.dispatchEvent(new Event('input',{bubbles:true}));}")
-    ok(pg.evaluate("()=>__RTS.SET.voiceVol")== 0.37 and pg.evaluate("()=>JSON.parse(localStorage.getItem('orbital_dominion_v4_settings')).voiceVol")== 0.37, 'moving #setVoice sets SET.voiceVol and saves it')
-    pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=55;e.dispatchEvent(new Event('input',{bubbles:true}));}"); pg.wait_for_timeout(300)
+    ok(pg.evaluate("()=>!document.getElementById('setVoice')&&!document.getElementById('set_voice')&&!('voiceVol' in __RTS.SET)&&!('voice' in __RTS.SET)"), 'Settings has no Voice slider / Announcer toggle and SET has no voice keys')
+    pg.evaluate("()=>{const e=document.getElementById('setSfx');e.value=55;e.dispatchEvent(new Event('input',{bubbles:true}));}"); pg.wait_for_timeout(300)
     v = pg.evaluate("()=>__RTS.AUD.stats().buses")
-    ok(abs(v['voice'] - 0.55 * 1.8) < 0.02 and abs(v['sfx'] - 0.8) < 0.02 and abs(v['music'] - 0.45) < 0.02, f"voice bus follows #setVoice (x1.8 mix trim VBOOST, docs/AUDIO_V4.md), sfx/music buses follow their own sliders {v}")
-    pg.evaluate("()=>{const e=document.getElementById('setVoice');e.value=90;e.dispatchEvent(new Event('input',{bubbles:true}));}")
+    ok(abs(v['sfx'] - 0.55) < 0.02 and abs(v['music'] - 0.45) < 0.02 and 'voice' not in v and 'cine' not in v, f"sfx bus follows #setSfx, music bus its own slider; no voice / cine bus {v}")
+    pg.evaluate("()=>{const e=document.getElementById('setSfx');e.value=80;e.dispatchEvent(new Event('input',{bubbles:true}));}")
     pg.evaluate("()=>__RTS.showOverlay('menu')")
     pg.click('#bStart'); pg.wait_for_timeout(1200)
     ok(pg.evaluate("()=>!!(__RTS.G&&__RTS.G.units.length>0&&!__RTS.ui.demo)"), 'match started (sound enabled, autoplay policy NOT bypassed)')
     quiet_engine(pg)
 
     # vocabulary
-    cov = pg.evaluate("""([g,c])=>{const A=__RTS.AUD;return{g:g.filter(n=>!A.resolve(n)),c:c.filter(n=>!A.voices().includes('cine.'+n))};}""", [SFX_GLOBAL, CINE_SFX])
-    ok(not cov['g'] and not cov['c'], f'every SFX_GLOBAL name resolves to a voice and every CINE_SFX has cine.<name> (missing: {cov})')
+    cov = pg.evaluate("""(g)=>{const A=__RTS.AUD;return{g:g.filter(n=>!A.resolve(n)),c:A.voices().filter(n=>n.startsWith('cine.'))};}""", SFX_GLOBAL)
+    ok(not cov['g'] and not cov['c'], f'every SFX_GLOBAL name resolves to a voice and no cine.* voice remains (missing: {cov})')
     ok(set(pg.evaluate("()=>__RTS.AUD.voices({prefix:'global.'})")) >= {'global.' + n for n in LEGACY}, 'a generic fallback exists for every legacy name ' + ','.join(LEGACY[:6]) + '...')
 
     # offline gates (before test voices are registered)
     # STALE-TEST FIX: the full build replaces the generic fallback voices by content voices (81_sfx_*), so the fallback gates (chk_gates) run on the engine-only page
-    # below. Here: the content layer is in place and every legacy / SFX_GLOBAL / CINE_SFX name still resolves (above).
+    # below. Here: the content layer is in place and every legacy / SFX_GLOBAL name still resolves (above).
     ci = pg.evaluate("()=>{const A=__RTS.AUD,st=A.stats(),all=A.voices({info:true});return{n:all.length,content:all.filter(v=>!v.fallback).length,fb:all.filter(v=>v.fallback).length,cue:st.renderers.includes('cue'),legacy:st.legacyScore};}")
     ok(ci['content'] > 200 and ci['cue'] and ci['legacy'] is False, f'full build: content voices registered at load ({ci["content"]} content / {ci["fb"]} still-generic voices), the music module owns the score (cue renderer, fallback score off)')
     chk_determinism(pg, ok); chk_seed(pg, ok); chk_pure(pg, ok)
@@ -445,7 +443,7 @@ with sync_playwright() as p:
     ok(kit['bad'] is not None and kit['bad2'] is not None, 'a malformed voice is rejected: unknown layer kind makes the render reject, an empty layers[] throws in registerVoice')
     # sim state untouched by rendering
     st = pg.evaluate("""async()=>{const R=__RTS,A=R.AUD,G=R.G;const hs=()=>{let h=2166136261;const f=v=>{h^=Math.round(v*100)|0;h=Math.imul(h,16777619);};for(const u of G.units){f(u.x);f(u.y);f(u.hp);}for(const b of G.buildings){f(b.x);f(b.y);f(b.hp);}f(G.time*1000);return h>>>0;};
-      const a=[G.tick,hs()];for(const id of ['global.boom','global.heal','cine.gong'])await A.render({sfx:id},0,44100);await A.render({cue:'__none__'}).catch(()=>0);const b=[G.tick,hs()];
+      const a=[G.tick,hs()];for(const id of ['global.boom','global.heal','global.win'])await A.render({sfx:id},0,44100);await A.render({cue:'__none__'}).catch(()=>0);const b=[G.tick,hs()];
       G.paused=false;R.step();const c=[G.tick,hs()];G.paused=true;return{a,b,c};}""")
     ok(st['a'] == st['b'] and st['c'] != st['b'], f"audio rendering leaves sim state untouched (G.tick, state hash {st['a']} == {st['b']}); control: one sim step changes it ({st['c']})")
 

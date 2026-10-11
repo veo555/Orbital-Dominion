@@ -2,22 +2,22 @@
    python3 tests/e2e/e2e_soundlab.py --ref     run the gate against tests/audio/ref_soundlab.js injected into the build (the reference lab: proves the gate CAN pass; the controls use it
                                                automatically whenever the real lab is missing)
 
-docs/AUDIO_SPEC.md §7: "Settings -> 'Sound lab' opens a panel listing every SFX voice (grouped Units / Buildings / Heroes / UI / Cinematic) with play buttons and a faction switch, and every
-music cue/section with play/stop and a live intensity slider; character voices can read a sample line. It also shows live meters (peak/RMS from an AnalyserNode). Touch-friendly (44 px targets),
+docs/AUDIO_SPEC.md §7: "Settings -> 'Sound lab' opens a panel listing every SFX voice (grouped Units / Buildings / Heroes / UI; v5: no Cinematic group) with play buttons and a faction switch, and every
+music cue/section with play/stop and a live intensity slider; v5: character voices and the voice pack were removed - nothing in the lab speaks. It also shows live meters (peak/RMS from an AnalyserNode). Touch-friendly (44 px targets),
 keyboard accessible, zero network."  The spec fixes behaviour, not markup, so the DOM contract below is what this gate (and tests/audio/ref_soundlab.js) uses - like the `data-act` contract of
 CLAUDE.md rule 7. Anything it cannot find is reported as missing, never skipped.
 
 THE SOUND LAB DOM CONTRACT
   entry         a visible button inside #setMenu whose accessible name matches /sound lab/i (native <button> or tabindex >= 0); activating it opens the lab
-  root          #soundLab (or [data-sound-lab]); visible when open, role=dialog (or region) with an accessible name; Escape closes it (and calls musicStop + speakStop); the settings overlay is shown again
+  root          #soundLab (or [data-sound-lab]); visible when open, role=dialog (or region) with an accessible name; Escape closes it (and calls musicStop); the settings overlay is shown again
   voices        one  <button data-voice="<voice id>">  for EVERY id of audioVoices() (rows hidden by the current faction filter may be in the DOM or rendered when that faction is selected: the
-                union over the faction views must cover the registry); each lies inside an element  data-group="Units|Buildings|Heroes|UI|Cinematic"  matching its id
-                (hero_* and skill.* = Heroes, <building>.* = Buildings, other unit types = Units, ui.* / global.* = UI, cine.* = Cinematic). Pressing it plays THAT voice (audioPlay(id,...) or the
+                union over the faction views must cover the registry); each lies inside an element  data-group="Units|Buildings|Heroes|UI"  matching its id
+                (hero_* and skill.* = Heroes, <building>.* = Buildings, other unit types = Units, ui.* / global.* = UI). Pressing it plays THAT voice (audioPlay(id,...) or the
                 sfx path: the engine log must show the id)
   faction       buttons  data-faction="meridian|obsidian|aurora|wild"; choosing one shows only that faction's rows (all visible faction rows end in .<faction>) or plays that faction's version
   music         <button data-cue="<MUSIC_CUES id>"> for every cue: first press musicPlay(id,...), second press musicStop; cues with sections (intro) also have >= 5 buttons
                 data-cue="intro" data-section="0..4" calling musicPlay('intro',{section:n}); <input type=range data-lab="intensity"> calls musicScene({intensity: 0..1}) while it moves
-  characters    <button data-char="<STORY.characters id>"> for every character: pressing it calls speak(id, <non-empty sample line>, ...)
+  no speech     no [data-char] buttons, no line-style chips, no voice-pack row, no Cinematic group
   meters        elements data-meter="peak" / "rms" whose rendering CHANGES while a sound plays (read from the engine: audioMeter() / an AnalyserNode) and rests when nothing plays
   accessibility every visible interactive element has an accessible name (text, aria-label, label, title); keyboard: Tab reaches a voice button, Enter and Space play it, the focused element
                 has a visible focus indicator; no horizontal overflow at 390x844 and 844x390; every visible interactive element is >= 44 x 44 CSS px at those phone sizes
@@ -56,7 +56,6 @@ UNITS, BUILDINGS, FACS = vocab('UNIT_TYPES'), vocab('BUILDING_TYPES'), vocab('SF
 
 def group_of(vid):
     s = vid.split('.')
-    if s[0] == 'cine': return 'cinematic'
     if s[0] in ('ui', 'global'): return 'ui'
     if s[0] == 'skill' or s[0].startswith('hero_'): return 'heroes'
     if s[0] in BUILDINGS: return 'buildings'
@@ -64,7 +63,7 @@ def group_of(vid):
     return '?'
 
 
-PROBED = ['musicPlay', 'musicStop', 'musicScene', 'musicStinger', 'musicDuck', 'musicMood', 'speak', 'speakStop']
+PROBED = ['musicPlay', 'musicStop', 'musicScene', 'musicStinger', 'musicDuck', 'musicMood']
 AUDIO_WRAPPERS = ['audioPlay']
 
 
@@ -79,7 +78,7 @@ def probe(html):
         ms = list(re.finditer(r'function\s+' + n + r'\s*\(([^)]*)\)\s*\{return AUDIO\.' + n, html))
         if len(ms) != 1: missing.append(f'{n} wrapper ({len(ms)})'); continue
         e = html.index('{', ms[0].start()) + 1; html = html[:e] + "window.__WL.push({f:'%s',a:Array.prototype.slice.call(arguments)});" % n + html[e:]
-    i = html.rindex('\nboot();'); html = html[:i] + '\nwindow.__EV=(s)=>eval(s);' + html[i:]   # eval hook: the test reaches closure-private functions (speakStop is not exported)
+    i = html.rindex('\nboot();'); html = html[:i] + '\nwindow.__EV=(s)=>eval(s);' + html[i:]   # eval hook: the test reaches closure-private functions (closure-private functions are not exported)
     return html, missing
 
 
@@ -218,24 +217,18 @@ def chk_intensity(pg):
 
 
 def chk_chars(pg, touch=False):
-    chars = pg.evaluate("()=>Object.keys(__RTS.STORY.characters||{})")
-    if not chars: return False, 'STORY.characters is empty: there are no character voices to list'
-    missing = [c for c in chars if pg.locator(f'[data-char="{c}"]').count() == 0]; bad = []
-    for c in chars[:6]:
-        if c in missing: continue
-        pg.evaluate("()=>SL.clearWl()")
-        try:
-            loc = pg.locator(f'[data-char="{c}"]').first; loc.scroll_into_view_if_needed(); tap(pg, touch, loc); pg.wait_for_timeout(40)
-        except Exception: bad.append(c); continue
-        if not pg.evaluate("(c)=>SL.wl('speak').some(e=>e.a[0]===c&&typeof e.a[1]==='string'&&e.a[1].trim().length>3)", c): bad.append(c)
-    return not missing and not bad, f'{len(chars) - len(missing)}/{len(chars)} characters have a [data-char] button; pressing {min(6, len(chars))} of them calls speak(id, sample line)' + (f' - missing {missing[:4]}' if missing else '') + (f' - no speak for {bad[:3]}' if bad else '')
+    """v5: nothing in the lab (or its Settings entry) speaks - the character-voice section, the style chips, the voice-pack row and the Cinematic group are gone"""
+    n = pg.evaluate("""()=>{const r=SL.root();return{chars:r.querySelectorAll('[data-char],.sl-char,[data-style]').length,cine:r.querySelectorAll('[data-group="Cinematic"]').length,cineVoices:r.querySelectorAll('[data-voice^="cine."]').length,
+      pack:!!document.getElementById('bVoicePack')||!!document.getElementById('voicePackFile'),slider:!!document.getElementById('setVoice')||!!document.getElementById('set_voice'),speak:typeof __RTS.speak!=='undefined'||typeof __RTS.AUD.say!=='undefined'};}""")
+    good = n['chars'] == 0 and n['cine'] == 0 and n['cineVoices'] == 0 and not n['pack'] and not n['slider'] and not n['speak']
+    return good, f'no character/style buttons, no Cinematic group, no voice-pack row, no Voice setting, no speak API {n}'
 
 
 def chk_meters(pg, trigger=True, mute=False):
     n = pg.locator('[data-meter]').count()
     if n == 0: return False, 'no [data-meter] element'
     # nothing else may be playing: stop the cue, speech and the engine's fallback score, let the tail die out
-    pg.evaluate("()=>{__RTS.musicStop(0);__EV('speakStop')();__RTS.AUD.legacyScore(false);__RTS.AUD.reset(true);}")
+    pg.evaluate("()=>{__RTS.musicStop(0);__RTS.AUD.legacyScore(false);__RTS.AUD.reset(true);}")
     if mute: pg.evaluate("()=>{if(!__RTS.AUD.stats().muted)__RTS.AUD.mute();}")
     # STALE-TEST FIX: musicStop() fades the running cue but lets one-shot STINGERS (sting_*) ring out by design, and the preceding cue check has just pressed every cue button including all
     # the stingers - at rest means "no music player left", so wait for them (a sting is a few seconds long) instead of a fixed 1.5 s; the meter ballistics then need ~1.5 s to reach -inf.
@@ -287,10 +280,10 @@ def chk_keyboard(pg, entry_kb=True):
 
 
 def chk_escape(pg):
-    pg.evaluate("()=>{SL.clearWl();__RTS.musicPlay('title');__RTS.speak('x','hello there');}")
+    pg.evaluate("()=>{SL.clearWl();__RTS.musicPlay('title');}")
     pg.keyboard.press('Escape'); pg.wait_for_timeout(250)
-    st = pg.evaluate("()=>SL.state()"); w = pg.evaluate("()=>SL.wl('musicStop','speakStop').map(e=>e.f)")
-    return (not st.get('visible')) and 'musicStop' in w and 'speakStop' in w, f"Escape closes the lab (visible: {st.get('visible')}) and stops music + speech ({sorted(set(w))})"
+    st = pg.evaluate("()=>SL.state()"); w = pg.evaluate("()=>SL.wl('musicStop').map(e=>e.f)")
+    return (not st.get('visible')) and 'musicStop' in w, f"Escape closes the lab (visible: {st.get('visible')}) and stops the music ({sorted(set(w))})"
 
 
 def run_checks(pg, touch, mode, entry_kb, label, res):
@@ -299,7 +292,7 @@ def run_checks(pg, touch, mode, entry_kb, label, res):
     add('structure', chk_structure(pg)); add('accessible names', chk_names(pg)); add('44 px targets', chk_touch(pg)); add('no horizontal overflow', chk_overflow(pg))
     if mode == 'full':
         add('every voice listed + grouped', chk_listing(pg)); add('voice buttons play their voice', chk_play(pg, touch)); add('faction switch', chk_faction(pg)); add('music cues + sections', chk_cues(pg, touch))
-        add('intensity slider', chk_intensity(pg)); add('character voices', chk_chars(pg, touch)); add('live meters', chk_meters(pg)); add('keyboard', chk_keyboard(pg, entry_kb)); add('Escape closes + stops', chk_escape(pg))
+        add('intensity slider', chk_intensity(pg)); add('no speech in the lab', chk_chars(pg, touch)); add('live meters', chk_meters(pg)); add('keyboard', chk_keyboard(pg, entry_kb)); add('Escape closes + stops', chk_escape(pg))
 
 
 with sync_playwright() as p:
@@ -347,7 +340,8 @@ with sync_playwright() as p:
     damaged('dead cue buttons', "()=>{SL.root().querySelectorAll('[data-cue]').forEach(e=>e.replaceWith(e.cloneNode(true)));}", chk_cues)
     damaged('tabindex=-1 everywhere', "()=>{SL.root().querySelectorAll('button,input,select').forEach(e=>e.tabIndex=-1);}", chk_keyboard)
     damaged('no faction switch', "()=>{SL.root().querySelectorAll('[data-faction]').forEach(e=>e.remove());}", chk_faction)
-    damaged('no character buttons', "()=>{SL.root().querySelectorAll('[data-char]').forEach(e=>e.remove());}", chk_chars)
+    damaged('a character voice button is back', "()=>{const b=document.createElement('button');b.dataset.char='idris';b.textContent='Idris';SL.root().appendChild(b);}", chk_chars)
+    damaged('a Cinematic group is back', "()=>{const g=document.createElement('section');g.dataset.group='Cinematic';SL.root().appendChild(g);}", chk_chars)
     damaged('intensity slider removed', "()=>{SL.root().querySelectorAll('[data-lab=\"intensity\"]').forEach(e=>e.remove());}", chk_intensity)
     damaged('no sound plays (meters at rest)', None, chk_meters, trigger=False)
     damaged('engine muted (meters cannot move)', None, chk_meters, mute=True)

@@ -31,7 +31,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = U.ROOT; OUT = pathlib.Path(ARGS.out or (U.OUT / 'world_report.json')); SR = U.SR
 FACS = ['meridian', 'obsidian', 'aurora']
-BUILDINGS = U.vocab('BUILDING_TYPES'); SKILLS = U.vocab('SFX_SKILLS'); CINE = U.vocab('CINE_SFX'); GLOBAL = U.vocab('SFX_GLOBAL')
+BUILDINGS = U.vocab('BUILDING_TYPES'); SKILLS = U.vocab('SFX_SKILLS'); CINE = []; GLOBAL = U.vocab('SFX_GLOBAL')
 LEGACY = {'ack', 'select', 'shoot', 'bolt', 'rocket', 'shell', 'acid', 'melee', 'boom', 'boomBig'}
 ARMED = ['hub', 'turret']; HUMS = ['hub', 'generator']
 

@@ -1,5 +1,10 @@
 # Audio v4.0 (track T6): measured mix, spatial polish, music levels, optional voice pack
 
+> **v5 note (speech removed).** v5 has no spoken audio of any kind: `84_voice.js` (speech synthesis, character voices, barks, the announcer `say()`), the Voice slider and
+> toggle in Settings, the voice bus and the optional ElevenLabs voice-pack pipeline (`tools/voicepack`, its loader, its tests) were deleted. The campaign radio strip and the
+> dispatch cards are silent text (the toast area is an `aria-live` region for screen readers). Music, stingers and all sound effects are unchanged; the music bus still
+> ducks under alert-class sounds. Old saved settings with `voice` / `voiceVol` keys load without error (unknown keys are ignored). Sections 4 and 7 below describe v4 history.
+
 **Honesty rule.** Nobody has listened to any of this: not the author (an AI), not a human reviewer. Every claim below is a *measurement* made with the headless offline
 renderer (`audioRender` / `audioMixdown`, 44.1 kHz, deterministic) and a BS.1770-4 loudness meter that is itself verified (below). Whether it sounds good, on a phone speaker, is untested.
 
@@ -54,20 +59,6 @@ Not addressed: spectral holes / harsh 2-5 kHz: the 2-5 kHz energy share of the m
 
 ## 6. Synthesized speech
 Only mix-level work: the ducking and voice-bus trim above, a recorded-line path (below). `84_voice.js` already prefers `speechSynthesis` voices with per-character pitch/rate and always renders the blip stream; the text of a radio line is shown by the UI (`76_campaign_ui.js`) independent of audio, so subtitles are always on. `tests/audio/voice_gate.py --quick` has 18 failing checks both on the code before this track and after it (style/prosody/sweep measurements and live-timing checks; identical lists, diffed): they were **not** triaged further.
-
-## 7. Optional voice pack (offline; ElevenLabs or any recordings)
-* No runtime dependency, no key, no network call anywhere in the game or the tests. `tools/voicepack/` is a three-step offline pipeline - see `tools/voicepack/README.md`:
-```
-node   tools/voicepack/extract_lines.js                     # lines.json, voices.json, plan.json
-python3 tools/voicepack/render_elevenlabs.py --dry-run      # offline preview (no key needed)
-ELEVENLABS_API_KEY=... python3 tools/voicepack/render_elevenlabs.py --month 1
-python3 tools/voicepack/pack.py --raw voicepack_work/raw --out voicepack_work/voicepack --plan-licence free --zip
-```
-* Budget on the current story (STORY.radio + dispatch + films + barks, Overseer excluded): 20,223 characters in 478 lines = **3 months** of the ~10,000-credit free quota (1 credit/char assumed; verify). Priority tiers: hero/villain/narrator story beats, hero radio, other radio, other film lines, barks.
-* **Licence.** The ElevenLabs free plan has no commercial licence (and may require attribution): its output must not be shipped in a Google Play / App Store release and is not committed to this repository (`voicepack_work/`, `voicepack/` are git-ignored; `pack.py` refuses to write into `src dist docs tests tools`). A paid plan may allow it; check the current terms and your plan. `manifest.json` records only what you declare and always sets `commercial_use_verified:false`. API access on the free plan is disputed; **the API was never called** (the tests use a local fake server).
-* Runtime (84_voice.js, default OFF): Settings -> "Load voice pack..." (file picker for manifest.json + audio, or the .zip; File APIs only) or `?voicepack=voicepack/` on an http(s) page (same origin; without the parameter no request is made). Every file is SHA-256 verified (pure-JS implementation, tested against hashlib) before decoding; mismatches, unsafe paths, oversize or undecodable files are rejected individually. Lines are matched by `speaker|fnv1a(text)`, so an edited line falls back to the synthesized voice. Recorded lines play on the voice bus with the same ducking and `onEnd`/lip-sync contract; muted = not played.
-* Tests: `tests/audio/voicepack_pipeline.py` (extract/render/pack incl. cache+resume, budget and host guards, 429 retry, 401 scrub, key never in output, edited-line re-render) and `tests/e2e/e2e_audio_voicepack.py` (loader, fallback, ducking, real signal on the master meter, mutations: corrupted byte, tampered hash, path traversal, wrong format, zip, removal, zero requests).
-* Not done: persisting a loaded pack across sessions (IndexedDB); Safari/iOS Ogg-Opus support is version dependent (`pack.py --codec aac` makes m4a).
 
 ## 8. Gate triage (first run of `tests/audio/*`)
 * `selftest.js`, `bs1770_test.js`, `units_gate.py` (279 voices), `e2e_audio.py` voices: pass. `world_gate.py`: **fails, pre-existing**: building `die.aurora` voices of foundry/garrison/hub are not distinct enough (z 0.54 < tau) and `exchange.done.obsidian` peaks at 0.999 (a hand-built layer the TRIM does not scale); six other raw peaks over 0.98 were fixed with their TRIM entries.
