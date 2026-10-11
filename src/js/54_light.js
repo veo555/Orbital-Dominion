@@ -174,15 +174,15 @@ function fxEmit(dt,t){
   }
   for(const b of G.buildings){
     if(b.dead||!entVisible(b)||!onScreen(b.x,b.y,90))continue;
-    const w=b.w*TILE,h=b.h*TILE;
+    const w=b.w*TILE,h=b.h*TILE,sp=buildingSprite(b.type,G.teams[b.team].faction),lift=sp.hz*K3;
     if(!b.done){   // welding sparks on the build line + a little dust at the foot
-      if(R()<dt*16){const y=b.y+h/2-h*b.prog;ptAdd(3,b.x+(R()-.5)*w*.8,y,(R()-.5)*120,-30-R()*70,.25+R()*.2,0,'rgba(255,214,120,1)');}
+      if(R()<dt*16){const y=b.y+sp.y0+sp.h*(1-b.prog);ptAdd(3,b.x+(R()-.5)*w*.8,y,(R()-.5)*120,-30-R()*70,.25+R()*.2,0,'rgba(255,214,120,1)');}
       if(R()<dt*3)ptAdd(1,b.x+(R()-.5)*w,b.y+h/2,(R()-.5)*10,-4,.9,7+R()*5,null);
       continue;
     }
     const fr=b.hp/b.maxhp;
-    if(fr<.55){const rate=(.55-fr)*9;if(R()<rate*dt)ptAdd(1,b.x+(R()-.5)*w*.6,b.y+(R()-.5)*h*.5,(R()-.5)*10,-12,1.4+R(),9+R()*8,null);}
-    if(fr<.3&&R()<dt*(.3-fr)*60)ptAdd(2,b.x+(R()-.5)*w*.6,b.y+(R()-.5)*h*.5,(R()-.5)*20,-10,.6+R()*.5,10,gl('255,140,60'));
+    if(fr<.55){const rate=(.55-fr)*9;if(R()<rate*dt)ptAdd(1,b.x+(R()-.5)*w*.6,b.y-lift*.8+(R()-.5)*h*.4,(R()-.5)*10,-12,1.4+R(),9+R()*8,null);}
+    if(fr<.3&&R()<dt*(.3-fr)*60)ptAdd(2,b.x+(R()-.5)*w*.6,b.y-lift*.8+(R()-.5)*h*.4,(R()-.5)*20,-10,.6+R()*.5,10,gl('255,140,60'));
   }
   for(const u of G.units){
     if(u.dead||u.hidden||u.team>1||!entVisible(u)||!onScreen(u.x,u.y,40))continue;

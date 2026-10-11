@@ -117,7 +117,11 @@ const RB={
  turret(B,M,f,w,h){B.ex(Array.from({length:8},(_,i)=>[Math.cos(i/8*TAU+TAU/16)*27,Math.sin(i/8*TAU+TAU/16)*27]).flat(),0,6,M.d,.9);B.cy(0,0,6,20,17,5,12,M.h);B.cy(0,0,11,15,13,2,12,M.t);
   for(let i=0;i<8;i++){const a=i/8*TAU;B.box(Math.cos(a)*24,Math.sin(a)*24,6,4,4,3,M.k);}if(f==='obsidian')for(let i=0;i<4;i++){const a=i/4*TAU+TAU/8;B.cy(Math.cos(a)*22,Math.sin(a)*22,6,2,0,10,5,M.ae);}}
 };
-const RN={post(B,M){B.fr(0,0,0,58,58,56,56,4,M.d);B.fr(0,-8,4,50,34,46,30,14,M.br);for(let i=0;i<6;i++)B.fr(-22.5+i*9,-8,18,9,34,9,28,5,i&1?M.w:B.m('#a8343b',.4,30),0,-2);
+const CRY=[[[-7,3,6,18,-.15],[3,5,7,24,.1],[0,-4,5,13,0]],[[-8,2,6,16,-.2],[2,5,7.5,22,.1],[9,0,5,12,.25],[-2,-5,4.5,11,0]],[[-5,3,6.5,17,-.1],[4,4,8,26,.12],[-11,-1,5,11,-.25]]];
+function crystalMesh(B,M,v){const q=B.m('#ffc23a',1,60),q2=B.m('#fff0a8',1,70),core=B.m('#ffcf5a',0,1,1);
+  CRY[v].forEach(([x,y,w,h,l],i)=>{x*=1.5;y*=1.5;w*=1.6;h*=1.7;const m=i&1?q2:q,lx=l*h;B.fr(x,y,0,w,w*.8,w*.7,w*.55,h*.62,m,lx*.6,0);B.fr(x+lx*.6,y,h*.62,w*.7,w*.55,.4,.3,h*.38,m,lx*.4,0);B.sp(x+lx*.8,y,h*.55,1.6,1.4,3,5,core);});
+  B.sp(0,0,0,12,8,2,6,B.m('#3a2a14',.2,10),true);}
+const RN={cr0:(B,M)=>crystalMesh(B,M,0),cr1:(B,M)=>crystalMesh(B,M,1),cr2:(B,M)=>crystalMesh(B,M,2),post(B,M){B.fr(0,0,0,58,58,56,56,4,M.d);B.fr(0,-8,4,50,34,46,30,14,M.br);for(let i=0;i<6;i++)B.fr(-22.5+i*9,-8,18,9,34,9,28,5,i&1?M.w:B.m('#a8343b',.4,30),0,-2);
   B.fr(-12,16,4,14,12,12,10,12,M.br);B.fr(10,18,4,12,10,10,9,9,M.br);B.sp(-12,16,16,6,6,3,6,M.gd,true);B.sp(10,18,13,4,4,3,5,B.m('#6df0c8',.5,30));B.cy(24,-24,4,.9,.9,24,5,M.s);B.fr(24,-24,22,1,12,1,6,6,M.gd,6,0);B.sp(0,0,22,3,3,3,5,M.g);},
  tower(B,M){B.cy(0,0,0,29,26,6,14,M.d);B.cy(0,0,6,22,18,10,12,M.h);B.cy(0,0,16,14,10,14,10,M.d);B.sp(0,0,30,9,9,8,8,M.tl,true);B.sp(0,0,32,4,4,4,6,M.g);for(let i=0;i<4;i++){const a=i/4*TAU;B.fr(Math.cos(a)*22,Math.sin(a)*22,0,5,5,2,2,16,M.s);B.sp(Math.cos(a)*22,Math.sin(a)*22,16,2.4,2.4,2.4,5,M.g);}}};
 

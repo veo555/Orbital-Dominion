@@ -37,23 +37,12 @@ function drawNeutralLive(g,n,t){
 }
 
 /* -------------------------------- resources ---------------------------- */
-function crystalSprite(v){
-  const k='c|'+v;if(spriteCache[k])return spriteCache[k];
-  const cvs=mkCanvas(64*SC,64*SC),g=cvs.getContext('2d');g.translate(32*SC,36*SC);g.scale(SC,SC);g.lineJoin='round';
-  const sets=[[[-8,6,-11,-8,-4,-19,0,-6],[2,7,0,-13,6,-23,11,-4],[-1,8,-4,-3,3,-10,9,3]],
-    [[-9,5,-8,-11,-2,-17,1,-4],[3,7,2,-9,8,-20,12,-1],[-3,8,-6,0,-2,-8,4,4],[8,7,10,0,14,-6,15,5]],
-    [[-6,6,-10,-6,-5,-15,-1,-3],[1,7,0,-15,5,-24,9,-5],[-12,8,-13,0,-9,-6,-6,5]]][v%3];
-  g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(2,8,16,6,0,0,TAU);g.fill();
-  sets.forEach((p,i)=>{const hu=40+i*5;g.fillStyle=lgr(g,p[0],p[1],p[4],p[5],'hsl('+hu+',95%,70%)','hsl('+(hu-6)+',90%,42%)');
-    g.beginPath();g.moveTo(p[0],p[1]);g.lineTo(p[2],p[3]);g.lineTo(p[4],p[5]);g.lineTo(p[6],p[7]);g.closePath();g.fill();g.strokeStyle='rgba(60,30,0,.55)';g.lineWidth=.9;g.stroke();
-    g.fillStyle='rgba(255,255,255,.42)';g.beginPath();g.moveTo(p[2],p[3]);g.lineTo(p[4],p[5]);g.lineTo((p[4]+p[2])/2+1.8,(p[5]+p[3])/2+7);g.closePath();g.fill();});
-  return spriteCache[k]={cv:cvs};
-}
+function crystalSprite(v){return neutralSprite('cr'+(v%3));}
 function drawCrystal(g,r,t){
   const f=0.55+0.45*Math.min(1,r.amount/r.max),sp=crystalSprite(Math.floor(r.seed)%3);
   g.save();g.translate(r.x,r.y);
   g.globalAlpha=.5;circ(g,0,-4,23*f,rgr(g,0,-4,2,23*f,'rgba(255,205,90,.45)','rgba(255,205,90,0)'));g.globalAlpha=1;
-  g.scale(f,f);g.drawImage(sp.cv,-32,-36,64,64);
+  g.scale(f,f);if(Q.shd>0)drawBuildingShadow(sp,0,0);g.drawImage(sp.cv,sp.x0,sp.y0,sp.w,sp.h);drawEmissive(sp,sp.x0,sp.y0,sp.w,sp.h,.8);
   const s=(Math.sin(t*2.2+r.seed*5)+1)/2;if(s>0.82){g.globalAlpha=(s-0.82)*5;const sx=Math.sin(r.seed*9)*7,sy=-13+Math.cos(r.seed*7)*5;line(g,sx-4,sy,sx+4,sy,'#fff',1.4);line(g,sx,sy-4,sx,sy+4,'#fff',1.4);g.globalAlpha=1;}
   g.restore();
 }

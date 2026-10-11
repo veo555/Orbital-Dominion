@@ -149,7 +149,7 @@ function drawBuilding(b,t){
     if(b.type==='turret'){const hd=partSprite('turrethead',f,b.ang||0);ctx.drawImage(hd.cv,hd.x0,hd.y0-8*K3,hd.w,hd.h);drawEmissive(hd,hd.x0,hd.y0-8*K3,hd.w,hd.h,.8);}
     const dmg=1-b.hp/b.maxhp;
     if(dmg>0.35){const k=(dmg-.35)/.65;ctx.globalAlpha=.14+.34*k;ctx.drawImage(sp.dk||(sp.dk=silMask(sp,'#0a0604')),sp.x0,sp.y0,sp.w,sp.h);ctx.globalAlpha=1;
-      ctx.save();ctx.translate(0,-sp.hz*K3*.7);
+      ctx.save();ctx.translate(0,-sp.hz*K3*.4);
       const crk=()=>{ctx.beginPath();const sd=b.id*7;for(let i=0;i<3+Math.floor(dmg*4);i++){const x=Math.sin(sd+i*2.3)*w*.36,y=Math.cos(sd*1.3+i*1.9)*h*.36;ctx.moveTo(x,y);ctx.lineTo(x+Math.sin(i*4+sd)*9,y+Math.cos(i*3+sd)*9);ctx.lineTo(x+Math.sin(i*5+sd)*14,y+Math.cos(i*2+sd)*14);}ctx.stroke();};
       ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=1.4;crk();
       if(dmg>0.55){ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,'+(110+60*Math.sin(t*17+b.id))+',40,'+(0.35+0.5*(dmg-0.55)/0.45)+')';ctx.lineWidth=1.6;crk();ctx.globalCompositeOperation='source-over';}   // glowing cracks that flicker as it burns down
