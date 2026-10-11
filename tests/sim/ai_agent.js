@@ -66,6 +66,8 @@ function noPeek(src, label, expectSame) {
   const A = think(false), B = think(true);
   if (expectSame) {
     ok(A.log.length >= 5, `${label}: the AI acted in the probe (${A.log.length} commands in ${K} thinks) - not a vacuous comparison`);
+    const pl = JSON.parse(A.st).pl;
+    ok(pl && pl.n > 0 && pl.root, `${label}: the macro planner ran in the probe (${pl ? pl.n : 0} decisions so far; its root state and determinised worlds are part of the compared AI state)`);
     ok(B.info.moved + B.info.added + B.info.hurt > 10 && B.info.leaked === 0, `${label}: hidden world scrambled (${B.info.moved} enemy units moved in fog, ${B.info.added} added, ${B.info.hurt} damaged, enemy bank/era/upgrades changed; none became visible)`);
     const firstDiff = A.log.findIndex((x, i) => x !== B.log[i]);
     ok(A.log.length === B.log.length && firstDiff < 0, `${label}: identical command stream with and without the hidden changes` + (firstDiff >= 0 ? ` (first difference at #${firstDiff}: ${A.log[firstDiff]} vs ${B.log[firstDiff]})` : ''));
@@ -79,8 +81,10 @@ noPeek(undefined, 'no-peek', true);
 {
   const d1 = mutatedTree([['if(!seen(team,u))continue;', '']]);
   const d2 = mutatedTree([['function aiEnemyRecs(ai,maxAge,combatOnly){const out=[]', 'function aiEnemyRecs(ai,maxAge,combatOnly){const out=[];for(const u of G.units)if(!u.dead&&u.team===ai.enemy&&!u.def.worker&&!u.def.trade)out.push({type:u.type,x:u.x,y:u.y,hp:u.hp,mhp:u.maxhp,t:G.time});return out;const out0=[]']]);
-  try { noPeek(d1, 'mutation "no seen() gate"', false); noPeek(d2, 'mutation "army estimate read from G.units"', false); }
-  finally { fs.rmSync(d1, { recursive: true, force: true }); fs.rmSync(d2, { recursive: true, force: true }); }
+  // the planner's determinisation must sample from beliefs only: a planner whose enemy point estimate reads the true enemy army / bank is caught
+  const d3 = mutatedTree([['const eA=Math.max(known,th.prior*myVal*(0.4+0.6*stale));', 'let eA=G.teams[ai.enemy].c;for(const u of G.units)if(!u.dead&&u.team===ai.enemy&&!u.def.worker)eA+=aiVal(u.type);']]);
+  try { noPeek(d1, 'mutation "no seen() gate"', false); noPeek(d2, 'mutation "army estimate read from G.units"', false); noPeek(d3, 'mutation "planner world sampled from the true enemy army"', false); }
+  finally { for (const d of [d1, d2, d3]) fs.rmSync(d, { recursive: true, force: true }); }
 }
 
 /* ---------------------------------------------------------------- 2. seen-ever invariant */

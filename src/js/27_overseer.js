@@ -240,6 +240,7 @@ const DOMAINS=[
   {id:'trade',name:'Trade',d:'Exchange, freighters and the market.'},
   {id:'labor',name:'Labour',d:'Hires freelancers and takes jobs from the board when the margin is good.'}];
 function ovMode(dom){return G.sw.dom[dom];}
+function ovWhy(kind,verb){return aiAdviceWhy(G.sw.adv,kind,verb);}
 function ovSave(){const O=G.sw.ov;if(G.time>O.saveUntil||!O.saveUntil)O.saveStart=O.saveStart&&G.time-O.saveUntil<6?O.saveStart:G.time;O.saveUntil=G.time+4;}
 function ovSaving(){const O=G.sw.ov;return O.saveUntil>G.time&&G.time-O.saveStart<25;}
 function ovAct(dom,key,text,fn,extra){
@@ -247,7 +248,7 @@ function ovAct(dom,key,text,fn,extra){
   if(mode==='act'){
     const ok=fn();if(ok){ovLog(dom,text);S.ov.nAct=(S.ov.nAct||0)+1;}return ok;}
   let p=S.props.find(x=>x.key===key);
-  if(p){p.fn=fn;p.text=text;p.seen=G.time;}
+  if(p){p.fn=fn;p.text=text;p.seen=G.time;if(extra!==undefined)p.extra=extra;}
   else{p={id:S.propSeq++,dom,key,text,fn,seen:G.time,t:G.time,extra:extra||''};S.props.push(p);
     if(!S.toldProps&&SET.swarmHints&&G.time>30){S.toldProps=1;toast('The Overseer has a suggestion — press K to review it.','good');}}
   return false;
@@ -305,7 +306,7 @@ function ovTech(c){
   const hub0=hubs.find(h=>h.queue.length===0)||hubs[0];
   if(hub0&&T.era<3&&time>=O.eraAt[T.era+1]&&(!bb.threat||bb.threatN<=5||time>=O.eraAt[T.era+1]+60)){
     const E=ERAS[T.era+1],gate=(T.era===1?c.doneN('garrison')>0:c.doneN('armory')>0)&&!B.some(x=>x.queue.some(q=>q.k==='era'));
-    if(gate){if(afford(T,E.cost))ovAct('tech','era','Advance to Era '+E.rom+' — '+E.name,()=>queueEra(hub0));else if(T.c<E.cost.c)ovSave();}}
+    if(gate){if(afford(T,E.cost))ovAct('tech','era','Advance to Era '+E.rom+' — '+E.name,()=>queueEra(hub0),ovWhy('tech','advancing the era now'));else if(T.c<E.cost.c)ovSave();}}
   for(const b of B){
     if(!b.done||b.queue.length)continue;
     if(b.type==='armory'){
@@ -408,7 +409,8 @@ function ovBuildings(c){
     if(!afford(T,bc)){if(T.c>=bc.c)continue;   // only ether is short: crystals saved up now would sit idle, so keep spending them elsewhere
       ovSave();break;}
     const label='Build '+(type==='hub'?'an expansion Hub':'a '+d.name);
-    if(ovAct(dom,'b:'+type,label+' — '+bCost(0,type).c+'◆'+(bCost(0,type).e?' '+bCost(0,type).e+'e':''),()=>ovBuild(type)))break;
+    const why=type==='hub'?ovWhy('expand','expanding now'):type==='turret'?ovWhy('defend','fortifying'):(type==='garrison'||type==='foundry'||type==='airfield')?ovWhy('mass','more production'):undefined;
+    if(ovAct(dom,'b:'+type,label+' — '+bCost(0,type).c+'◆'+(bCost(0,type).e?' '+bCost(0,type).e+'e':''),()=>ovBuild(type),why))break;
     if(G.sw.dom[dom]==='advise')break;}
 }
 function S_off(dom){return G.sw.dom[dom]==='off';}
@@ -469,7 +471,7 @@ function ovWar(c){
       ovAct('army','assault','Launch assault wave '+(O.wave+1)+' with '+armySup+' supply',()=>{
         const sorted=autoArmed.slice().sort((a,b)=>dpsOf(b)*b.hp-dpsOf(a)*a.hp),keep=Math.max(2,Math.floor(sorted.length*0.2));
         sorted.forEach((u,i)=>{if(i>=sorted.length-keep){u.ag.role='guard';u.ag.keep=G.time+120;return;}if(u.ag.role!=='assault'){u.ag.role='assault';u.ag.roleT=time;agSet(u,{t:'idle'});}});
-        O.wave++;bb.assault=null;return true;});}}
+        O.wave++;bb.assault=null;return true;},ovWhy('attack','attacking now'));}}
   if(bb.assault&&bb.assault.go&&bb.assault.tgt===null&&!G.buildings.some(b=>!b.dead&&b.team===1))ovDisband(S,'Enemy eliminated');
 }
 /* ------------------------------- trade --------------------------------- */
@@ -634,6 +636,8 @@ function ovStep(dt){
   O.t+=dt;if(O.t<1.5)return;O.t=0;O.t3++;
   ovPurge();
   const c=ovCtx();if(!c)return;
+  // advisor (42_ai_agent.js aiAdvise): fog-honest beliefs + V(s) + a small planner search, every 3 s; explains proposals, never acts
+  if(O.t3%2===1){if(!S.adv)S.adv=aiAdvisorMake(0);aiAdvise(S.adv);}
   const m=S.dom;
   if(m.supply!=='off'||m.eco!=='off')ovRescue(c);
   if(m.supply!=='off')ovSupply(c);
