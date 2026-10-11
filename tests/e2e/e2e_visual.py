@@ -1,7 +1,7 @@
 """Visual gate for the v4.0 graphics (Playwright + Chromium). Exit code != 0 on failure.
    OD_URL=file:///.../dist/orbital_dominion_v4.html python3 tests/e2e/e2e_visual.py     (about 40 s)
 
-Every assertion compares real canvas pixels and was mutation-checked (see docs/GRAPHICS_V4.md, 'Mutation proof'):
+Every assertion compares real canvas pixels and was mutation-checked (see docs/GRAPHICS_V5.md, 'Mutation proof'):
   * night: ground next to a lit hub is brighter than ground far from any light (kills: drawLighting / collectLights)
   * day: the sun shadow darkens the ground beside a building vs shd=0 (kills: drawBuildingShadow)
   * damage: the same building at 15 % hp differs from full hp inside its footprint (kills: the soot / glowing-crack pass)

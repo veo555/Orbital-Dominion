@@ -167,8 +167,10 @@ function unitSprite(type,f,ang){
 }
 /* called once per frame after drawing: when the frame was cheap, bake the next missing facing of any type that has been seen */
 function bakeIdle(){
-  if(bakeMs>3||!idleKeys.length||(Q.msAvg&&Q.msAvg>24))return;
+  if(bakeMs>3||(Q.msAvg&&Q.msAvg>24))return;
   const nb=nbins(),sc=Math.max(2,SC-1);
+  if(G&&G.teams&&!idleKeys.length){   // nothing left to turn: pre-bake the buildings of both factions one per idle frame, so placing one never hitches
+    for(const t of G.teams){const f=t.faction;for(const k in BDEF){if(!spriteCache['b|'+k+'|'+f]){buildingSprite(k,f);return;}}}return;}
   for(let i=0;i<idleKeys.length;i++){const[t,f]=idleKeys[i].split('|');
     for(let b=0;b<nb;b++){const k='u|'+t+'|'+f+'|'+nb+'|'+b;if(spriteCache[k])continue;
       const sp=spriteCache[k]=lruTouch(bakeSprite('u',t,f,b/nb*TAU,sc));lruAdd(sp);return;}
@@ -180,11 +182,11 @@ function partSprite(type,f,ang){   // turret heads etc.: same facing bins as uni
 }
 function buildingSprite(type,f){
   const k='b|'+type+'|'+f;let sp=spriteCache[k];if(sp)return lruTouch(sp);
-  const d=BDEF[type];sp=spriteCache[k]=lruTouch(bakeSprite('b',type,f,0,Math.min(SC,3),d.w*TILE,d.h*TILE));lruAdd(sp);return sp;
+  const d=BDEF[type];sp=spriteCache[k]=lruTouch(bakeSprite('b',type,f,0,Math.max(2,SC-1),d.w*TILE,d.h*TILE));lruAdd(sp);return sp;
 }
 function neutralSprite(type){
   const k='n|'+type;let sp=spriteCache[k];if(sp)return lruTouch(sp);
-  sp=spriteCache[k]=lruTouch(bakeSprite('n',type,'neutral',0,Math.min(SC,3)));lruAdd(sp);return sp;
+  sp=spriteCache[k]=lruTouch(bakeSprite('n',type,'neutral',0,Math.max(2,SC-1)));lruAdd(sp);return sp;
 }
 
 /* test-side hook (same convention as window.__RTS in 90_main.js): lets tests/e2e/e2e_visual.py reach the lighting / bake internals. Not used by the game. */

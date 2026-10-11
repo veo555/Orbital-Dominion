@@ -6,7 +6,7 @@
      2. sun-driven soft shadows: baked blurred silhouettes, direction and length follow the in-game time of day.
      3. a small render-only particle pool (projectile trails, impact sparks, smoke, embers, construction welding).
      4. bloom: downscaled + squared bright pass, added back with 'lighter' (tiered by Q.bloom).
-   docs/GRAPHICS_V4.md has the maths.
+   docs/GRAPHICS_V5.md has the maths.
    ========================================================================= */
 const LT={n:0,cap:288,x:new Float32Array(288),y:new Float32Array(288),r:new Float32Array(288),a:new Float32Array(288),p:new Float32Array(288),s:new Array(288),
   amb:[255,255,255],ambStr:'rgb(255,255,255)',nd:0,sx:0,sy:1,sl:1,sa:.3,sp:{},puff:null,ring:null,
