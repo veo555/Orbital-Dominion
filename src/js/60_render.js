@@ -5,7 +5,7 @@
 let cv=null,ctx=null,mm=null,mmCtx=null,VW=1280,VH=720,DPR=1;
 const cam={x:0,y:0,z:1,tz:1};
 const FQ=4; // fog sub-resolution per tile
-let fogCv=null,fogCtx=null,fogImg=null,fogA=null,fogN=null,fogAcc=0,lightCv=null,lightCtx=null;
+let fogCv=null,fogCtx=null,fogImg=null,fogA=null,fogS=null,fogT=null,fogN=null,fogAcc=0,lightCv=null,lightCtx=null;
 
 function viewBottom(){return VH-BOTTOM;}
 function clampCam(){
@@ -62,7 +62,7 @@ function sizeMinimap(){   // backing store = on-screen size x DPR (drawMinimap d
 /* ------------------------------- fog ---------------------------------- */
 function initFog(){
   fogCv=mkCanvas(MW*FQ,MH*FQ);fogCtx=fogCv.getContext('2d');fogImg=fogCtx.createImageData(MW*FQ,MH*FQ);
-  fogA=new Float32Array(NN).fill(0.97);fogAcc=1;
+  fogA=new Float32Array(NN).fill(0.97);fogS=new Float32Array(NN);fogT=new Float32Array(NN);fogAcc=1;
   ptReset();
   /* two octaves of value noise that roughen the fog boundary (a fixed table: the edge shimmers with the map, never with time) */
   const n=makeNoise(mulberry32(7771)),W=MW*FQ,H=MH*FQ;fogN=new Float32Array(W*H);
@@ -76,11 +76,14 @@ function updateFog(dt,force){
   fogAcc+=dt;
   if(!(changed||force)||fogAcc<0.05)return;
   fogAcc=0;const W=MW*FQ,data=fogImg.data;
+  fogS.set(fogA);for(let pass=0;pass<2;pass++){   // two [1 2 1] blurs: the vision circle is tile-quantised, the blur turns its stair steps into a soft falloff
+    for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const i=y*MW+x;fogT[i]=(fogS[i-(x>0?1:0)]+2*fogS[i]+fogS[i+(x<MW-1?1:0)])*.25;}
+    for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const i=y*MW+x;fogS[i]=(fogT[i-(y>0?MW:0)]+2*fogT[i]+fogT[i+(y<MH-1?MW:0)])*.25;}}
   for(let py=0;py<MH*FQ;py++){
     const fy=(py+.5)/FQ-.5,y0=Math.floor(fy),ty=fy-y0,y1=Math.min(MH-1,y0+1),yy0=Math.max(0,y0);const sy=ty*ty*(3-2*ty);
     for(let px=0;px<W;px++){
       const fx=(px+.5)/FQ-.5,x0=Math.floor(fx),tx=fx-x0,x1=Math.min(MW-1,x0+1),xx0=Math.max(0,x0),sx=tx*tx*(3-2*tx);
-      const a=fogA[yy0*MW+xx0],b=fogA[yy0*MW+x1],c=fogA[y1*MW+xx0],dd=fogA[y1*MW+x1];
+      const a=fogS[yy0*MW+xx0],b=fogS[yy0*MW+x1],c=fogS[y1*MW+xx0],dd=fogS[y1*MW+x1];
       let val=(a+(b-a)*sx)*(1-sy)+(c+(dd-c)*sx)*sy;const o=(py*W+px)*4,edge=4*val*(1-val);   // edge: 0 in clear / fully fogged areas, 1 on the boundary
       val=val+(fogN[py*W+px]-.5)*.42*edge;val=val<0?0:val>1?1:val;
       data[o]=5+14*edge;data[o+1]=8+22*edge;data[o+2]=18+40*edge;data[o+3]=val*255;}}
@@ -284,7 +287,7 @@ function render(t,dt){
   for(const n of G.neutrals){if(!onScreen(n.x,n.y,60))continue;if(!ui.demo&&G.vis[0][(n.ty)*MW+n.tx]===0)continue;
     const sp=neutralSprite(n.type);ctx.save();ctx.translate(n.x,n.y);if(Q.shd>0)drawBuildingShadow(sp,64,64);else{ctx.fillStyle='rgba(0,0,0,.3)';rrp(ctx,-26,-20,60,60,10);ctx.fill();}ctx.drawImage(sp.cv,-32,-32,64,64);drawNeutralLive(ctx,n,t);
     if(ui.selSet.has(n)||ui.hover===n){ctx.strokeStyle=ui.selSet.has(n)?'#ffe28a':'rgba(255,226,138,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,36,0,TAU);ctx.stroke();}ctx.restore();}
-  drawFxUnder(t);drawOrders();swDrawWorld(t);
+  drawPools(t);drawFxUnder(t);drawOrders();swDrawWorld(t);
   const bl=[];for(const b of G.buildings)if(!b.dead&&entVisible(b))bl.push(b);bl.sort((a,b)=>a.y-b.y);for(const b of bl)drawBuilding(b,t);
   const gu=[],au=[];
   for(const u of G.units){if(u.dead||u.hidden||!onScreen(u.x,u.y,50)||!entVisible(u))continue;(u.flying?au:gu).push(u);}
