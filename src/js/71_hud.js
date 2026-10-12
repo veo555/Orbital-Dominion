@@ -101,11 +101,12 @@ function renderInfo(){
       if(own&&e.done&&e.queue.length){h+='<div class="q">';
         for(let i=0;i<5;i++){const q=e.queue[i];
           if(!q)h+='<div class="qi e"></div>';
-          else{const ic=q.k==='u'?'u:'+q.id+':'+T.faction:q.k==='r'?'g:'+TECH[q.id].icon:q.k==='era'?'g:era':'u:'+FACTIONS[T.faction].hero+':'+T.faction;
+          else{const ic=q.k==='u'?'u:'+q.id+':'+T.faction:q.k==='r'?'g:'+TECH[q.id].icon:q.k==='era'?'g:era':q.k==='fort'?'g:fortress':'u:'+FACTIONS[T.faction].hero+':'+T.faction;
             h+='<div class="qi" data-q="'+i+'" title="Click to cancel"><img src="'+iconURL(ic)+'">'+(i===0?'<i style="height:'+(q.t/q.total*100)+'%"></i>':'')+'</div>';}}
         h+='<div class="qt">'+(e.queue[0]?Math.max(0,Math.ceil((e.queue[0].total-e.queue[0].t)/moraleMul(0)))+'s':'')+'</div></div>';}
       if(own&&e.done&&e.rally)h+='<div class="ds">Rally point set'+(e.rally.res?' → '+(e.rally.res.type==='crystal'?'crystal patch (auto-mine)':'ether geyser (auto-extract)'):e.rally.post?' → Trading Post':'')+'</div>';
     }
+    h+=fortInfo(e);   // energy, Fortress, gate mode, cargo, mines, battery, radar (68_fortify_ui.js)
     h+='</div>'+(own&&e.kind==='unit'?swInfoBlock(e):'')+'</div>';el.innerHTML=h;return;}
   // multi selection
   const counts={};for(const e of sel)counts[e.def.name]=(counts[e.def.name]||0)+1;
@@ -217,6 +218,7 @@ function hudUpdate(dt){
     const en=G.buildings.filter(b=>!b.dead&&b.team===1).length;setTxt('vsTxt',factionName(1)+' · '+DIFF_NAMES[G.diff]);
   }
   if(swui.hud){swui.hud=false;swHud();}
+  fortHud();
   if(swui.force&&ui.panel==='swarm')swRender();
   setTxt('clock',fmtTime(G.time));
   infoTimer-=dt;if(ui.infoDirty||infoTimer<=0){infoTimer=0.22;renderInfo();}

@@ -120,7 +120,7 @@ function setRally(b,wx,wy,ent){
     if(ent.kind==='building'&&ent.team===0&&ent.type==='siphon'&&ent.res)ent=ent.res;
     if(ent.kind==='res'&&(ent.type==='crystal'||geyserOK(ent,0)))r={x:ent.x,y:ent.y,res:ent,post:null};
     else if(ent.kind==='neutral'&&ent.type==='post')r={x:ent.x,y:ent.y,res:null,post:ent};}
-  b.rally=r;ping(r.x,r.y,'#7cffb0');sfx('click');
+  b.rally=fortRally(r,ent);ping(r.x,r.y,'#7cffb0');sfx('click');
 }
 function gatherOrder(u,res){return{t:'gather',res,st:u.carry>0&&u.carryType===(res.type==='crystal'?'c':'e')?'ret':'go',hx:res.x,hy:res.y};}
 function contextCommand(wx,wy,shift){
@@ -129,6 +129,7 @@ function contextCommand(wx,wy,shift){
   if(own[0].kind==='building'){for(const b of own)if(b.kind==='building'&&b.done&&(b.def.prod||prodList(b).length))setRally(b,wx,wy,ent);return;}
   const units=own.filter(e=>e.kind==='unit');if(!units.length)return;
   const workers=units.filter(u=>u.def.worker),fighters=units.filter(u=>!u.def.noWeapon&&!u.def.worker),freighters=units.filter(u=>u.def.trade);
+  if(fortContext(ent,units,shift))return;   // load into a Bunker / Dropship, Dropship pick-up (68_fortify_ui.js)
   // an own finished Ether Siphon means "work the geyser underneath" — this is the ether-harvest fix
   if(ent&&ent.kind==='building'&&ent.team===0&&ent.type==='siphon'&&ent.done&&ent.res&&!ent.res.dead&&workers.length)ent=ent.res;
   if(ent&&ent.kind==='res'){
@@ -157,12 +158,12 @@ function contextCommand(wx,wy,shift){
 function beginTarget(kind){ui.target={kind};ui.place=null;}
 function beginPlace(id){
   const r=reqBuild(0,id);if(!r.ok){msg(0,r.why);return;}
-  ui.place={id,tx:0,ty:0,ok:false,why:''};ui.target=null;
+  ui.place={id,tx:0,ty:0,ok:false,why:''};ui.target=null;fortPlaceInit(ui.place);
   if(ui.touchMode){ui.mx=VW/2;ui.my=TOPBAR+(VH-TOPBAR-BOTTOM)/2;}
   updatePlaceGhost();
 }
 function updatePlaceGhost(){
-  const p=ui.place;if(!p)return;const d=BDEF[p.id],w=s2w(ui.mx,ui.my),wx=w.x,wy=w.y;
+  const p=ui.place;if(!p||fortGhost(p))return;const d=BDEF[p.id],w=s2w(ui.mx,ui.my),wx=w.x,wy=w.y;   // fortGhost: wall lines, gate orientation
   if(d.onGeyser){let best=null,bd=3.2*TILE;for(const r of G.res){if(r.dead||r.type!=='geyser')continue;const dd=hyp(r.x-wx,r.y-wy);if(dd<bd){bd=dd;best=r;}}
     if(best){p.tx=best.tx;p.ty=best.ty;p.ok=canPlace(0,p.id,p.tx,p.ty);}else{p.tx=Math.round(wx/TILE-1);p.ty=Math.round(wy/TILE-1);p.ok=false;}}
   else{p.tx=Math.round(wx/TILE-d.w/2);p.ty=Math.round(wy/TILE-d.h/2);p.ok=canPlace(0,p.id,p.tx,p.ty);}
@@ -172,7 +173,7 @@ function updatePlaceGhost(){
     p.why=d.onGeyser?'Needs an ether geyser':(unexp?'Unexplored':ramp?'Cannot build on a ramp':step?'Uneven ground':'Blocked');}
 }
 function tryPlace(shift){
-  const p=ui.place;if(!p)return;
+  const p=ui.place;if(!p||fortTryPlace(shift))return;
   if(!p.ok){msg(0,'Cannot build here: '+(p.why||'blocked').toLowerCase());return;}
   const ws=ownUnits().filter(u=>u.def.worker);if(!ws.length){ui.place=null;return;}
   const d=BDEF[p.id],cx=(p.tx+d.w/2)*TILE,cy=(p.ty+d.h/2)*TILE;
@@ -207,10 +208,10 @@ function buildCommands(){
   const mk=(i,o)=>{o.hk=SLOT_KEYS[i];c[i]=o;};
   if(first.kind==='unit'){
     const units=ownUnits(),act=units.find(u=>u.type===ui.activeType)||units[0],d=act.def,hasWorker=units.some(u=>u.def.worker);
-    if(ui.menu==='build'||ui.menu==='build2'){
-      const page=BUILD_PAGES[ui.menu==='build'?0:1];
+    if(ui.menu==='build'||ui.menu==='build2'||ui.menu==='build3'){
+      const page=BUILD_PAGES[ui.menu==='build'?0:ui.menu==='build2'?1:2];
       page.forEach((id,i)=>{const bd=BDEF[id],r=reqBuild(0,id),cost=bCost(0,id);
-        mk(i,{icon:'b:'+id+':'+T.faction,name:bd.name,cost,time:bd.time,tip:bd.desc,ok:r.ok,why:r.why,supply:bd.supply?'+'+bd.supply+' supply':'',def:bd,isB:true,run:()=>beginPlace(id)});});
+        mk(i,{icon:'b:'+id+':'+T.faction,name:bd.name+(bd.line?' (per segment)':''),cost,time:bd.time,tip:bd.desc,ok:r.ok,why:r.why,supply:bd.supply?'+'+bd.supply+' supply':'',def:bd,isB:true,run:()=>beginPlace(id)});});
       mk(11,{icon:'g:back',name:'Back',tip:'Return to unit commands.',ok:true,run:()=>{ui.menu=null;ui.cmdDirty=true;}});
       return c;}
     if(ui.menu==='roles'&&G.sw){
@@ -254,6 +255,7 @@ function buildCommands(){
       mk(11,{icon:'g:agent',name:allIn?'Release Agents':'Enroll as Agents',tip:allIn?'Return these units to plain orders. They keep their level and gear.':'Make these units autonomous agents: they choose and carry out work themselves (mine, build, guard, scout…), earn a wallet, level up and buy gear. J switches the whole Swarm AI on or off; Enter lets you instruct the Overseer in words.',ok:true,badge:enr.length||'',run:()=>swEnrollToggle(units)});
       if(enr.length&&!c[7])mk(7,{icon:'g:roles',name:'Assign Role',tip:'Give the agents a specific job: Miner, Etherworker, Builder, Guard, Patrol, Hunter, Raider, Escort, Medic… or leave it to the Overseer.',ok:true,run:()=>{ui.menu='roles';ui.cmdDirty=true;}});
     }
+    fortCmdUnits(c,mk,units,act,T);   // Defence page, Dropship commands (68_fortify_ui.js)
     return c;
   }
   if(first.kind!=='building')return c;
@@ -280,6 +282,7 @@ function buildCommands(){
   if(b.type==='exchange')mk(i++,{icon:'g:market',name:'Open Market',tip:'Trade crystals and ether on the shared market (M). Prices follow a random walk; your own trades move the price.',ok:true,run:()=>togglePanel('eco')});
   if(b.type==='habitat'||b.type==='forum')mk(i++,{icon:'g:tax',name:'Economy Panel',tip:'Open the economy panel: morale, taxes and colonists (M).',ok:true,run:()=>togglePanel('eco')});
   if(b.queue.length)mk(9,{icon:'g:cancel',name:'Cancel Last',tip:'Cancel the last queued item (full refund).',ok:true,run:()=>{const bb=ownBuildings().filter(x=>x.queue.length).sort((x,y)=>y.queue.length-x.queue.length)[0];if(bb)cancelQueue(bb,bb.queue.length-1);}});
+  fortCmdBuilding(c,mk,b,T);   // Scanner Sweep, Fortress, gate modes, Bunker unload / salvage (68_fortify_ui.js)
   if(prod.length||b.type==='hub')mk(10,{icon:'g:rally',name:'Set Rally Point',tip:'New units go here. Right-click does this too — rally on a crystal or an Ether Siphon and Haulers start mining automatically.',ok:true,run:()=>beginTarget('rally')});
   return c;
 }

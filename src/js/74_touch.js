@@ -88,13 +88,14 @@ function tpPinchMove(){
 /* what a tap means: select, or act like a right-click */
 function isContextTarget(ent,units){
   if(!ent||ent.team!==0)return false;
+  if(fortContextTarget(ent,units))return true;   // an own Bunker / Dropship with loadable units selected: tap = load (68_fortify_ui.js)
   const workers=units.some(u=>u.def.worker);if(!workers)return false;
   if(ent.kind==='building')return !ent.done||ent.hp<ent.maxhp||(ent.type==='siphon'&&ent.done);
   return ent.kind==='unit'&&ent.hp<ent.maxhp&&!!ent.def.tags.mech&&!ent.def.worker&&!ui.selSet.has(ent);
 }
 function tpTap(sx,sy){
   const w=s2w(sx,sy),now=performance.now();
-  if(ui.place){ui.mx=sx;ui.my=sy-TP.LIFT;updatePlaceGhost();return;}
+  if(ui.place){if(ui.place.line){fortLineTap(sx,sy-TP.LIFT);return;}ui.mx=sx;ui.my=sy-TP.LIFT;updatePlaceGhost();return;}
   if(ui.target){const q=ui.qMode;ui.qMode=false;syncDock();applyTarget(w.x,w.y,q);return;}
   const ent=entityAt(w.x,w.y,TP.PAD),own=ui.sel.filter(e=>e.team===0),units=own.filter(e=>e.kind==='unit');
   if(ent&&ent.team===0&&(ent.kind==='unit'||ent.kind==='building')&&!(units.length&&isContextTarget(ent,units))){
@@ -181,7 +182,7 @@ function touchUpdate(dt){
   const bar=$('placeBar'),want=ui.touchMode&&tpLive()&&(ui.place||ui.target);
   if(!want){if(!bar.classList.contains('hidden')){bar.classList.add('hidden');plSig='';}return;}
   const pl=ui.place,tg=ui.target;
-  const txt=pl?('Place '+BDEF[pl.id].name+(pl.ok?'':' — '+(pl.why||'blocked'))):(TARGET_LABEL[tg.kind]||(tg.kind.startsWith('skill')?'Tap to aim the spell':(swTargetLabel(tg.kind)||'Tap the map')));
+  const txt=pl?(pl.line?fortLineLabel(pl):'Place '+BDEF[pl.id].name+(pl.ok?'':' — '+(pl.why||'blocked'))):(TARGET_LABEL[tg.kind]||fortTargetLabel(tg.kind)||(tg.kind.startsWith('skill')?'Tap to aim the spell':(swTargetLabel(tg.kind)||'Tap the map')));
   const sig=(pl?(pl.ok?'1':'0'):'t')+txt;
   if(sig!==plSig){plSig=sig;$('plTxt').textContent=txt;$('plGo').classList.toggle('hidden',!pl);$('plGo').classList.toggle('off',!!pl&&!pl.ok);}
   bar.classList.remove('hidden');

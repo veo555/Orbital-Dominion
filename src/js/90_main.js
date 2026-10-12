@@ -101,6 +101,7 @@ function cursorUpdate(){
 }
 function applyTarget(wx,wy,shift){
   const tg=ui.target;if(!tg)return;ui.target=null;const k=tg.kind;
+  if(fortApplyTarget(k,wx,wy,shift))return;   // scan / load / unload (68_fortify_ui.js)
   if(k.startsWith('role:')){swApplyRole(k.slice(5),wx,wy,shift);return;}
   if(k==='rally'){for(const b of ownBuildings())setRally(b,wx,wy,entityAt(wx,wy));}
   else if(k==='repair'){const e=entityAt(wx,wy),ws=ownUnits().filter(u=>u.def.worker);
@@ -126,7 +127,7 @@ function bindInput(){
     ui.mx=e.clientX;ui.my=e.clientY;const w=s2w(e.clientX,e.clientY);
     if(e.button===1){e.preventDefault();ui.midDrag=true;return;}
     if(e.button===0){
-      if(ui.place){updatePlaceGhost();tryPlace(e.shiftKey);return;}
+      if(ui.place){if(fortLineDown())return;updatePlaceGhost();tryPlace(e.shiftKey);return;}   // a wall line starts on press and is placed on release
       if(ui.target){applyTarget(w.x,w.y,e.shiftKey);return;}
       ui.drag={x0:e.clientX,y0:e.clientY,x1:e.clientX,y1:e.clientY};
     }else if(e.button===2){
@@ -135,6 +136,7 @@ function bindInput(){
     }});
   window.addEventListener('mouseup',e=>{
     if(e.button===1)ui.midDrag=null;ui.mmDrag=false;
+    if(e.button===0&&!ui.touchMode&&ui.place&&ui.place.line&&ui.place.start&&G){tryPlace(e.shiftKey);return;}
     if(ui.touchMode||e.button!==0||!ui.drag||!G)return;
     const d=ui.drag;ui.drag=null;
     if(Math.abs(d.x1-d.x0)<5&&Math.abs(d.y1-d.y0)<5){const w=s2w(d.x1,d.y1);clickSelect(w.x,w.y,e.shiftKey,performance.now(),e.ctrlKey||e.metaKey);}else boxSelect(d,e.shiftKey);});

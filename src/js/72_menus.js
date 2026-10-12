@@ -81,7 +81,7 @@ function buildMenus(){
   fr.innerHTML=h;
   $('enemyRow').innerHTML=['random'].concat(FACTION_IDS).map(id=>'<button class="btn" data-e="'+id+'">'+(id==='random'?'Random':FACTIONS[id].name.split(' ')[0])+'</button>').join('');
   $('diffRow').innerHTML=['easy','normal','hard','master'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
-  $('helpBody').innerHTML=HELP_HTML;
+  $('helpBody').innerHTML=HELP_HTML+FORT_HELP_HTML;
   syncMenu();
 }
 function syncMenu(){

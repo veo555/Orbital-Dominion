@@ -217,14 +217,14 @@ function fortVision(){
   for(const s of G.scans){if(s.team>1)continue;const v=G.vis[s.team],tr=s.r/TILE,cx=s.x/TILE,cy=s.y/TILE,r2=tr*tr;
     for(let y=Math.max(0,Math.floor(cy-tr));y<=Math.min(MH-1,Math.ceil(cy+tr));y++)for(let x=Math.max(0,Math.floor(cx-tr));x<=Math.min(MW-1,Math.ceil(cx+tr));x++){const dx=x+.5-cx,dy=y+.5-cy;if(dx*dx+dy*dy<=r2)v[y*MW+x]=2;}}
 }
-function fortScanHub(team){let best=null;for(const b of G.buildings)if(!b.dead&&b.team===team&&b.type==='hub'&&b.done&&(b.energy||0)>=FORT.scan.energy&&!(b.scd>0)&&(!best||b.energy>best.energy))best=b;return best;}
+function fortScanHub(team){let best=null;for(const b of G.buildings)if(!b.dead&&b.team===team&&b.type==='hub'&&b.done&&(b.energy===undefined?FORT.hubEnergy0:b.energy)>=FORT.scan.energy&&!(b.scd>0)&&(!best||b.energy>best.energy))best=b;return best;}
 function fortScanWhy(team){
   if(G.camp){const L=campLocked(team,'building','scan');if(L)return L;}
   return fortScanHub(team)?'':'Needs a Hub with '+FORT.scan.energy+' energy';
 }
 function fortScan(team,x,y){
   const why=fortScanWhy(team);if(why){msg(team,why);return false;}
-  const h=fortScanHub(team),S=FORT.scan;h.energy-=S.energy;h.scd=S.cd;
+  const h=fortScanHub(team),S=FORT.scan;if(h.energy===undefined)h.energy=FORT.hubEnergy0;h.energy-=S.energy;h.scd=S.cd;
   (G.scans||(G.scans=[])).push({team,x:clamp(x,0,WW),y:clamp(y,0,WH),r:S.r,t:S.t,t0:S.t});
   G.fx.push({x,y,t:0,max:1.0,kind:'ring',r:S.r,col:'#7cd8ff'});sfx('scan',x,y,{team});
   if(team<2){G.det[team].push({x,y,r:S.r});fortVisionNow(team);}
