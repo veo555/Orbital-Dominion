@@ -4,6 +4,134 @@ Design and maths: `docs/AI_DESIGN.md`. All numbers below come from headless bot-
 played against T2 yet; bot-vs-bot Elo is not human Elo.** Raw logs (`tests/out/league/`, `tests/out/final/`, ~22 MB) are not
 committed. Everything can be re-run from the committed tools (commands at the end).
 
+## v5-C (AlphaGo-style planner + expert iteration) — results, read this first
+
+Design: `docs/AI_DESIGN.md` §17-20. Everything below is headless bot-vs-bot play in our own simulator; **no human has played against
+any of it, and bot-vs-bot Elo is not human Elo.** Nothing in the game is a language model (AI_DESIGN, top note). Raw logs
+(`tests/out/expit/`, `tests/out/final5/`) are not committed.
+
+### 9. Abstract-model calibration (`tools/league/calib_model.js`)
+
+18 real T2-Master-vs-T2-Master games (seeds 41001-41006, 42001-42012, 600 s), logged every 10 s for both sides; constants fitted on 9 games,
+reported on the other 9 (held out). Mean absolute error per side, model vs persistence (state(t+h) = state(t)):
+
+| horizon | workers | army value | bank | bases | structures | material share | normalised total |
+|---|---|---|---|---|---|---|---|
+| 60 s, before fit (hand constants) | 2.36 / 4.12 | 422 / 437 | 298 / 184 | 0.10 / 0.31 | 523 / 582 | 0.046 / 0.047 | 2.96 / 3.47 |
+| **60 s, fitted** | **1.90** / 4.12 | **410** / 437 | **178** / 184 | **0.09** / 0.31 | **406** / 582 | **0.042** / 0.047 | **2.44** / 3.47 |
+| 120 s, before fit | 3.32 / 7.81 | 722 / 709 | 577 / 203 | 0.29 / 0.58 | 802 / 1136 | 0.077 / 0.076 | 5.16 / 5.94 |
+| **120 s, fitted** | **2.93** / 7.81 | **665** / 709 | 216 / 203 | **0.30** / 0.58 | **639** / 1136 | **0.071** / 0.076 | **4.05** / 5.94 |
+
+Fitted constants (shipped as `PL_K0`): income ×0.485 (the measured per-miner curve over-states real income: travel, builders, scouts),
+ether ×0.25, production 5.8 value/s per building, engagement 0.21, travel 60 s, worker build 14 s, 47 value per supply, retreat at 62.5 %,
+raid 2.6, era quality +36 %. Fresh seeds in the test (`tests/sim/ai_mcts.js`, 2 games, 480 s): 60 s 2.04 vs 3.06, 120 s 3.29 vs 5.26; but
+material share 0.033 vs 0.033 (60 s) and **0.049 vs 0.043 (120 s, worse than persistence)**. Honest reading: the economy is modelled well,
+battles are not; the material share — what decides our adjudicated games — is about as predictable as "nothing changes". This is the
+main reason the search below rarely finds a clearly better posture.
+
+### 10. Planner ablations and expert iteration
+
+Development ablations (planner vs the same Master without it, fresh seeds, 600 s):
+
+| version | games | score | 95 % Wilson CI |
+|---|---|---|---|
+| first planner, owning all postures (no trust region, raid without fast units allowed) | 24 | 50.0 % | [31.4, 68.6] |
+| + harass legality, calibrated model, trust region (margin 0.03) | 48 | 47.9 % | [34.5, 61.7] |
+
+**Expert-iteration league** (`tools/league/expit.js`, seed 2, 2 workers; planned 2.6 h, **ran 11 generations / 68 min** before a session
+interruption stopped it after the generation-11 checkpoint; 558 games, 49 362 logged root decisions, 16 057 value rows):
+
+| fit at gen | decisions | held-out KL(π‖p): θ-only → incumbent → new head | top-1 agreement θ-only → new | V held-out (games): MLP AUC / log-loss | gate vs incumbent (32 games) |
+|---|---|---|---|---|---|
+| 3 | 13 311 | 0.092 → 0.092 → **0.064** | 0.913 → 0.862 | 7: 0.847 / 0.513 | M1@3 vs M0: **56.3 %** [39, 72] → promoted |
+| 6 | 26 897 | 0.117 → 0.070 → 0.066 | 0.872 → 0.839 | 20: 0.837 / 0.531 | M2@6 vs M1@3: 46.9 % [31, 64] → rejected |
+| 9 | 27 111 | 0.140 → 0.072 → **0.058** | 0.834 → 0.853 | 34: 0.811 / 0.539 | M2@9 vs M1@3: **56.3 %** [39, 72] → promoted |
+
+* The head does what expert iteration asks: it moves the prior towards the search's visit distribution (held-out KL 0.140 → 0.058 at gen 9).
+* The search overrode the θ rules in **6-9 % of decisions** (trust region, margin 0.02, τ = 1 in training games).
+* Both promotions passed the 55 % gate with intervals that include 50 % (32 games); they are **not significant** on their own.
+* Bradley–Terry over the league's own games (v3-Hard = 1000): M2@9 1027, M1@3 1042, M0 1003, **v4-master 981**, v3-normal 789, v3-easy 395
+  (few games per agent: ±60 Elo or more).
+* Value function: the shipped v4 MLP had held-out AUC 0.825 on league-1 data; the expert-iteration V (M2@9, 12 055 rows / 172 games,
+  held out by game: 34 games) has MLP AUC 0.811, log-loss 0.539, LR AUC 0.777, ECE(LR) 0.038. Different data (shorter 540-s games, planner
+  agents), so the two AUCs are not directly comparable; the old model was **not** re-scored on the new held-out games (not done). The new V
+  ships only inside the Master tier (`tiers.master.vf`); the other tiers keep the v4 V.
+
+Shipped: Master = θ M@30 + planner (256 simulations, 4 determinised worlds, 8 slices, c_puct 1.5, λ 0.5, margin 0.02) + head φ and V of
+**M2@9**. Easy / Normal / Hard are unchanged from ladder-2 (no search).
+
+**Final evaluation** (`tools/league/final_eval.js`, fresh seeds 61001-61024, 24 mirrored pairs = 48 games per matchup, 600-s cap,
+sides and factions swapped; Master-v5 here = the trained planner at 256 simulations per decision, as in the league):
+
+| Matchup | W–D–L | Score | 95 % Wilson CI | Elo | target |
+|---|---|---|---|---|---|
+| **Master-v5 (planner + head + V) vs Master-v4 (no planner)** — the ablation | 20–8–20 | **50.0 %** | [36.4, 63.6] | 0 | > 50 %: **not shown** |
+| Master-v5 vs Hard | 19–9–20 | **49.0 %** | [35.4, 62.6] | −7 | ≥ 65 %: **missed** |
+| Hard vs Normal | 22–11–15 | **57.3 %** | [43.3, 70.2] | +51 | ≥ 65 %: **missed** |
+| Normal vs Easy | 29–13–6 | **74.0 %** | [60.1, 84.3] | +181 | ≥ 65 %: met (point estimate; CI lower bound 60 %) |
+| Master-v5 vs v3-Hard at equal income (×1.0) | 39–6–3 | **87.5 %** | [75.3, 94.1] | +338 | ≥ 85 %: met (point estimate) |
+| Master-v5 vs v3-Hard with its +25 % income | 21–6–21 | 50.0 % | [36.4, 63.6] | 0 | (reported) |
+
+Bradley–Terry over these games (v3-Hard = 1000): Master-v5 1002, Master-v4 1000, Hard 1009, Normal 960, Easy 782, v3-Hard ×1.0 673.
+
+**Honest summary.** The AlphaGo machinery is built, tested and trained, but it **does not make the Master measurably stronger**: planner on vs
+off is exactly 50 % over 48 games, and Master is not separated from Hard (49 %). The tier targets (≥ 65 % for each adjacent pair) are met only
+for Normal > Easy; Hard > Normal is 57 %. The reasons, in order of evidence: (1) the abstract model predicts the economy but not battles, and
+battles decide these games (the material share 120 s ahead is predicted no better than "no change"); (2) the trust region lets the search
+override the rules in only 6-9 % of decisions; (3) 11 generations / 558 games of expert iteration with a 32-game gate is a tiny budget
+(AlphaGo Zero: millions of games, 400-game gate). Making Master clearly stronger than Hard would need either a forward model that predicts
+fights (tactical search, terrain) or more decisive skill levers; neither was done here. Ladder-2 settings for Easy/Normal/Hard were kept.
+
+### 11. Campaign: can T2 replace the v3 AI? — no, v3 stays
+
+`tests/sim/campaign_balance.js all --runs 3` (the 3-run smoke gate) in a temporary source tree where campaign games create T2 instead of
+v3 (with the new `waveMult` / `firstWave` hooks), compared with the current tree:
+
+| variant | PASS | WARN | FAIL | failing missions |
+|---|---|---|---|---|
+| current (v3 enemy, v3 player proxy) | 4 | 2 | 3 | m05, m06, m08 (scripted missions the stock AI cannot judge; covered by `campaign_walkthrough.js`) |
+| **T2 enemy**, v3 player proxy (fair) | 3 | 2 | 4 | m05, m06, m08 **+ m04** (trigger m04_t14 never fires) |
+| T2 on both sides | 0 | 0 | 9 | all (the T2 player proxy does not pursue scripted objectives; m02-m05, m07, m08 stall) |
+
+(An earlier fair-variant run gave 2 / 2 / 5 but was made while a bug left T2 idle; it was discarded and re-run.) Decision: **the campaign
+keeps the v3 AI**, and `makeAIV3` / `aiThinkV3` are **not deleted**. Two further reasons: `tests/sim/off.js` and `smoke.js` prove the
+swarm-off equivalence with `baseline/v2` by running the same legacy enemy AI in both trees (CLAUDE.md rule 5) — deleting v3 would remove the
+ground truth of that test; and v3 is the league's fixed anchor.
+
+### 12. Other AIs
+
+* **Overseer advisor** (swarm ON): proposals for expansion, era, production buildings, turrets and assault waves carry a machine-generated
+  `win chance a % -> b %: ...` line from the advisor's V(s) + planner Q values. Swarm OFF: unchanged; `off.js` output byte-identical to
+  `baseline/v2` (seeds 1-3, 300 s).
+* **Agents / creeps**: `tools/league/diag_agents.js` (idle workers, floating bank, stuck units, creep leash) was written but **not run for
+  this report** (time); no agent/creep fixes were made in v5-C.
+
+### 13. Tests (v5-C)
+
+| Test | Result |
+|---|---|
+| `tests/sim/ai_mcts.js --quick` (new, in `run_all.sh`) | ALL PLANNER CHECKS PASSED: PUCT finds the 0.95 line under a 70 %-misleading prior (visits 332/30/438); 40-sim budget focuses on the right prior's action (36/2/2); mutants caught (exploration term removed: trap FAIL 800/0/0; sign flipped: needle FAIL 0/40/0); policy improvement in 40/40 random MDPs (E[Q*] 0.949 prior → 0.957 at 30 sims → 0.966 at 200); model invariants; calibration on fresh seeds beats persistence (60 s 2.04 vs 3.06, 120 s 3.29 vs 5.26) and the no-change control fails; planted policy head recovered (KL 0.436 → 0.000); gate rule; planner deterministic (93 decisions), plain-data state, exact save/restore |
+| `tests/sim/ai_agent.js --quick` | ALL PASSED: no-peek with the planner running (8 commands, planner state compared); three peeking mutants caught incl. the new "planner world from the true enemy army"; determinism; APM bounds + control; save; CPU +18.2 % vs v3-Hard, **+10.7 % vs v4 Master** (budget 25 %), worst think 5.8 ms. (The probe now picks the first moment ≥ 330 s at which the AI acts: after the merge the old fixed moment was quiet even for v4.) |
+| `ai_lib.js`, `ai_combat.js`, `smoke.js`, `save.js` | pass |
+| `campaign.js` (394 checks), `campaign_walkthrough.js` | pass |
+| `off.js` seeds 1-3, 300 s, RS=5, against `baseline/v2` | byte-identical output |
+| `tests/e2e/e2e_smoke.py` (desktop browser, rebuilt dist after the merge) | ALL E2E CHECKS PASSED (zero network requests) |
+
+Bug found and fixed during the work: a trailing `//` comment added to the `P:{...}` line of `makeAIT2` swallowed `next/k/rs` and left T2
+idle; the expert-iteration league had started before it and was unaffected; the first fair campaign run used the broken tree and was redone.
+
+### Reproduce (v5)
+```
+node tools/league/calib_model.js --games 12 --seed0 42001 --fit           # abstract-model calibration
+node tools/league/expit.js --out tests/out/expit --hours 2.6 --workers 2  # expert-iteration league (--resume)
+node tools/league/final_eval.js tests/out/final5/plan.json out.json       # matchups above
+node tools/league/export_params.js tiers.json                             # writes 41_ai_params.js (tiers incl. plan, pol.phi)
+```
+
+---
+
+# v4 (league-1) results
+
 ## 1. League run (`tools/league/run.js`, seed 1)
 
 | | |

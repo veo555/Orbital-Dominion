@@ -1,14 +1,25 @@
 # T2 opponent — design and maths
 
+> **What this AI is — and is not.** Orbital Dominion has **no language model and must not get one** (no network access, a 1-2 MB
+> single file, store policy). Every "AI" in the game — the skirmish opponent T2, the campaign opponent, and the player-side
+> Overseer / Autopilot / advisor — is **classical and small**: hand-written rules, a parameter vector tuned by self-play, a Bayesian
+> belief grid, a Lanchester combat predictor, a 16-unit value network, a linear policy head and (since v5) a Monte-Carlo tree search
+> over macro-actions on an abstract game model. None of it understands language; the Overseer's command parser is a rule-based keyword
+> grammar. Store text must not describe any of it as an LLM or as language understanding.
+
 The skirmish opponent of v4.0 ("T2") replaces the v3 wave AI (`40_ai.js`, kept as `makeAIV3`/`aiThinkV3` for the campaign and as
 the league's anchor). It is a **hierarchical, parameterised, fog-honest policy** whose parameter vector θ is tuned by a self-play
-**league** run headlessly on our own simulator. Results (Elo, win rates, calibration, CPU) are in `docs/AI_LEAGUE_RESULTS.md`.
+**league** run headlessly on our own simulator. v5 adds an AlphaGo-style **macro planner** (§17) and **expert iteration** (§18).
+Results (Elo, win rates, calibration, CPU) are in `docs/AI_LEAGUE_RESULTS.md`.
 
 | File | Role |
 |---|---|
 | `src/js/41_ai_lib.js` | Pure maths: belief update, diffusion, pheromones, combat predictor, Ideal Free Distribution, value function, swarm geometry |
-| `src/js/41_ai_params.js` | **Generated** (`tools/league/export_params.js`): θ per tier, style priors, V(s) weights, combat link constants |
-| `src/js/42_ai_agent.js` | The agent: perception → belief → strategy → macro / workers / scouting / tactics, APM cap |
+| `src/js/41_ai_mcts.js` | v5 **macro planner**: abstract game model, PUCT search, prior / rollout policies, determinisation, Dirichlet noise (§17) |
+| `src/js/41_ai_params.js` | **Generated** (`tools/league/export_params.js`): θ per tier, style priors, V(s) weights, combat link constants, planner budgets, policy head |
+| `src/js/42_ai_agent.js` | The agent: perception → belief → strategy (+ planner glue) → macro / workers / scouting / tactics, APM cap; the player's advisor |
+| `tools/league/expit.js`, `expit_fit.js`, `calib_model.js` | v5 expert-iteration league, policy-head fit + promotion gate, abstract-model calibration (§17-18) |
+| `tests/sim/ai_mcts.js` | PUCT on toy trees (+ mutants), policy improvement, model invariants, calibration against the real sim, head fit, gate, planner determinism / save |
 | `tools/league/*.js`, `train_value.py` | Game runner, process pool, CMA-ES, PFSP, Bradley–Terry, league, value-function trainer, calibration, evaluation, profiling |
 | `tests/sim/ai_lib.js`, `ai_combat.js`, `ai_agent.js` | Unit tests, real-sim predictor calibration, no-peek / determinism / APM / save / CPU tests (each with a control that must fail) |
 
@@ -293,3 +304,151 @@ Bot-vs-bot Elo is not human Elo; nobody has played against T2 yet. θ was tuned 
 evaluations in 29 dimensions) — a local refinement of a hand-made prior, not a converged optimum. Training games are adjudicated
 at 8 minutes, which rewards mid-game material. The combat predictor knows nothing about terrain, chokepoints or spell timing.
 The Autopilot "human proxy" is itself a rule-based bot.
+
+## 17. v5: the macro planner — AlphaGo-style search on an abstract model (`41_ai_mcts.js`)
+
+The strategy layer of §6 is a hand-structured policy whose parameters θ the league tuned. v5 puts a **search** on top of it, the way AlphaGo
+put Monte-Carlo tree search on top of its policy and value networks. What is searched is the choice among seven **macro-actions** (the
+postures the agent already had, made explicit):
+
+| index | macro-action | what the real agent does while it is in force (`42_ai_agent.js`) |
+|---|---|---|
+| 0 | grow | economy first: workers up to θ's cap, no new attack |
+| 1 | expand | build the next base now (base target = bases + 1; the hub is a must-have even in "mass") |
+| 2 | tech | era now, armory now, research without the bank buffer |
+| 3 | mass | army first ("mass" economy posture, +1 production building, no expansion) |
+| 4 | attack | start an attack with ≥ 6 supply (campaign: ≥ 6 / waveMult), +1 production building |
+| 5 | defend | no new attack, an ongoing attack retreats, one more turret per base |
+| 6 | harass | send the fast-unit raid squad now (needs ≥ 3 Raptors / Reavers / Skiffs) |
+
+Scouting is **not** a macro-action: the abstract model has no information state, so a search could never value scouting; it stays with θ
+and the belief grid (§3-4). This is a known limit of planning on a model without beliefs inside it.
+
+### 17.1 The abstract model (the forward model the search runs)
+
+State (per side, a `Float64Array` with both sides and the time): crystals, ether, workers, bases + a base timer, siphons, production
+buildings + timer, era + timer, upgrade levels + timer, army value A, Lanchester coefficients d (dps per value) and h (hp per value), turrets,
+structure value, army location (home / attacking + travel timer), kills, losses, worker cap, hero level, fast-unit share. Transitions in 20-s
+steps for both sides simultaneously:
+
+* **Economy**: crystals/s = H · g(W_c / H) · κ_inc with the measured Ideal-Free-Distribution curve g (16 miners per base at 1.63/s each, then
+  0.6×, 0.4×); ether/s = 0.867 · min(0.3 W, 3 · siphons) · κ_e. Each base trains one worker per κ_wt s up to the cap (economic actions: θ's
+  cap; army actions: the lean "mass" cap). Production capacity follows income as in the real macro (target = κ_gar · income / 300 per
+  minute), a share κ_oth of the income goes into other structures, Generators cost 12.5 crystals per supply.
+* **Army**: bought from the bank at ≤ κ_prod value/s per production building, ether share 0.08 (Era I) / 0.3 (Era II+). Era and upgrades
+  multiply d and h (κ_era, κ_up).
+* **Combat** (Lanchester square law on value units, two Euler half-steps): a side loses `κ_eng · (Σ opposing dps) / h` value per second, with
+  dps = d · A plus turrets (20 dps, 320 hp) and hubs (8 dps) for a defender at home. The attacker's fire goes to the army in proportion to its
+  hit points against the statics; a defence below 15 % of the attacker gets raided: turrets, workers (κ_wk), structures (κ_raid). An attack
+  ends when the army falls below κ_ret of its start value or its strength d·h·A² is below half the defender's (the real agent's retreat
+  rule). Harass kills workers at κ_har per squad value per second and loses value to defenders at home.
+* d and h at the root come from the real unit stacks (`cmbStackOf`, the numbers the combat predictor of §5 uses): our army against the
+  estimated enemy army and vice versa.
+
+**Calibration** (`tools/league/calib_model.js`). Real T2-vs-T2 games are logged every 10 s with the **privileged** true state of both sides
+(offline only) and each side's macro behaviour, labelled from its posture and from what it built. The model is rolled forward from the true
+state at t with both sides' observed labels and compared with the truth at t + 60 s and t + 120 s; the constants κ are fitted by coordinate
+descent (log scale) on half of the games and reported on the other half, against the persistence baseline (state(t+h) = state(t)). Numbers:
+`docs/AI_LEAGUE_RESULTS.md` §9. Honest summary: workers, bases and structures are predicted far better than persistence; army value and
+material share, which battles dominate, only slightly better, and on fresh seeds the share is not better than persistence.
+
+### 17.2 The search
+
+* **Prior** (AlphaGo's policy network p_σ): `P(s,a) = softmax_a((u_θ(s,a) + φ_a·x(s)) / 0.6)` over the legal actions. `u_θ` are the
+  league-tuned rules of §6 written as utilities of the seven actions (attack: `4 (p_G − θ_aggr)` with penalties before `θ_firstAtk` and below
+  `θ_atkSup`; expand: base count against θ's base schedule; tech: era due by θ_era2 / θ_era3; ...). `x(s)` are 12 features (log army ratio,
+  log worker ratio, base and era difference, time, bank, workers, army locations, log army size). φ (7 × 12) is the **policy head** learned by
+  expert iteration (§18); φ = 0 is the v4 policy.
+* **PUCT selection** (Silver et al. 2016): `a* = argmax_a  Q(s,a) + c_puct · P(s,a) · √(Σ_b N(s,b)) / (1 + N(s,a))`, c_puct = 1.5, values in
+  [0, 1]; an unvisited action is valued at the parent's mean (first-play urgency).
+* **Opponent**: not searched (a simultaneous-move game is not a tree of alternating moves). In every step the opponent samples its
+  macro-action from the same prior with θ₀ and its faction style: open-loop MCTS, the tree is over our actions and the opponent is part of a
+  stochastic environment.
+* **Expansion / depth**: one new node per simulation, tree depth ≤ 3 macro-steps of 20 s.
+* **Leaf evaluation** (AlphaGo's mixing): `V(s_L) = (1 − λ) · v(s_L) + λ · z_L`, λ = 0.5 (AlphaGo's value), v = the embedded value network
+  V(s) (§6, 16-unit MLP) on the 11 features computed from the abstract state, z_L = a **fast rollout** to the horizon t₀ + 100 s with the
+  cheap rollout policy (θ utilities only, no head; AlphaGo's p_π was likewise cheaper than p_σ), scored `z = σ(12 · (material share − 0.5))`,
+  the adjudication rule of our evaluations made smooth.
+* **Backup**: Q(s,a) = mean of the leaf values below (s,a). **Move**: the most-visited root action (training: sampled from N^(1/τ), τ = 1,
+  with Dirichlet(0.3) noise, ε = 0.25, on the root prior, as in AlphaGo Zero).
+
+### 17.3 Imperfect information: determinisation from the belief grid
+
+AlphaGo had perfect information; we have fog of war. The planner uses **determinised / information-set MCTS** (Cowling, Powley & Whitehouse
+2012; the pitfalls in Frank & Basin 1998): K worlds are **sampled from the AI's beliefs**, a tree is searched in each with an equal share of
+the budget, and the root visit counts are summed. The enemy side of a world:
+
+* army value ~ max(remembered army, estimate · LogNormal(0, 0.12 + 0.35 · staleness)), the estimate being §6's phantom rule;
+* workers ~ max(seen, symmetric prior · LogNormal(0, 0.18)); bases = remembered hubs + the public main + **one Bernoulli draw per expansion
+  site with the belief grid's occupancy P_s** (§3); era = max(seen, our era with p = 0.6); bank, production and structures likewise;
+* d, h from our stacks against the remembered + phantom enemy stacks.
+
+Everything comes from `ai.mem` and `ai.bel`, never from the true opponent state. The no-peek test (§2) runs with the planner on and checks
+that its root state and decisions are identical after the hidden world is scrambled; a mutant whose world sampling reads the true enemy army
+and bank is caught (`tests/sim/ai_agent.js`). Known weakness of determinisation ("strategy fusion": each world's tree acts as if it knew the
+hidden state) is acceptable here because no macro-action gathers information.
+
+### 17.4 Trust region, time slicing, budget, tiers
+
+* **Override rule.** The search changes the agent's behaviour only where it clearly disagrees with the rules it was built from: let a_θ be the
+  θ rules' favourite (argmax u_θ). If the most visited action a ≠ a_θ and Q(a) − Q(a_θ) ≥ 0.02 (or a_θ was never visited and a has half of
+  all visits), the agent follows a; otherwise the v4 controllers act unchanged. This keeps an imperfect model from overriding well-tuned
+  rules on noise (a policy-improvement step inside a trust region; compare the KL constraint of §13). The first version without it let the
+  model "raid" with no fast units and withhold attacks the rules would have made.
+* **Time slicing.** The planner runs inside the strategy think (2 Hz at Master); each slice searches ⌈K / slices⌉ worlds; a decision is made
+  when all K worlds are done; `every` = n runs the planner on every n-th strategy think only. Shipped Master: 128 simulations per
+  decision, K = 4 worlds of 32, one world per slice, every 2nd strategy think → a decision every 4 s of game time, 32 simulations in the
+  worst think (+10.7 % total tick time vs the v4 Master, +18.2 % vs v3-Hard; budget +25 %). The training league and the final evaluation
+  used 256 simulations (4 × 64) per decision, which cost +42 % and was cut for the budget. Planner state (`ai.pl`: root state, point estimate, accumulated N and W, prior, RNG state) is plain data:
+  `46_save.js` round-trips it (tested); the search uses only the AI's own mulberry32 state, so it is deterministic.
+* **Tiers.** Easy / Normal / Hard: no search. Master: the full budget (`41_ai_params.js`, results doc §10).
+
+## 18. v5: expert iteration in the league (`tools/league/expit.js`)
+
+AlphaGo Zero's insight: MCTS is a **policy-improvement operator** (the visit distribution π of a search guided by a prior p is a better
+policy than p), so train p towards π and search again with the better p. Here:
+
+* **Self-play data.** The main agent M (Master + planner, θ = league-1's M@30) plays self-play and PFSP games with Dirichlet root noise and
+  τ = 1. Every root decision is logged: x(s), u_θ(s), legal mask, π = N / ΣN.
+* **Policy head.** `φ ← argmin_φ mean_i KL(π_i ‖ p_φ(·|s_i)) + c ‖φ‖²`, c = 10⁻³, on a replay window of the last 6 generations. Up to the
+  entropy of π (a constant) this is AlphaGo Zero's policy loss `−πᵀ log p`. Convex in φ; exact gradient
+  `∂L/∂φ_a = mean_i (p_ia − π_ia) x_i / T + 2cφ_a`; Adam. θ itself is not fitted to π: θ also drives the low-level controllers, so fitting
+  it to a macro distribution would entangle the two; the head absorbs the correction (the documented alternative to "fit θ by CMA-ES to π").
+* **Value.** V(s) is retrained on all games logged so far (`train_value.py`; label = the outcome z: AlphaGo Zero's `(z − v)²` term).
+* **Gate** (AlphaGo Zero's evaluator): the candidate (new φ, new V) plays 16 mirrored pairs (32 games) against the incumbent without noise and
+  becomes the incumbent only with ≥ 55 %. AlphaGo Zero used 400 games; with 32 games the gate is noisy (a true-50 % candidate passes with
+  probability ≈ 0.3), so promotions are reported with Wilson intervals and re-checked in the final evaluation.
+* **Kept from league-1:** PFSP opponent choice f_hard, a main exploiter E (CMA-ES over θ against M) and a league exploiter L (CMA-ES against
+  the PFSP pool) with graduation, frozen snapshots of every promoted version, v3 anchors and the v4 Master (no planner) as an anchor,
+  Bradley–Terry ratings, a checkpoint after every generation (`--resume`).
+
+## 19. AlphaGo / AlphaStar idea → adopted, adapted or rejected
+
+| Idea (source) | Here | Why |
+|---|---|---|
+| Policy network p_σ trained on expert moves (AlphaGo) | **Adapted**: the prior is the league-tuned θ rules as utilities, plus a linear head | no expert corpus; θ is our "supervised" policy |
+| RL policy p_ρ by self-play policy gradient (AlphaGo) | **Adapted** in league-1: θ by CMA-ES in a league | non-differentiable 29-parameter program |
+| Value network v_θ on self-play outcomes (AlphaGo) | **Adopted**: the V(s) MLP on league games, evaluated at the search leaves | §6, §18 |
+| Fast rollout policy p_π (AlphaGo) | **Adopted**: θ-utility softmax without the head, on the abstract model | cheap rollouts |
+| Leaf mixing V = (1−λ) v + λ z, λ = 0.5 (AlphaGo) | **Adopted**, λ = 0.5 | AlphaGo's best value; λ not re-tuned here (budget) |
+| PUCT selection, mean backup, most-visited move (AlphaGo / AlphaGo Zero) | **Adopted** | tested on toy trees with two mutants |
+| The real rules as the simulator (AlphaGo, AlphaZero) | **Adapted**: a calibrated **abstract** model | the real sim costs ~10⁴× more per step |
+| Learned latent model (MuZero) | **Rejected** for now | a learned dynamics model needs far more data than a few thousand games; a hand-built abstract model calibrated on real games is the small-data equivalent |
+| MCTS as policy improvement: π ∝ N^(1/τ), Dirichlet noise, loss −πᵀ log p (AlphaGo Zero) | **Adopted** for the policy head | §18 |
+| Gate new networks at 55 % (AlphaGo Zero) | **Adopted** with 32 games instead of 400 | compute |
+| Continual update without gating (AlphaZero) | **Rejected** | with our noise a bad update would ship; the gate is cheap insurance |
+| Perfect-information search | **Replaced** by determinisation (ISMCTS-style) over belief samples | fog of war |
+| Tabula rasa self-play (AlphaGo Zero) | **Rejected** | θ₀ and the league's θ are cheap, decent priors |
+| League, PFSP, exploiters, fog honesty, APM limits (AlphaStar) | **Kept** (§10-13) | |
+| LLM-based agents (2023-26) | **Rejected** | no network, no runtime model; nothing here is a language model |
+
+## 20. v5: the player's advisor and the other AIs
+
+* **Overseer advisor (swarm ON only).** `G.sw.adv` is a fog-honest perception object for the player's team (`aiAdvisorMake`): the same
+  memory, belief grid, value function and a small planner search (96 simulations in 2 worlds, every 3 s). It has **no command authority**.
+  Its per-macro-action Q values annotate the Overseer's proposals: an expansion Hub, an era, production buildings, turrets and an assault
+  wave carry a line such as `win chance 54 % -> 61 %: expanding now` (status quo = "grow"; "(the planner advises against it now)" when the
+  estimate drops). Swarm OFF never creates it, so the v2 equivalence (`tests/sim/off.js`) is untouched; with swarm ON it changes no game
+  state (it only writes `G.sw.adv` and proposal texts).
+* **Campaign opponent.** T2 honours the mission mods `waveMult` (attack size threshold and production pace) and `firstWave` (earliest
+  attack) besides `intervalMult`, `hero` and `air`. Whether missions switch to T2: results doc §11.

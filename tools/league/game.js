@@ -56,7 +56,10 @@ function playGame(o) {
   if (G.over) r0 = G.over === 'victory' ? 1 : 0;           // 'victory' = team 0 destroyed every team-1 building
   else { adj = true; r0 = share0 > 0.6 ? 1 : share0 < 0.4 ? 0 : 0.5; }
   const cmds = [0, 1].map(t => G.ais[t] && G.ais[t].st ? G.ais[t].st.cmds : null);
-  return { r0, t: Math.round(G.time), over: !!G.over, share0: +share0.toFixed(3), adjudicated: adj, feats, cmds };
+  // planner decisions for expert iteration (only agents created with cfg.plan.log) and planner statistics
+  const plog = [0, 1].map(t => G.ais[t] && G.ais[t].pl && G.ais[t].pl.log ? G.ais[t].pl.log : null);
+  const plst = [0, 1].map(t => G.ais[t] && G.ais[t].pl ? { n: G.ais[t].pl.n, dev: G.ais[t].pl.dev || 0 } : null);
+  return { r0, t: Math.round(G.time), over: !!G.over, share0: +share0.toFixed(3), adjudicated: adj, feats, cmds, plog: o.log ? plog : undefined, plst };
 }
 module.exports = { playGame, sim, score, privFeatures, makeAgent };
 if (require.main === module) {  // quick CLI: node tools/league/game.js seed f0 f1 '<spec0 json>' '<spec1 json>' [capSec]

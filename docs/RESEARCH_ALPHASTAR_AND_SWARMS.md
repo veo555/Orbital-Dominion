@@ -1,4 +1,4 @@
-# Research note: AlphaStar, what came after, swarm theory — and what a browser RTS can actually adopt
+# Research note: AlphaStar, the AlphaGo family, what came after, swarm theory — and what a browser RTS can actually adopt
 
 Status of the sources (read this first). The environment this was written in blocks `deepmind.google`, `youtube.com`, `arxiv.org` and `gwern.net`;
 only web-search summaries were reachable. So:
@@ -117,3 +117,84 @@ against the built-in AI rather than on the ladder.
 * [HierNet-SC2 / On Efficient RL for Full-length Game of StarCraft II (JAIR)](https://www.jair.org/index.php/jair/article/view/13743); [mini-AlphaStar (arXiv 2104.06890)](https://arxiv.org/abs/2104.06890).
 * LLM agents: [SC2Arena / StarEvolve (arXiv 2508.10428)](https://arxiv.org/pdf/2508.10428), [SwarmBrain](https://www.emergentmind.com/papers/2401.17749), [World Models for Policy Refinement in StarCraft II](https://arxiv.org/pdf/2602.14857).
 * Swarm theory: [stigmergy](https://lia.disi.unibo.it/Courses/AI/fundamentalsAI2008-09/papers/stigmergy.pdf), [ant colony optimization](https://www.cs.princeton.edu/courses/archive/fall24/cos597C/bib2/Ant_colony_optimization.pdf), [swarm intelligence chapter](https://www2.cs.uh.edu/~ceick/6367/SWIchapterforHandbook_NC.pdf).
+
+---
+
+## 6. The AlphaGo family (2016-2020) and what v5 took from it
+
+**Status of the sources.** DeepMind's pages and arXiv could not be opened from the sandbox used for v5 (egress blocked), and no web search
+was used. Everything in this section is **from memory [M]** of the papers listed at the end of the section; figures marked [M] should be
+checked against the papers before they are quoted elsewhere. The *algorithms* (formulas) are standard and were re-derived and unit-tested
+here (`tests/sim/ai_mcts.js`); the *numbers about DeepMind's systems* are recollections.
+
+### 6.1 AlphaGo (Silver et al., Nature 529, 2016) [M]
+
+* **SL policy network p_σ**: a 13-layer convolutional network trained to predict expert moves from ~30 million KGS positions (about 57 %
+  accuracy). **Rollout policy p_π**: a linear softmax over small local pattern features, far weaker (~24 %) but about a thousand times
+  faster (microseconds per move).
+* **RL policy network p_ρ**: initialised from p_σ and improved by policy-gradient self-play against randomly chosen earlier versions (an
+  opponent pool, to avoid over-fitting to the latest self); it won ~80 % against p_σ without search.
+* **Value network v_θ**: regression of the game outcome z from positions of p_ρ self-play games, one position per game (~30 million games)
+  so that strongly correlated positions do not cause over-fitting.
+* **Search**: asynchronous MCTS. Selection `a = argmax Q(s,a) + u(s,a)` with `u = c_puct P(s,a) √(Σ_b N(s,b)) / (1 + N(s,a))` and P from
+  **p_σ** (the SL network searched better than p_ρ, presumably because it keeps a broader set of plausible moves). Leaf evaluation mixes
+  the value network and a fast rollout: `V(s_L) = (1 − λ) v_θ(s_L) + λ z_L`, best at λ = 0.5. Q is the mean of the leaf values below; the
+  move played is the most visited at the root. Virtual loss for parallel threads. The distributed version beat Fan Hui 5:0 (2015) and the
+  "Lee" version beat Lee Sedol 4:1 (2016).
+
+### 6.2 AlphaGo Zero (Silver et al., Nature 550, 2017) [M]
+
+* **No human data, no hand features**: one residual network `f_θ(s) = (p, v)` with a policy and a value head; no rollouts (leaf value = v).
+* **MCTS as a policy-improvement operator**: self-play moves are chosen from the visit distribution `π(a|s) ∝ N(s,a)^(1/τ)` (τ = 1 for the
+  first ~30 moves, then → 0); **Dirichlet noise** Dir(0.03) mixed into the root prior with ε = 0.25 for exploration; ~1600 simulations per
+  move.
+* **Loss** `l = (z − v)² − πᵀ log p + c ‖θ‖²`: the network learns to predict the search's move distribution and the game's result.
+* **Evaluator / gating**: a new network becomes the self-play generator only if it beats the current best by ≥ 55 % over 400 games.
+* Results: beat AlphaGo Lee 100:0 after three days; the 40-block version beat AlphaGo Master.
+
+### 6.3 AlphaZero (Silver et al., Science 362, 2018; preprint 2017) [M]
+
+* The same algorithm for chess, shogi and Go with the rules as the only domain knowledge; **no gating** — one network updated continually;
+  Dirichlet α scaled to the typical number of legal moves (0.3 chess, 0.15 shogi, 0.03 Go); draws as outcomes; ~800 simulations per move.
+  Beat Stockfish, Elmo and the three-day AlphaGo Zero.
+
+### 6.4 MuZero (Schrittwieser et al., Nature 588, 2020; preprint 2019) [M]
+
+* Search **without known rules**: a learned **representation** h (observation → latent state), **dynamics** g (latent state, action → next
+  latent state, reward) and **prediction** f (latent state → policy, value). Trained end-to-end by unrolling K (≈ 5) steps with targets: the
+  search's visit distribution, n-step bootstrapped returns, observed rewards. MCTS runs in the latent space with a pUCT rule that adds a
+  slowly growing exploration term. Matched AlphaZero on board games and set the Atari state of the art; "Reanalyse" re-runs the search on old
+  data. Later work (Gumbel MuZero, 2022) made policy improvement reliable with very few simulations.
+
+### 6.5 Imperfect information (what AlphaGo did not face) [M]
+
+* **Determinisation / Perfect-Information Monte Carlo**: sample complete worlds consistent with what is known, search each, aggregate
+  (Ginsberg's bridge program GIB, 2001). Known failure modes: **strategy fusion** (each world's plan assumes it knows the hidden state) and
+  **non-locality** (Frank & Basin 1998). **Information-Set MCTS** (Cowling, Powley & Whitehouse 2012) builds one tree over information sets.
+  For games where information-gathering moves matter, belief-state methods (ReBeL 2020, Student of Games 2023) are the principled route.
+* **Search on abstract RTS models**: game-tree search over high-level states with Lanchester-style combat models in StarCraft (Uriarte &
+  Ontañón, AIIDE 2014), portfolio / greedy search for combat (Churchill & Buro), UCT for tactical planning in Wargus (Balla & Fern 2009),
+  combinatorial bandits in µRTS (Ontañón 2013). These are the closest published relatives of what v5 does.
+
+### 6.6 What v5 used, adapted or rejected (details and formulas: `docs/AI_DESIGN.md` §17-19)
+
+| AlphaGo-family idea | v5 |
+|---|---|
+| PUCT selection, mean backup, most-visited move | **used** (`41_ai_mcts.js` `puctSelect`, `plSimulate`), tested on toy trees with mutants |
+| Policy prior from a trained policy (p_σ) | **adapted**: the league-tuned θ rules as utilities + a learned linear head φ |
+| Value network at the leaves, mixed with fast rollouts, λ = 0.5 | **used**: the existing V(s) MLP on abstract features + rollouts with a cheap θ-only policy |
+| Search on the true rules | **adapted**: a hand-built abstract model calibrated against the real simulation (the small-data stand-in for MuZero's learned model) |
+| MCTS as policy improvement: π ∝ N^(1/τ), Dirichlet root noise, train p towards π | **used** in the expert-iteration league for the head φ (KL loss = AlphaGo Zero's policy loss up to a constant) |
+| `(z − v)²` value training on self-play outcomes | **used**: V(s) retrained on the new league games |
+| Evaluator gating at 55 % | **used** with 32 instead of 400 games (noisy; reported with intervals) |
+| Continual update (AlphaZero), tabula rasa (Zero), learned dynamics (MuZero) | **rejected** for this budget: see AI_DESIGN §19 |
+| Perfect information | **replaced** by determinisation over samples of the belief grid (fog of war) |
+
+References [M]: D. Silver et al., "Mastering the game of Go with deep neural networks and tree search", Nature 529:484-489 (2016).
+D. Silver et al., "Mastering the game of Go without human knowledge", Nature 550:354-359 (2017). D. Silver et al., "A general reinforcement
+learning algorithm that masters chess, shogi, and Go through self-play", Science 362:1140-1144 (2018). J. Schrittwieser et al., "Mastering
+Atari, Go, chess and shogi by planning with a learned model", Nature 588:604-609 (2020). P. Cowling, E. Powley, D. Whitehouse, "Information
+Set Monte Carlo Tree Search", IEEE Trans. Comput. Intell. AI in Games 4(2) (2012). I. Frank, D. Basin, "Search in games with incomplete
+information: a case study using Bridge card play", Artificial Intelligence 100 (1998). A. Uriarte, S. Ontañón, "Game-tree search over
+high-level game states in RTS games", AIIDE 2014. R. Balla, A. Fern, "UCT for tactical assault planning in real-time strategy games", IJCAI
+2009. I. Danihelka et al., "Policy improvement by planning with Gumbel", ICLR 2022.

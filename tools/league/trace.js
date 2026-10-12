@@ -12,7 +12,7 @@ const row = (t) => {
   const T = G.teams[t], ai = G.ais[t]; let W = 0, A = 0; const comp = {};
   for (const u of G.units) if (!u.dead && u.team === t) { if (u.def.worker) W++; else if (!u.def.trade) { A += u.def.supply; comp[u.type] = (comp[u.type] || 0) + 1; } }
   const bl = {}; for (const b of G.buildings) if (!b.dead && b.team === t) bl[b.type] = (bl[b.type] || 0) + (b.done ? 1 : 0.1);
-  const x = ai && ai.kind === 't2' ? ` mil=${ai.mil} pG=${ai.pG.toFixed(2)} pL=${(+ai.pL).toFixed(2)} V=${ai.V.toFixed(2)} cmds=${ai.st.cmds} den=${ai.apm.denied} eng=${ai.st.engage} ret=${ai.st.retreat} foc=${ai.st.focus} kite=${ai.st.kite} sc=${ai.scout.id ? 1 : 0} by=${JSON.stringify(ai.st.by||{}).replace(/"/g,'')}` : (ai ? ` wave=${ai.wave} att=${ai.attacking}` : '');
+  const x = ai && ai.kind === 't2' ? ` mil=${ai.mil} pG=${ai.pG.toFixed(2)} pL=${(+ai.pL).toFixed(2)} V=${ai.V.toFixed(2)} cmds=${ai.st.cmds} den=${ai.apm.denied} eng=${ai.st.engage} ret=${ai.st.retreat} foc=${ai.st.focus} kite=${ai.st.kite} sc=${ai.scout.id ? 1 : 0}${ai.pl ? " PLAN[" + ai.pl.why + " pi=" + ai.pl.pi.join(",") + "]" : ""} by=${JSON.stringify(ai.st.by||{}).replace(/"/g,'')}` : (ai ? ` wave=${ai.wave} att=${ai.attacking}` : '');
   return `T${t} c=${T.c | 0} e=${T.e | 0} sup=${T.used}/${T.cap} W=${W} A=${A} era=${T.era} k/l=${T.kills}/${T.lost} sc=${score(G, t) | 0} ${JSON.stringify(bl).replace(/"/g, '')} ${JSON.stringify(comp).replace(/"/g, '')}${x}`;
 };
 for (let i = 1; i <= cap * 30; i++) {

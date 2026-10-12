@@ -43,7 +43,7 @@ function makeAIT2(team,P,opt){
   T.mult=opt.handicap||P.handicap||1;                                   // income handicap: 1.0 on every tier (the v3 'hard' +25 % cheat is gone)
   const style=FACTIONS[T.faction].style,u=aiThetaFor(tier,style,opt.theta);
   const ai={kind:'t2',team,enemy:1-team,tier:tierName,cfg:tier,style,thu:u,th:thetaDecode(u),
-    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false},next:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
+    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false,wave:1,first:0},next:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
     apm:{rate:tier.apm/60,burst:Math.max(3,tier.apm/60*5),tok:3,t:0,n:0,denied:0},delay:tier.delay,
     mem:{u:{},b:{},camps:{},armySeenT:-99,heroLvl:0,heroT:-99,eraSeen:1},
     bel:{s:new Float32Array(BN),a:new Float64Array(BN),t:0},ph:{vis:new Float32Array(BN),dem:new Float32Array(BN),def:new Float32Array(BN)},
@@ -51,6 +51,8 @@ function makeAIT2(team,P,opt){
     har:{ids:[],tgt:null,t:-99},scout:{id:0,tgt:-1,t:-99,last:-99},creep:null,lastCreep:0,
     stage:null,stageHub:0,res:{why:'',since:0},st:{thinks:0,engage:0,retreat:0,focus:0,kite:0,expand:0,cmds:0}};
   if(opt.noV)ai.cfg.useV=0;
+  if(ai.cfg.plan&&ai.cfg.plan.sims>0)ai.pl={a:-1,at:0,w:0,K:Math.max(1,ai.cfg.plan.K|0),N:[],W:[],P:[],root:null,est:null,t0:0,n:0,pi:[],q:[],why:'',
+    rs:(G.seed*1597334677+team*7919+11)>>>0,log:ai.cfg.plan.log?[]:null};
   aiBeliefInit(ai);
   return ai;
 }
@@ -167,7 +169,8 @@ function aiFeatures(ai,R){
   const heroA=T.hero.alive?T.hero.level:0,heroE=now-M.heroT<120?M.heroLvl:0;
   return[Math.log((Va+100)/(Ve+100)),Math.log((Wa+2)/(We+2)),hubsA-hubsE,T.era-M.eraSeen,now/600,(Va-Ve)/1000,T.used/120,Math.log((T.c+T.e+100)/100),heroA-heroE,(T.kills-(T.creeps||0)-T.lost)/20,Math.log((Sa+400)/(Se+400))];
 }
-function aiValue(ai,R){if(!ai.cfg.useV)return 0.5;const m=typeof AI_PARAMS!=='undefined'?AI_PARAMS.vf:null;return m?vfEval(m,aiFeatures(ai,R)):0.5;}
+function aiVF(ai){return ai.cfg.vf||(typeof AI_PARAMS!=='undefined'?AI_PARAMS.vf:null);}   // per-agent V(s) (league candidates) or the shipped one
+function aiValue(ai,R){if(!ai.cfg.useV)return 0.5;const m=aiVF(ai);return m?vfEval(m,aiFeatures(ai,R)):0.5;}
 
 /* ------------------------------------------------------------------ strategy layer (postures) */
 function aiThreat(ai,R){ // perceived enemy combat units near our structures
@@ -185,6 +188,84 @@ function aiAttackTarget(ai,R){ // best known enemy structure: value / (1 + known
   const s=ai.bel.s;let bi=-1,bp=0.2;for(let i=0;i<BN;i++)if(s[i]>bp){bp=s[i];bi=i;}
   if(bi>=0)return{x:bcx(bi),y:bcy(bi),id:0};
   const em=G.sites[ai.enemy];return{x:em.cx*TILE,y:em.cy*TILE,id:0};
+}
+/* ------------------------------------------------------------------ macro planner glue (search itself: 41_ai_mcts.js) */
+/* per-value Lanchester coefficients of a list of stacks against an opposing list: d = dps per value, h = hp per value */
+function aiDH(S,E){const det=S.some(s=>s.detect);let dps=0,hp=0,v=0;
+  for(const s of S){let d=0,w=0;for(const e of E){if(e.cloak&&!det)continue;const x=cmbDmg(s,e);if(x>0){d+=x/s.cd*e.n;}w+=e.n;}dps+=s.n*(w?d/w:0);hp+=s.n*s.hp;v+=s.n*(s.cost||50);}
+  return v>0?[dps/v,hp/v]:[0.187,1.1];}
+/* one side of an abstract state from that team's TRUE state. The AI calls it only for its own team; tools/league/calib_model.js also
+   calls it for the opponent (privileged, offline calibration of the model - never inside the AI) */
+const AI_FAST={raptor:1,reaver:1,skiff:1};
+function aiPlanSide(s,o,team,th){
+  const T=G.teams[team];let hubT=0,prodT=0,eraT=0,upT=0,St=0,tur=0,H=0,sip=0,P=0,W=0,A=0,F=0;
+  for(const b of G.buildings){if(b.dead||b.team!==team)continue;St+=aiVal(b.type);
+    if(b.done){if(b.type==='turret')tur++;else if(b.type==='hub')H++;else if(b.type==='siphon')sip++;else if(b.type==='garrison'||b.type==='foundry'||b.type==='airfield')P++;}
+    else{if(b.type==='hub')hubT=Math.max(hubT,(1-b.prog)*70);else if(b.type==='garrison'||b.type==='foundry'||b.type==='airfield')prodT=Math.max(prodT,(1-b.prog)*45);}
+    for(const q of b.queue){if(q.k==='era')eraT=Math.max(eraT,Math.max(1,q.total-q.t));if(q.k==='r'&&(q.id==='weapons'||q.id==='armor'))upT=Math.max(upT,Math.max(1,q.total-q.t));}}
+  for(const u of G.units){if(u.dead||u.team!==team)continue;
+    if(u.def.worker){W++;if(u.order.t==='build'&&!u.order.bld&&u.order.type==='hub')hubT=Math.max(hubT,85);}
+    else if(!u.def.trade){const v=aiVal(u.type)*Math.max(0.15,u.hp/u.maxhp);A+=v;if(AI_FAST[u.type])F+=v;}}
+  s[o+PS_C]=T.c;s[o+PS_E]=T.e;s[o+PS_W]=W;s[o+PS_H]=H;s[o+PS_HT]=hubT;s[o+PS_SIP]=sip;s[o+PS_P]=P;s[o+PS_PT]=prodT;s[o+PS_ERA]=T.era;s[o+PS_ERT]=eraT;
+  s[o+PS_A]=A;s[o+PS_TUR]=tur;s[o+PS_ST]=St;s[o+PS_KIL]=1000*(T.kills-(T.creeps||0)-T.lost)/20;s[o+PS_UP]=T.wl+T.al;s[o+PS_UPT]=upT;
+  s[o+PS_WMX]=th?th.wMax:36;s[o+PS_A0]=A;s[o+PS_HERO]=T.hero.alive?T.hero.level:0;s[o+PS_FST]=A>0?F/A:0;
+}
+/* the abstract root: our side from our own (true) state, the opponent's from MEMORY and the BELIEF GRID only (fog-honest),
+   plus the point estimate `est` from which plWorld samples K determinised worlds */
+function aiPlanRoot(ai,R,own,en,known,myVal,stale){
+  const s=new Float64Array(PS_LEN),T=G.teams[ai.team],th=ai.th,now=G.time,M=ai.mem,o=0,p=PS_N;
+  aiPlanSide(s,o,ai.team,th);
+  const dhO=aiDH(own,en),dhE=aiDH(en,own);
+  s[o+PS_A]=myVal;s[o+PS_A0]=myVal;s[o+PS_D]=dhO[0];s[o+PS_HP]=dhO[1];s[o+PS_LOC]=ai.mil==='attack'?1:0;s[o+PS_TRV]=0;
+  // the opponent: what we remember (buildings, units <= 90 s old) + the phantom estimate for what we have not seen
+  let eH=0,eSt=0,eTur=0,eP=0,eW=0,eF=0,eK=0;const known_h=[];
+  for(const id in M.b){const r=M.b[id];eSt+=aiVal(r.type);if(r.type==='hub'){eH++;known_h.push(r);}if(r.type==='turret'&&r.done)eTur++;if(r.type==='garrison'||r.type==='foundry'||r.type==='airfield')eP++;}
+  for(const r of aiEnemyRecs(ai,90,false)){const d=UDEF[r.type];if(d.worker)eW++;else if(!d.trade){const v=aiVal(r.type);eK+=v;if(AI_FAST[r.type])eF+=v;}}
+  const emain=G.sites[ai.enemy],sites=[];let mainKnown=false;
+  for(const h of known_h)if(hyp(h.x-emain.cx*TILE,h.y-emain.cy*TILE)<10*TILE)mainKnown=true;
+  if(!mainKnown)eH++;                                                   // the main base is public knowledge (mirrored start)
+  for(const st of ai.bel.sites){if(known_h.some(h=>hyp(h.x-st.x,h.y-st.y)<12*TILE))continue;if(R.B.some(b=>b.type==='hub'&&hyp(b.x-st.x,b.y-st.y)<12*TILE))continue;
+    if(st.d<st.dOwn)sites.push(+Math.min(0.95,ai.bel.s[st.i]).toFixed(4));}
+  const eA=Math.max(known,th.prior*myVal*(0.4+0.6*stale));
+  const est={A:eA,known,stale,W:Math.max(eW,s[o+PS_W]*0.95),Wseen:eW,H:eH,sites,era:T.era,eraSeen:M.eraSeen,St:Math.max(eSt,s[o+PS_ST]*0.85),P:Math.max(eP,s[o+PS_P]*0.9),c:150};
+  s[p+PS_C]=est.c;s[p+PS_E]=0.6*est.c;s[p+PS_W]=est.W;s[p+PS_H]=eH;s[p+PS_SIP]=Math.max(1,s[o+PS_SIP]);s[p+PS_P]=est.P;s[p+PS_ERA]=M.eraSeen;
+  s[p+PS_A]=eA;s[p+PS_D]=dhE[0];s[p+PS_HP]=dhE[1];s[p+PS_TUR]=eTur;s[p+PS_LOC]=(ai.thrV||0)>=120?1:0;s[p+PS_ST]=est.St;s[p+PS_UP]=T.wl+T.al;
+  s[p+PS_WMX]=36;s[p+PS_A0]=eA;s[p+PS_HERO]=now-M.heroT<120?M.heroLvl:0;s[p+PS_FST]=eK>0?eF/eK:0.2;s[PS_T]=now;
+  return{s,est};
+}
+function aiPlanConf(ai){
+  const C0=ai.cfg.plan,RT=AI_RT[ai.team];
+  if(!RT.thE||RT.thEf!==G.teams[ai.enemy].faction){const P=typeof AI_PARAMS!=='undefined'?AI_PARAMS:{};RT.thE=thetaDecode(aiThetaFor({theta:P.theta0},FACTIONS[G.teams[ai.enemy].faction].style));RT.thEf=G.teams[ai.enemy].faction;}
+  const pol=typeof AI_PARAMS!=='undefined'&&AI_PARAMS.pol?AI_PARAMS.pol:null;
+  return{K:plK(),th:ai.th,thE:RT.thE,phi:C0.phi||(pol&&pol.phi)||null,vf:ai.cfg.useV?aiVF(ai):null,c:C0.c||1.5,lam:C0.lam===undefined?0.5:C0.lam,
+    D:20,depth:C0.depth||3,tEnd:ai.pl.t0+(C0.hz||100),noise:!!C0.noise};
+}
+/* one time slice of the planner (called from aiStrategy, i.e. at 1-2 Hz): search ceil(K/slices) determinised worlds; after K worlds
+   the root visit counts decide the macro-action. All planner state lives in ai.pl as plain data (save/resume). */
+function aiPlan(ai,R,own,en,army,known,myVal,stale){
+  const C0=ai.cfg.plan,pl=ai.pl,now=G.time;if(!pl)return;
+  if(C0.every>1&&((pl.tick=(pl.tick||0)+1)%C0.every))return;                 // CPU budget: search on every n-th strategy think only
+  if(!pl.root||pl.w>=pl.K){const r=aiPlanRoot(ai,R,own,en,known,myVal,stale);pl.root=Array.from(r.s);pl.est=r.est;pl.w=0;pl.t0=now;
+    pl.N=new Array(PL_NA).fill(0);pl.W=new Array(PL_NA).fill(0);
+    const C=aiPlanConf(ai);pl.P=Array.from(plPrior(r.s,0,C.th,C.phi));}
+  const C=aiPlanConf(ai),rng=()=>airand(pl),per=Math.ceil(pl.K/Math.max(1,C0.slices||1)),sims=Math.max(1,Math.round(C0.sims/pl.K));
+  for(let k=0;k<per&&pl.w<pl.K;k++){
+    const s=plWorld(Float64Array.from(pl.root),pl.est,rng),r=plSearch(s,C,rng,sims,Float64Array.from(pl.P));
+    for(let a=0;a<PL_NA;a++){pl.N[a]+=r.N[a];pl.W[a]+=r.W[a];}pl.w++;}
+  if(pl.w<pl.K)return;
+  // decision: the most visited macro-action (training: sampled with N^(1/tau)); pi = the visit distribution (expert-iteration target)
+  let tot=0;for(let a=0;a<PL_NA;a++)tot+=pl.N[a];
+  pl.pi=pl.N.map(n=>+(n/Math.max(1,tot)).toFixed(4));pl.q=pl.N.map((n,a)=>n>0?+(pl.W[a]/n).toFixed(4):-1);
+  let a=0;for(let b=1;b<PL_NA;b++)if(pl.N[b]>pl.N[a])a=b;
+  if(C0.tau>0){const w=pl.N.map(n=>Math.pow(n,1/C0.tau));let S=0;for(const x of w)S+=x;let x=airand(pl)*S;for(a=0;a<PL_NA-1;a++){x-=w[a];if(x<=0)break;}while(a>0&&pl.N[a]<=0)a--;}
+  // trust region: the search overrides the league-tuned rules only where it clearly disagrees with them. aT = the theta rules' own
+  // favourite (argmax of the theta utilities); the override needs a Q margin (or, if the search never tried aT, half of all visits)
+  const root=Float64Array.from(pl.root),u=plUtil(root,0,ai.th),m=plLegal(root,0);let aT=-1;for(let b=0;b<PL_NA;b++)if(m[b]&&(aT<0||u[b]>u[aT]))aT=b;
+  const margin=C0.margin===undefined?0.03:C0.margin;
+  const dev=a!==aT&&(pl.N[aT]>0?pl.q[a]-pl.q[aT]>=margin:pl.N[a]>=0.5*tot);
+  const na=dev?a:-1;if(na!==pl.a)pl.at=now;pl.a=na;pl.top=a;pl.aT=aT;pl.n++;if(dev)pl.dev=(pl.dev||0)+1;
+  pl.why=(dev?PL_ACTS[a]+' (search override)':PL_ACTS[aT]+' (rules; search agrees or is unsure)')+': est. win '+Math.round(100*Math.max(0,pl.q[a]))+'%'+(aT!==a?' vs '+PL_ACTS[aT]+' '+(pl.N[aT]>0?Math.round(100*pl.q[aT])+'%':'(not searched)'):'');
+  if(pl.log){const x=plX(root,0);pl.log.push({t:+now.toFixed(1),x:Array.from(x,v=>+v.toFixed(4)),u:Array.from(u,v=>+v.toFixed(4)),m:Array.from(m),pi:pl.pi,a,aT});}
 }
 function aiStrategy(ai,R){
   const th=ai.th,now=G.time,T=G.teams[ai.team];
@@ -204,6 +285,10 @@ function aiStrategy(ai,R){
   // economic posture: 'mass' (army first, no greed) while a stronger enemy army has been seen recently or we are under attack
   ai.eco=(thrV>150||(ai.pG<0.45&&known>0.6*myVal&&now-ai.mem.armySeenT<75))?'mass':'grow';
   const sup=army.reduce((n,u)=>n+u.def.supply,0);
+  // macro planner (41_ai_mcts.js): when the tier has a search budget, the most-visited macro-action of the PUCT search sets the posture
+  if(ai.cfg.plan&&ai.cfg.plan.sims>0){aiPlan(ai,R,own,en,army,known,myVal,stale);}
+  const PA=ai.pl&&ai.pl.a>=0?ai.pl.a:-1;
+  if(PA>=0&&thrV<=150)ai.eco=(PA===PA_MASS||PA===PA_ATTACK||PA===PA_HARASS||PA===PA_DEFEND&&ai.pG<0.5)?'mass':'grow';
   const prev=ai.mil;
   // 1. defence has priority when something real is at our structures
   if(thrV>=120||thr.some(e=>!e.def.worker)&&thrV>=60&&R.army.length<3){
@@ -211,12 +296,13 @@ function aiStrategy(ai,R){
     const c=centroid(thr);ai.tgt={x:c.x,y:c.y,id:0};}
   else if(ai.mil==='defend'&&now-ai.milT>4){ai.mil='hold';ai.milT=now;}
   // 2. attack decision: predicted win probability against the estimated army, V(s) shifts the threshold (adaptive aggression)
-  if(ai.mil==='hold'&&now>th.firstAtk&&now>ai.atkCool){
+  const wv=ai.P.wave===undefined?1:Math.max(0.05,ai.P.wave);              // campaign waveMult: < 1 = smaller, rarer attacks
+  if(ai.mil==='hold'&&(PA>=0||now>th.firstAtk)&&now>ai.atkCool&&now>=(ai.P.first||0)){
     const U=(ai.pG-th.aggr)+0.25*th.vW*(ai.V-0.5);
-    if((U>0&&sup>=th.atkSup)||T.used>=MAXSUP-8&&sup>=30){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;ai.grp=army.map(u=>u.id);}}
+    if((PA>=0?PA===PA_ATTACK&&sup>=6/wv:U>0&&sup>=th.atkSup/wv)||T.used>=MAXSUP-8&&sup>=30/wv){ai.mil='attack';ai.milT=now;ai.tgt=aiAttackTarget(ai,R);ai.atkN=army.length;ai.wave++;ai.attacking=true;ai.grp=army.map(u=>u.id);}}
   else if(ai.mil==='attack'){
     const g=new Set(ai.grp||[]),alive=army.filter(u=>g.has(u.id)).length;
-    if(alive<Math.max(3,ai.atkN*0.35)||ai.pG<th.retreat*0.8){ai.mil='retreat';ai.milT=now;ai.atkCool=now+20;ai.st.retreat++;}
+    if(alive<Math.max(3,ai.atkN*0.35)||ai.pG<th.retreat*0.8||PA===PA_DEFEND){ai.mil='retreat';ai.milT=now;ai.atkCool=now+20;ai.st.retreat++;}
     else if(now-ai.milT>3){const t=aiAttackTarget(ai,R);if(!ai.tgt||hyp(t.x-ai.tgt.x,t.y-ai.tgt.y)>200&&(!ai.mem.b[ai.tgt.id]))ai.tgt=t;}}
   else if(ai.mil==='retreat'&&now-ai.milT>8){ai.mil='hold';ai.milT=now;}
   if(ai.mil!=='attack')ai.attacking=false;
@@ -228,9 +314,10 @@ function aiHarassPlan(ai,R){
   const th=ai.th,now=G.time,H=ai.har;
   H.ids=H.ids.filter(id=>R.army.some(u=>u.id===id));
   if(H.ids.length&&(now-H.t>75)){H.ids=[];H.tgt=null;}
-  if(H.ids.length||th.harass<0.3||now<200||ai.mil==='defend'||now-H.t<60+120*(1-th.harass))return;
+  const planH=ai.pl&&ai.pl.a===PA_HARASS;                              // the planner may order a raid regardless of theta's harass rule
+  if(H.ids.length||ai.mil==='defend'||(planH?now-H.t<30:th.harass<0.3||now<200||now-H.t<60+120*(1-th.harass)))return;
   const fast=R.army.filter(u=>(u.type==='raptor'||u.type==='reaver'||u.type==='skiff')&&u.hp>u.maxhp*0.8);
-  if(fast.length<4)return;
+  if(fast.length<(planH?3:4))return;
   let best=null,bs=-1e9;for(const id in ai.mem.b){const r=ai.mem.b[id];if(r.type!=='hub')continue;let thr=0;for(const id2 in ai.mem.b){const q=ai.mem.b[id2];if(q.type==='turret'&&hyp(q.x-r.x,q.y-r.y)<300)thr++;}
     const s=-thr*2-hyp(r.x-G.sites[ai.enemy].cx*TILE,r.y-G.sites[ai.enemy].cy*TILE)/-1500;if(s>bs){bs=s;best=r;}}
   if(!best){const em=G.sites[ai.enemy];best={x:em.cx*TILE,y:em.cy*TILE};}
@@ -354,7 +441,8 @@ function aiMacro(ai,R){
   if(wq<wantW&&ai.eco!=='mass')hold({c:50,e:0});
   const hero=R.hero;if(hero&&skillPoints(team)>0&&ai.apm.tok>=1){for(const i of[2,1,0])if(learnSkill(team,i)){aiAct(ai);break;}}
   // 4. era advancement (theta timings; deferred while a real attack is on unless overdue)
-  const eraDue=T.era===1?th.era2:T.era===2?th.era3:1e9;
+  const PA=ai.pl&&ai.pl.a>=0?ai.pl.a:-1;
+  const eraDue=PA===PA_TECH?Math.min(now,T.era===1?th.era2:T.era===2?th.era3:1e9):T.era===1?th.era2:T.era===2?th.era3:1e9;
   if(T.era<3&&now>=eraDue&&(!threatened||now>eraDue+60)&&!B.some(x=>x.queue.some(q=>q.k==='era'))){
     const E=ERAS[T.era+1],gate=T.era===1?doneN('garrison')>0:doneN('armory')>0;
     if(gate){const h0=hubs.find(h=>h.queue.length===0)||hubs[0];if(h0&&canSpend(E.cost)){if(aiAct(ai))queueEra(h0);}else hold(E.cost);}}
@@ -364,26 +452,27 @@ function aiMacro(ai,R){
   let inc=0;{let cw=0,ew=0;for(const w of workers)if(w.order.t==='gather'&&w.order.res){if(w.order.res.type==='geyser')ew++;else cw++;}inc=98*Math.min(cw,hubs.length*20)+52*ew;}
   ai.inc=inc;
   const otherProd=cnt('foundry')+cnt('airfield'),bankX=T.c>1600?2:T.c>900?1:0;
-  const gwant=clamp(Math.round(th.gar*inc/300)-otherProd+bankX+(ai.eco==='mass'?1:0),1,9);
+  const gwant=clamp(Math.round(th.gar*inc/300)-otherProd+bankX+(ai.eco==='mass'?1:0)+(PA===PA_MASS||PA===PA_ATTACK?1:0),1,9);
   const nb=Math.max(1,hubs.length);const sat=workers.length>=nb*th.wBase*0.85;
   let baseWant=1+(now>th.expandAt?1:0)+(now>th.expandAt+150+300*(1-th.expandRate)?1:0)+(now>th.expandAt+400+400*(1-th.expandRate)?1:0);
   if(sat&&now>th.expandAt*0.7)baseWant=Math.max(baseWant,hubs.length+1);
   baseWant=Math.min(4,Math.round(baseWant+th.vW*(ai.V-0.5)));
+  if(PA===PA_EXPAND)baseWant=Math.min(4,Math.max(baseWant,hubs.length+1));else if(PA===PA_MASS||PA===PA_ATTACK||PA===PA_DEFEND)baseWant=Math.min(baseWant,hubs.length);
   const geys=G.res.filter(r=>!r.dead&&r.type==='geyser'&&R.hubs.some(h=>hyp(h.x-r.x,h.y-r.y)<520)).length;
   const sipWant=Math.min(geys,Math.max(1,Math.round((T.era>=2?2:1.5)*nb*(0.7+0.5*(th.cAnti+th.cHeavy+th.cAir+th.cArt)/2)))+(T.e<120&&T.c>500?1:0));
   const etherShort=T.c>1200&&T.e<200;                                  // floating crystals: the Exchange turns them into ether
   const seq=[
     ['garrison',cnt('garrison')<1&&(workers.length>=8||now>50),1],
     ['siphon',cnt('garrison')>=1&&cnt('siphon')<1,1],
-    ['hub',cnt('hub')<baseWant&&workers.length>=10&&!threatened&&ai.eco!=='mass',1],
-    ['armory',doneN('garrison')>0&&cnt('armory')<1&&(now>th.era2-100||th.tech>0.6||now>240),1],
+    ['hub',cnt('hub')<baseWant&&workers.length>=10&&!threatened&&(ai.eco!=='mass'||PA===PA_EXPAND),1],
+    ['armory',doneN('garrison')>0&&cnt('armory')<1&&(now>th.era2-100||th.tech>0.6||now>240||PA===PA_TECH),1],
     ['garrison',cnt('garrison')<gwant&&doneN('garrison')>0,th.bank>0.5?1:0],
     ['siphon',cnt('siphon')<sipWant&&doneN('garrison')>0,0],
     ['foundry',T.era>=2&&doneN('armory')>0&&cnt('foundry')<(th.cHeavy+th.cArt>0.6||now>620?Math.min(2,1+(T.c>1500?1:0)):0),1],
     ['airfield',ai.P.air&&T.era>=2&&doneN('armory')>0&&cnt('airfield')<(th.cAir>0.35?1+(T.c>1500?1:0):0),1],
     ['exchange',T.era>=2&&cnt('exchange')<1&&(th.trade>0.45||etherShort||now>720&&T.c>1200),0],
     ['depot',cnt('depot')<1&&(hubs.length>=2||th.tech>0.6)&&now>200,0],
-    ['turret',doneN('garrison')>0&&cnt('turret')<Math.round(th.turret*2.6*nb)&&now>150,0],
+    ['turret',doneN('garrison')>0&&cnt('turret')<Math.round(th.turret*2.6*nb)+(PA===PA_DEFEND?nb:0)&&now>150,PA===PA_DEFEND?1:0],
     ['forum',T.era>=2&&cnt('forum')<(T.morale<55?2:0),0],
     ['habitat',th.trade>0.6&&cnt('habitat')<3&&now>300,0]];
   if(building<2+(hubs.length>1?1:0)){
@@ -397,7 +486,7 @@ function aiMacro(ai,R){
     if(!b.done||b.queue.length)continue;
     if(b.type==='armory'){const ids=T.wl<=T.al?['weapons','armor','stims']:['armor','weapons','stims'];
       for(const id of ids){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(id==='stims'&&!R.army.some(u=>u.def.stim))continue;
-        if(canSpend({c:L.c+Math.round(250*(1-th.tech)),e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}
+        if(canSpend({c:L.c+(PA===PA_TECH?0:Math.round(250*(1-th.tech))),e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}
     else if(b.type==='depot'){for(const id of['mining','cargo','compress']){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(canSpend({c:L.c+100,e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}}
   // 7. trade: freighters and the market
   const ex=B.find(b=>b.type==='exchange'&&b.done);
@@ -411,7 +500,7 @@ function aiMacro(ai,R){
   // 8. army production: whatever is not reserved (macro efficiency < 1 skips some buildings: the lower tiers' sloppy macro)
   const sp=spendable();
   for(const b of R.prod){
-    if(b.queue.length>=2)continue;if(cfg.macro<1&&airand(ai)>cfg.macro)continue;
+    if(b.queue.length>=2)continue;const mEff=cfg.macro*Math.min(1,ai.P.wave===undefined?1:ai.P.wave);if(mEff<1&&airand(ai)>mEff)continue;
     const s=spendable();if(s.c<50)break;
     const id=aiUnitPick(ai,R,b,s);if(!id)continue;
     if(aiAct(ai))queueUnit(b,id);
@@ -637,6 +726,37 @@ function aiHeroCast2(ai,h,R){ // v3's cluster logic, fed with perceived enemies 
       if(cl.c&&cl.n>=need&&hyp(cl.c.x-h.x,cl.c.y-h.y)<=s.range){if(aiAct(ai))castSkill(h,i,cl.c.x,cl.c.y);return;}}
     else{let allies=0;forNear(h.x,h.y,s.radius,a=>{if(a.team===team&&!a.dead&&!a.def.worker)allies++;});
       if(allies>=5&&en.length>=3){if(aiAct(ai))castSkill(h,i,h.x,h.y);return;}}}
+}
+
+/* ------------------------------------------------------------------ the player's advisor (27_overseer.js, swarm ON only)
+   The same fog-honest perception, belief grid, value function V(s) and planner, run for the PLAYER's team without any command
+   authority: it only explains the Overseer's proposals ("win chance 54 % -> 61 %: expanding now"). Plain data in G.sw.adv. */
+function aiAdvisorMake(team){
+  const P=typeof AI_PARAMS!=='undefined'?AI_PARAMS:{},tier=Object.assign({},aiTierCfg('master'),{plan:{sims:96,K:2,slices:1,c:1.5,lam:0.5}});
+  const u=aiThetaFor({theta:P.theta0},FACTIONS[G.teams[team].faction].style);
+  const ai={kind:'adv',team,enemy:1-team,tier:'advisor',cfg:tier,th:thetaDecode(u),delay:0.3,mem:{u:{},b:{},camps:{},armySeenT:-99,heroLvl:0,heroT:-99,eraSeen:1},
+    bel:{s:new Float32Array(BN),a:new Float64Array(BN),t:0},ph:{vis:new Float32Array(BN),dem:new Float32Array(BN),def:new Float32Array(BN)},
+    mil:'hold',thrV:0,V:0.5,har:{ids:[]},scout:{id:0},q:null,qN:null,t:-99,
+    pl:{a:-1,w:0,K:2,N:[],W:[],P:[],root:null,est:null,t0:0,n:0,rs:(G.seed*2246822519+team*31+5)>>>0}};
+  aiBeliefInit(ai);return ai;
+}
+function aiAdvise(ai){
+  const R={},now=G.time;aiOwn(ai,R);if(!R.B.length)return;aiObserve(ai,R);aiBelief(ai,R);
+  ai.V=aiValue(ai,R);
+  const army=R.army,own=aiStacksOf(army,ai.team),recs=aiEnemyRecs(ai,90,true),known=aiArmyVal(recs),myVal=aiArmyVal(army.map(u=>({type:u.type,hp:u.hp,mhp:u.maxhp})));
+  const en=aiStacksOf(recs,ai.team),stale=Math.min(1,Math.max(0,now-ai.mem.armySeenT)/90),prior=ai.th.prior*myVal*(0.4+0.6*stale);
+  if(prior>known+50){const s=cmbStackOf('rifleman',(prior-known)/50,{wl:G.teams[ai.team].wl,al:G.teams[ai.team].al});s.cost=50;en.push(s);}
+  const thr=aiThreat(ai,R);ai.thrV=aiArmyVal(thr.map(u=>({type:u.type,hp:u.hp,mhp:u.maxhp})));
+  const r=aiPlanRoot(ai,R,own,en,known,myVal,stale),pl=ai.pl;pl.t0=now;
+  const C=aiPlanConf(ai),rng=()=>airand(pl),N=new Array(PL_NA).fill(0),W=new Array(PL_NA).fill(0),P=plPrior(r.s,0,C.th,C.phi);
+  for(let k=0;k<pl.K;k++){const res=plSearch(plWorld(r.s,r.est,rng),C,rng,Math.round(ai.cfg.plan.sims/pl.K),Float64Array.from(P));for(let a=0;a<PL_NA;a++){N[a]+=res.N[a];W[a]+=res.W[a];}}
+  ai.qN=N;ai.q=N.map((n,a)=>n>0?+(W[a]/n).toFixed(3):-1);ai.t=now;pl.n++;
+}
+/* the explanation of a proposal of macro-action kind k: estimated win chance without it (status quo 'grow') and with it */
+function aiAdviceWhy(ai,k,verb){
+  if(!ai||!ai.q)return'';const a=PL_ACTS.indexOf(k),b=PA_GROW;if(a<0||ai.q[a]<0)return'';
+  const base=ai.q[b]>=0?ai.q[b]:ai.V,pa=Math.round(100*base),pb=Math.round(100*ai.q[a]);
+  return'win chance '+pa+' % -> '+pb+' %: '+verb+(pb<pa?' (the planner advises against it now)':'');
 }
 
 /* ------------------------------------------------------------------ the think loop (time-sliced) */

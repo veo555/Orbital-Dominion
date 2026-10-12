@@ -151,9 +151,9 @@ function ifdTotal(sites,n){let s=0;for(let i=0;i<sites.length;i++)for(let k=0;k<
 
 /* ---------------------------------------------------------------- 6. value function V(s) = P(win | features) */
 /* model: {kind:'lr', w:[...], b, mu:[...], sd:[...]} or {kind:'mlp', W1 (h x d), b1, w2 (h), b2, mu, sd};  features are standardised */
-function vfEval(m,f){
+function vfEval(m,f,buf){
   if(!m||!m.w&&!m.W1)return 0.5;
-  const d=f.length,x=new Array(d);for(let i=0;i<d;i++)x[i]=(f[i]-(m.mu?m.mu[i]:0))/(m.sd?m.sd[i]||1:1);
+  const d=f.length,x=buf||new Array(d);for(let i=0;i<d;i++)x[i]=(f[i]-(m.mu?m.mu[i]:0))/(m.sd?m.sd[i]||1:1);
   if(m.kind==='mlp'){let z=m.b2;for(let h=0;h<m.W1.length;h++){let a=m.b1[h];const r=m.W1[h];for(let i=0;i<d;i++)a+=r[i]*x[i];z+=m.w2[h]*Math.tanh(a);}return sigm(z);}
   let z=m.b;for(let i=0;i<d;i++)z+=m.w[i]*x[i];return sigm(z);
 }

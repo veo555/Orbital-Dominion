@@ -55,7 +55,7 @@ function hideAndScramble(S, team) { // mutate everything the AI's team cannot se
 function noPeek(src, label, expectSame) {
   const S = sim(src); const G = start(S, 31, 'meridian', 'obsidian', { kind: 't2', tier: 'master' }, { kind: 't2', tier: 'master' });
   for (let i = 0; i < 330 * 30; i++) { S.step(); if (G.over) break; }
-  const snap = S.gameSnapshot(), team = 1, K = 16;
+  let snap = S.gameSnapshot(); const team = 1, K = 16;
   const think = (mut) => {
     S.gameRestore(snap); const G2 = S.G; S.__run('rebuildCells()'); let info = null;
     if (mut) info = hideAndScramble(S, team);
@@ -63,9 +63,14 @@ function noPeek(src, label, expectSame) {
     try { for (let k = 0; k < K; k++) { G2.time += ai.P.iv; S.__run(`aiThink(G.ais[${team}])`); } } finally { rec.stop(); }
     return { log: rec.log, st: stateOf(G2.ais[team]), info };
   };
-  const A = think(false), B = think(true);
+  // probe moment: the first of t = 330, 345, 360 ... s at which the AI issues >= 5 commands in K thinks on the true world (deterministic)
+  let A = think(false);
+  for (let tries = 0; tries < 12 && A.log.length < 5; tries++) { S.gameRestore(snap); S.__run('rebuildCells()'); for (let i = 0; i < 450; i++) S.step(); snap = S.gameSnapshot(); A = think(false); }
+  const B = think(true);
   if (expectSame) {
     ok(A.log.length >= 5, `${label}: the AI acted in the probe (${A.log.length} commands in ${K} thinks) - not a vacuous comparison`);
+    const pl = JSON.parse(A.st).pl;
+    ok(pl && pl.n > 0 && pl.root, `${label}: the macro planner ran in the probe (${pl ? pl.n : 0} decisions so far; its root state and determinised worlds are part of the compared AI state)`);
     ok(B.info.moved + B.info.added + B.info.hurt > 10 && B.info.leaked === 0, `${label}: hidden world scrambled (${B.info.moved} enemy units moved in fog, ${B.info.added} added, ${B.info.hurt} damaged, enemy bank/era/upgrades changed; none became visible)`);
     const firstDiff = A.log.findIndex((x, i) => x !== B.log[i]);
     ok(A.log.length === B.log.length && firstDiff < 0, `${label}: identical command stream with and without the hidden changes` + (firstDiff >= 0 ? ` (first difference at #${firstDiff}: ${A.log[firstDiff]} vs ${B.log[firstDiff]})` : ''));
@@ -79,8 +84,10 @@ noPeek(undefined, 'no-peek', true);
 {
   const d1 = mutatedTree([['if(!seen(team,u))continue;', '']]);
   const d2 = mutatedTree([['function aiEnemyRecs(ai,maxAge,combatOnly){const out=[]', 'function aiEnemyRecs(ai,maxAge,combatOnly){const out=[];for(const u of G.units)if(!u.dead&&u.team===ai.enemy&&!u.def.worker&&!u.def.trade)out.push({type:u.type,x:u.x,y:u.y,hp:u.hp,mhp:u.maxhp,t:G.time});return out;const out0=[]']]);
-  try { noPeek(d1, 'mutation "no seen() gate"', false); noPeek(d2, 'mutation "army estimate read from G.units"', false); }
-  finally { fs.rmSync(d1, { recursive: true, force: true }); fs.rmSync(d2, { recursive: true, force: true }); }
+  // the planner's determinisation must sample from beliefs only: a planner whose enemy point estimate reads the true enemy army / bank is caught
+  const d3 = mutatedTree([['const eA=Math.max(known,th.prior*myVal*(0.4+0.6*stale));', 'let eA=G.teams[ai.enemy].c;for(const u of G.units)if(!u.dead&&u.team===ai.enemy&&!u.def.worker)eA+=aiVal(u.type);']]);
+  try { noPeek(d1, 'mutation "no seen() gate"', false); noPeek(d2, 'mutation "army estimate read from G.units"', false); noPeek(d3, 'mutation "planner world sampled from the true enemy army"', false); }
+  finally { for (const d of [d1, d2, d3]) fs.rmSync(d, { recursive: true, force: true }); }
 }
 
 /* ---------------------------------------------------------------- 2. seen-ever invariant */
@@ -163,5 +170,9 @@ for (const tier of QUICK ? ['master'] : ['easy', 'master']) {
   console.log(`info  ms/tick: T2-master game ${a.msTick.toFixed(3)} (T2 AI ${a.ai0.toFixed(4)}, worst think ${a.worst0.toFixed(1)} ms) | v3-hard game ${b.msTick.toFixed(3)} (v3 AI ${b.ai0.toFixed(4)}, worst ${b.worst0.toFixed(1)} ms)`);
   ok(isolated <= 1.25, `CPU: replacing the v3-hard AI by T2 master costs ${((isolated - 1) * 100).toFixed(1)} % of the total tick time (budget +25 %)`);
   ok(a.worst0 < 40, `CPU: worst single T2 think ${a.worst0.toFixed(1)} ms (bound 40 ms; v3 hard worst ${b.worst0.toFixed(1)} ms)`);
+  // v5: the planner's cost against the v4 Master (same tier without search), same game, sim cost held fixed
+  const c = profile({ kind: 't2', tier: 'master', cfg: { plan: { sims: 0 } } }, { kind: 'v3', diff: 'hard' }, 3, secs), vsV4 = (simA + a.ai0 + a.ai1) / (simA + c.ai0 + a.ai1);
+  console.log(`info  v4 Master (no planner) AI ${c.ai0.toFixed(4)} ms/tick, worst think ${c.worst0.toFixed(1)} ms | v5 Master (planner) AI ${a.ai0.toFixed(4)} ms/tick`);
+  ok(vsV4 <= 1.25, `CPU: the v5 Master (with planner) costs ${((vsV4 - 1) * 100).toFixed(1)} % more total tick time than the v4 Master (budget +25 %)`);
 }
 console.log(fails ? `\n${fails} AI AGENT CHECK(S) FAILED` : '\nALL AI AGENT CHECKS PASSED'); process.exit(fails ? 1 : 0);
