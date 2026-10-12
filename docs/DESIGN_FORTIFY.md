@@ -54,7 +54,7 @@ Specter (**permanently cloaked**), heroes; neutral creeps. Tags: light, armored,
 |---|---|---|---|
 | Supply-depot walls, lowering depots | cheap choke control vs early rushes, lets own units through | none; supply buildings are 2x2 and cannot open | **Wall segment** (1x1, line-drawn) + **Gate** (2x1/1x2, open / closed / auto team-aware). Walls give no supply (generators stay the supply source; keeps the economy untouched). |
 | Bunker | protects infantry, +1 range, salvage | Hub Call to Arms for workers only | **Bunker** (4 slots, infantry only, +1 tile range, salvage 75 %, rally-load). |
-| Planetary Fortress | immobile hub with armor + splash cannon | the Hub has a light bolt | **Fortress** hub upgrade (one-way, +50 % HP, +3 armor, heavy splash cannon r300). There is no lift-off in this game, so "cannot lift" is moot; the trade is cost and permanence. |
+| Planetary Fortress | immobile hub with armor + splash cannon | the Hub has a light bolt | **Fortress** hub upgrade (one-way, +50 % HP, +3 armor, heavy splash cannon r250). There is no lift-off in this game, so "cannot lift" is moot; the trade is cost and permanence. |
 | Missile Turret / Spore | anti-air + detection | Defense Turret (both, detects) | keep the Turret (all-round + detection), add **Anti-Air Battery** (air only, long range) and **Cannon Tower** (ground only, short range, heavy) so static defence has roles. |
 | Photon Cannon / Spine Crawler | static ground defence | Turret | covered by Cannon Tower (faction flavour via art/sfx). |
 | Sensor Tower | radar blips beyond vision | Watchtowers (neutral, real vision) | **Sensor Tower**: 30-tile radar, red blips for enemy units (no detail, no fog reveal, cloaked units only if detected). |
@@ -122,7 +122,7 @@ fields.
 
 | id | size | HP / armor | cost c/e | time | era / req | weapon / effect |
 |---|---|---|---|---|---|---|
-| wall | 1x1 | 600 / 2 | 50 / 0 | 8 | I / – | — (Meridian 720 HP) |
+| wall | 1x1 | 640 / 2 | 50 / 0 | 8 | I / – | — (Meridian 768 HP) |
 | gate / gatev | 2x1 / 1x2 | 900 / 2 | 100 / 0 | 14 | I / – | open / closed / auto |
 | bunker | 2x2 | 550 / 2 | 100 / 0 | 22 | I / garrison | 4 infantry slots, +32 px range |
 | cannon | 2x2 | 420 / 2 | 125 / 0 | 24 | I / garrison | 30 dmg (+12 armored) / 1.4 s, r160, ground only |
@@ -130,19 +130,19 @@ fields.
 | sensor | 2x2 | 220 / 0 | 100 / 75 | 25 | II / armory | radar 30 tiles |
 | battery | 2x2 | 300 / 1 | 100 / 50 | 24 | I / garrison | heals 18 HP/s in 6 tiles, 0.2 ether/HP (Meridian 0.1) |
 | mine | 1x1 | 40 / 0 | 30 / 10 | 6 | I / garrison | 60 (+25 light) splash 52 px, trigger 38 px, max 12 |
-| fortress | (hub) | +50 % HP, +3 armor | 250 / 150 | 50 | II / armory | cannon 40 (+10 armored) splash 34, r300, 2.0 s, ground |
+| fortress | (hub) | +50 % HP, +3 armor | 250 / 150 | 50 | II / armory | cannon 40 (+10 armored) splash 34, r250 (inside the Hub's 270 sight), 2.0 s, ground |
 | scan | (hub) | 50 energy | — | — | I | 256 px, 10 s, reveal + detect |
 | dropship | unit | 150 / 1, speed 125 | 100 / 100 | 28 | II / airfield | 8 cargo slots, unarmed, 2 supply |
 | rocks | 2x2 | 2000 / 1 | neutral | — | map | blocks a corridor (alternative route always exists) |
 
-Wall target from the brief: six Riflemen (7 dmg / 0.75 s) vs armor 2 → 6 × 5 / 0.75 = 40 dps → 600 HP in **15 s**
-(Meridian 720 HP: 18 s). Howitzer (sieged, +25 vs structures) 75 per shot, Titan 78 per shot: a segment in 8 shots.
+Wall target from the brief: six Riflemen (7 dmg / 0.75 s) vs armor 2 → 6 × 5 / 0.75 = 40 dps → 640 HP in **16 s**
+(Meridian 768 HP: 19.2 s). Howitzer (sieged, +25 vs structures) 75 per shot, Titan 78 per shot: a segment in 8 shots.
 
 ## 5. AI (skirmish T2 only; v3 campaign AI unchanged)
 Parameters (`AI_FORT` in `43_ai_fortify.js`, deterministic, AI RNG only):
 * **Bunker / Repair Battery** — Normal, Hard, Master: when the perceived threat at a non-main Hub (or any Hub while
   `ai.mil==='defend'`) exceeds 150 value, build one Bunker toward the enemy (max 1 per Hub, 2 total) and, from Era I
-  with a Garrison, one Repair Battery (max 1 per Hub); idle infantry within 9 tiles load into a Bunker that has room
+  with a Garrison, one Repair Battery (max 1 per Hub); idle infantry within 14 tiles load into a Bunker that has room
   while the threat lasts and unload when it is gone.
 * **Wall** — Hard, Master only: when a rush is expected (enemy style `rush`, or enemy army seen before 4:00) and
   before 6:00, wall the top of the main ramp: one Gate in the middle, Wall segments on the rest (at most 8 tiles,

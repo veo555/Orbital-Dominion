@@ -7,7 +7,7 @@ TAGNAME.infantry='infantry';
 /* tag 'infantry': the units a Bunker accepts (ranged foot soldiers and the two ranged heroes) */
 for(const k of['rifleman','rocketeer','mender','specter','hero_idris','hero_lyra'])UDEF[k].tags.infantry=1;
 const FORT_B={
-  wall:{name:'Wall',w:1,h:1,hp:600,armor:2,cost:{c:50,e:0},time:8,sight:90,era:1,wall:true,line:true,noWin:true,
+  wall:{name:'Wall',w:1,h:1,hp:640,armor:2,cost:{c:50,e:0},time:8,sight:90,era:1,wall:true,line:true,noWin:true,
     desc:'Cheap, tough 1×1 barrier. Drag to draw a line of segments; your Haulers build them one after another. Blocks enemy ground units, which must break through. Gives no supply.'},
   gate:{name:'Gate',w:2,h:1,hp:900,armor:2,cost:{c:100,e:0},time:14,sight:110,era:1,wall:true,gate:true,noWin:true,alt:'gatev',
     desc:'Openable wall section. Auto: your units pass, enemies are blocked. Open: everyone passes. Closed: nobody passes. Turns to fit between walls.'},
@@ -26,7 +26,7 @@ const FORT_B={
   mine:{name:'Proximity Mine',w:1,h:1,hp:40,armor:0,cost:{c:30,e:10},time:6,sight:70,era:1,req:'garrison',mine:true,noWin:true,noBlock:true,
     trigger:1.2*TILE,blast:52,dmg:60,bon:{light:25},limit:12,
     desc:'Buried charge, invisible to the enemy unless detected. Explodes with splash when an enemy ground unit comes within 1.2 tiles. Single use; 12 per player.'},
-  rocks:{name:'Rock Formation',w:2,h:2,hp:2000,armor:1,cost:{c:0,e:0},time:1,sight:0,era:1,rock:true,noWin:true,menuHide:true,
+  rocks:{name:'Rock Formation',w:1,h:1,hp:1500,armor:1,cost:{c:0,e:0},time:1,sight:0,era:1,rock:true,noWin:true,menuHide:true,
     desc:'Neutral rocks blocking a passage. Attack them on purpose to open the route.'}
 };
 for(const k in FORT_B){const d=FORT_B[k];d.id=k;d.tags=tg('struct');d.ground=d.ground!==false;d.air=!!d.air;d.supply=d.supply||0;d.bon=d.bon||{};BDEF[k]=d;}
@@ -41,7 +41,7 @@ const FORT={
   bunkerRange:TILE,                  // range bonus of a unit firing from inside a Bunker, beyond the Bunker's half-size
   hubEnergyMax:100,hubEnergy0:50,hubEnergyRate:0.5,
   scan:{energy:50,r:8*TILE,t:10,cd:2},
-  fortress:{cost:{c:250,e:150},time:50,era:2,req:'armory',hpMul:1.5,armor:3,dmg:40,bon:{armored:10},splash:34,cd:2.0,range:300,pspd:420},
+  fortress:{cost:{c:250,e:150},time:50,era:2,req:'armory',hpMul:1.5,armor:3,dmg:40,bon:{armored:10},splash:34,cd:2.0,range:250,pspd:420},
   unloadGap:0.3,                     // Dropship: seconds between two passengers at the drop point
   breachCost:14,breachCd:1.5,breachIter:6000,
   rockHpMul:1,

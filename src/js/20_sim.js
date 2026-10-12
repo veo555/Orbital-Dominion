@@ -209,7 +209,7 @@ function updateVision(){
     for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const dx=xx+.5-cx,dy=yy+.5-cy;if(dx*dx+dy*dy<=r2){const i=yy*MW+xx;if(all||vh[i]<=uh+0.51)v[i]=2;}}};
   for(const u of G.units){if(u.dead||u.team>1)continue;
     mark(u.team,u.x,u.y,u.def.sight*sm,u.flying?9:G.H[tileOf(u.x,u.y)],u.flying);}
-  for(const b of G.buildings){if(b.dead)continue;mark(b.team,b.x,b.y,(b.done?b.def.sight:120)*sm,G.H[tileOf(b.x,b.y)],false);}
+  for(const b of G.buildings){if(b.dead||b.team>1)continue;mark(b.team,b.x,b.y,(b.done?b.def.sight:120)*sm,G.H[tileOf(b.x,b.y)],false);}
   for(const n of G.neutrals){if(n.type==='tower'&&n.ctrl>=0)mark(n.ctrl,n.x,n.y,20*TILE,9,true);}
   if(G.camp&&G.camp.reveals.length)campReveal();   // mission `reveal` actions: timed live vision for the player
   if(G.scans&&G.scans.length)fortVision();          // Scanner Sweeps (31_defense.js)
@@ -497,7 +497,7 @@ function acquire(u,range){
   if(d.ground&&u.team<2||d.ground&&u.team===2){
     for(const b of G.buildings){
       if(b.team===u.team||b.dead||b.def.rock)continue;const dd=rectDist(u.x,u.y,b);if(dd>range||!seen(u.team,b))continue;
-      const s=dd+(b.def.dmg?0:140);if(s<bs){bs=s;best=b;}}}
+      const s=dd+(b.def.dmg?0:140)+(b.def.wall?220:0);if(s<bs){bs=s;best=b;}}}   // walls/gates last: attack-moving units go for what is behind them once there is a gap
   return best;
 }
 function fire(src,t){

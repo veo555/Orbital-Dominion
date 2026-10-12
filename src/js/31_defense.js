@@ -274,28 +274,31 @@ function fortSalvage(b){
 }
 
 /* ------------------------------------------------------------------ map features (skirmish/random maps only: G.mapFx) */
-const ROCK_CANDS=[[31,52,'h'],[53,70,'h'],[22,37,'h'],[14,43,'v'],[68,62,'v'],[46,62,'v']];   // half-map corridor points (10_map.js CORRIDORS) and the corridor's axis; mirrored for the other side
+/* rock formations: a line of 1x1 rock blocks straight across a corridor (10_map.js CORRIDORS), both ends against rock or cliff, mirrored for the other
+   side; a formation is kept only if the map stays connected without that corridor (mapConnected with the rocks as terrain). */
 function fortMapFeatures(rnd){
   const TT=G.TT,occ=new Uint8Array(NN);
   for(const r of G.res)for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++)occ[(r.ty+y)*MW+r.tx+x]=1;
   for(const n of G.neutrals)for(let y=-1;y<=n.h;y++)for(let x=-1;x<=n.w;x++){const i=(n.ty+y)*MW+n.tx+x;if(i>=0&&i<NN)occ[i]=1;}
-  const near=(x,y)=>G.camps.some(c=>hyp(c.x/TILE-x,c.y/TILE-y)<4.5)||G.sites.some(s=>hyp(s.cx-x,s.cy-y)<7);
-  const fits=(tx,ty)=>{if(tx<3||ty<3||tx+2>MW-3||ty+2>MH-3)return false;const h0=G.H[ty*MW+tx];
-    for(let y=0;y<2;y++)for(let x=0;x<2;x++){const i=(ty+y)*MW+tx+x;if(TT[i]!==0||G.RAMP[i]||occ[i]||G.H[i]!==h0)return false;}return!near(tx+1,ty+1);};
-  const order=ROCK_CANDS.map(c=>({c,k:rnd()})).sort((a,b)=>a.k-b.k).map(o=>o.c);
+  const near=(x,y)=>G.camps.some(c=>hyp(c.x/TILE-x,c.y/TILE-y)<4.5)||G.sites.some(s=>hyp(s.cx-x,s.cy-y)<8);
+  const floor=(x,y,h0)=>x>=3&&y>=3&&x<MW-3&&y<MH-3&&TT[y*MW+x]===0&&!G.RAMP[y*MW+x]&&!occ[y*MW+x]&&G.H[y*MW+x]===h0;
+  const wallT=(x,y)=>x<0||y<0||x>=MW||y>=MH||TT[y*MW+x]!==0;
+  const line=(cx,cy,ux,uy)=>{const x0=Math.round(cx),y0=Math.round(cy);if(TT[y0*MW+x0]!==0)return null;const h0=G.H[y0*MW+x0],out=[[x0,y0]];
+    for(const d of[1,-1]){let k=1;for(;k<=5;k++){const x=Math.round(cx+ux*k*d),y=Math.round(cy+uy*k*d);if(wallT(x,y))break;if(!floor(x,y,h0))return null;out.push([x,y]);}if(k>5)return null;}
+    if(!floor(x0,y0,h0)||out.length<2||out.length>9||out.some(([x,y])=>near(x,y)))return null;return out;};
+  const cands=[];
+  for(const c of CORRIDORS)for(let k=0;k<c.length-1;k++){const[ax,ay]=c[k],[bx,by]=c[k+1],l=hyp(bx-ax,by-ay);if(l<6)continue;
+    for(const f of[0.35,0.5,0.65]){const cx=lerp(ax,bx,f),cy=lerp(ay,by,f),ux=-(by-ay)/l,uy=(bx-ax)/l;
+      const L=line(cx,cy,ux,uy),M=line(MW-1-cx,MH-1-cy,ux,uy);if(L&&M)cands.push({L,M,k:rnd()});}}
+  cands.sort((a,b)=>a.k-b.k);
   let placed=0;
-  for(const[cx,cy,ax]of order){if(placed>=2)break;
-    // a formation across the corridor: 2x2 blocks stepped perpendicular to the corridor until the floor ends (at most 3 each way)
-    const px=ax==='v'?1:0,py=ax==='h'?1:0,spots=[];
-    for(const dir of[1,-1])for(let s=dir>0?0:-1;Math.abs(s)<=3;s+=dir){const tx=cx+px*2*s-1,ty=cy+py*2*s-1;if(!fits(tx,ty))break;spots.push([tx,ty]);}
-    if(!spots.length)continue;
-    const all=spots.concat(spots.map(([x,y])=>[MW-2-x,MH-2-y]));
-    if(all.some(([x,y])=>!fits(x,y)))continue;
-    for(const[x,y]of all)for(let j=0;j<2;j++)for(let i=0;i<2;i++)TT[(y+j)*MW+x+i]=1;
+  for(const c of cands){if(placed>=2)break;
+    const all=c.L.concat(c.M);if(all.some(([x,y])=>occ[y*MW+x]||TT[y*MW+x]!==0))continue;
+    for(const[x,y]of all)TT[y*MW+x]=1;
     const okConn=mapConnected();
-    for(const[x,y]of all)for(let j=0;j<2;j++)for(let i=0;i<2;i++)TT[(y+j)*MW+x+i]=0;
+    for(const[x,y]of all)TT[y*MW+x]=0;
     if(!okConn)continue;
-    for(const[x,y]of all){addBuilding('rocks',2,x,y,true);for(let j=0;j<2;j++)for(let i=0;i<2;i++)occ[(y+j)*MW+x+i]=1;}
+    for(const[x,y]of all){addBuilding('rocks',2,x,y,true);occ[y*MW+x]=1;}
     placed++;}
   G.rocksPlaced=placed;
 }

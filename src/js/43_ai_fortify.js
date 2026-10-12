@@ -14,7 +14,7 @@ const AI_FORT={off:false,
   thrPh:1.5,thrVal:150,         // pressure at a Hub: pheromone >= thrPh (~150 value deposited) or perceived enemy value within 650 px >= thrVal
   bunkerMax:2,batteryMax:2,     // per game, alive or being built; at most one of each within 10 tiles of a Hub
   bunkerDist:6,                 // tiles from the Hub toward the enemy start
-  loadR:9*TILE,calm:30,         // infantry within loadR of a Bunker loads under pressure; unload when the Hub's perceived threat < calm
+  loadR:14*TILE,calm:30,        // infantry within loadR of a Bunker loads under pressure; unload when the Hub's perceived threat < calm
   rushSeenBy:240,wallBy:360,wallMax:8};
 function aiFortify(ai,R){
   if(AI_FORT.off||ai.kind!=='t2'||!R.hubs.length)return;
@@ -71,18 +71,20 @@ function aiFortRampLine(team){
       if(G.RAMP[ni]){edge=true;continue;}if(seen[ni]||G.TT[ni]!==0||G.H[ni]!==h0)continue;seen[ni]=1;q.push(ni);}
     if(edge)line.push([cx,cy]);}
   if(!line.length)return null;
-  const horiz=line.every(p=>p[1]===line[0][1]),vert=line.every(p=>p[0]===line[0][0]);if(!horiz&&!vert)return null;
-  line.sort((a,b)=>horiz?a[0]-b[0]:a[1]-b[1]);
-  return{line,horiz};
+  // the edge can be L / U shaped (plateau floor beside the ramp's top corners): the gate goes in the middle of its longest straight run
+  const runs={};for(const p of line){(runs['x'+p[0]]||(runs['x'+p[0]]=[])).push(p);(runs['y'+p[1]]||(runs['y'+p[1]]=[])).push(p);}
+  let best=null;for(const k of Object.keys(runs).sort()){const r=runs[k].slice().sort((a,b)=>k[0]==='x'?a[1]-b[1]:a[0]-b[0]);
+    let s0=0;for(let i=1;i<=r.length;i++){if(i<r.length&&(k[0]==='x'?r[i][1]-r[i-1][1]:r[i][0]-r[i-1][0])===1)continue;const seg=r.slice(s0,i);if(!best||seg.length>best.seg.length)best={seg,horiz:k[0]==='y'};s0=i;}}
+  return{line,run:best.seg,horiz:best.horiz};
 }
 function aiFortWall(ai,R){
-  const team=ai.team,L=aiFortRampLine(team);if(!L||L.line.length<3||L.line.length>AI_FORT.wallMax)return false;
-  const n=L.line.length,m=Math.floor((n-2)/2),g=L.line[m],gType=L.horiz?'gate':'gatev';   // the gate lies along the line, in its middle
-  if(!reqBuild(team,gType).ok||!canPlace(team,gType,g[0],g[1],true))return false;
-  const walls=L.line.filter((p,i)=>i!==m&&i!==m+1);
+  const team=ai.team,L=aiFortRampLine(team);if(!L||L.run.length<2||L.line.length<3||L.line.length>AI_FORT.wallMax)return false;
+  const m=Math.max(0,Math.floor((L.run.length-2)/2)),g=L.run[m],g2=L.run[m+1],gType=L.horiz?'gate':'gatev';   // the gate lies along the run, in its middle
+  if(!reqBuild(team,gType).ok||!canPlace(team,gType,Math.min(g[0],g2[0]),Math.min(g[1],g2[1]),true))return false;
+  const walls=L.line.filter(p=>p!==g&&p!==g2);
   if(!fortLinePlan(team,walls,true).sealOK)return false;
   const w=aiFortWorker(ai,R,(g[0]+.5)*TILE,(g[1]+.5)*TILE);if(!w||!aiAct(ai))return false;
-  if(!orderBuild(w,gType,g[0],g[1]))return false;
+  if(!orderBuild(w,gType,Math.min(g[0],g2[0]),Math.min(g[1],g2[1])))return false;
   fortPlaceLine(team,[w],walls,true,true);
   ai.st.wall=(ai.st.wall||0)+1;return true;
 }
