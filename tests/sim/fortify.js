@@ -9,7 +9,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'ok    ':'FAIL  ')+m);if(!c)fails++;
 const pin=(S,seed)=>{let st=seed>>>0;S.sandbox.Math.random=function(){st=(st+0x6D2B79F5)>>>0;let t=st;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};};
 function hashG(S){const G=S.G;let h=2166136261>>>0;const add=n=>{h^=Math.round(n*64)|0;h=Math.imul(h,16777619)>>>0;};
   add(G.tick);add(G.units.length);add(G.buildings.length);for(const u of G.units){add(u.x);add(u.y);add(u.hp);add(u.inside||0);}for(const b of G.buildings){add(b.hp);add(b.queue.length);add(b.cargo?b.cargo.length:0);}
-  for(const t of G.teams){add(t.c||0);add(t.e||0);add(t.used||0);}add(G.rng()*1e6);return h;}
+  for(const t of G.teams){add(t.c||0);add(t.e||0);add(t.used||0);}let v=0;for(let i=0;i<G.vis[0].length;i++)if(G.vis[0][i]===2)v++;add(v);add(G.rng()*1e6);return h;}
 /* a fresh game with an empty, flat 13x13 arena on the low ground; creeps removed, both sides rich */
 function arena(xform,opts){
   const S=load(undefined,xform);pin(S,7);S.newGame(Object.assign({seed:5,faction:'aurora',enemy:'obsidian'},opts||{}));
@@ -237,17 +237,18 @@ check('map features',[`if(G.mapFx)fortMapFeatures(rnd);`,`void 0;`],(xf)=>{
   return a;});
 
 /* 13. save round trip and determinism with the whole defence layer in play */
-check('save+determinism',[`b.healId=best.id;b.healT=0.35;`,`b.healId=best.id;b.healT=0.35;b.hp-=Math.random()*3;`],(xf)=>{
+check('save+determinism',[`const SAVE_SKIP={terrainCv:1,mmBg:1,tInfo:1};`,`const SAVE_SKIP={terrainCv:1,mmBg:1,tInfo:1,scans:1};`],(xf)=>{
   const mk=()=>{const{S,cx,cy,T}=arena(xf);ring(S,cx,cy,3,0,true);
     C(S,`addBuilding('bunker',0,${cx}-1,${cy}-1,true);addBuilding('battery',0,${cx}+1,${cy}+1,true);addBuilding('mine',0,${cx}+6,${cy},true);addBuilding('cannon',0,${cx}-5,${cy}-6,true)`);
     for(let i=0;i<3;i++)S.addUnit('rifleman',0,(cx-1+i)*T,(cy)*T);C(S,`cargoOrderLoad(G.units.filter(u=>u.team===0&&u.type==='rifleman').slice(0,2),G.buildings.find(b=>b.type==='bunker'))`);
     for(let i=0;i<6;i++){const u=S.addUnit('rifleman',1,(cx+9)*T,(cy-3+i)*T);S.setOrder(u,{t:'attackmove',x:cx*T,y:cy*T,gs:0});}
+    C(S,`fortScan(0,${(cx+12)*T},${(cy+12)*T})`);   // an active Scanner Sweep is part of the saved state
     return S;};
   const A=mk();run(A,30*3);const snap=A.gameSnapshot();
   let st=1234;const rnd=()=>{st=(st+0x6D2B79F5)>>>0;let t=st;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};
-  A.sandbox.Math.random=rnd;run(A,30*20);const hA=hashG(A);
-  st=1234;A.gameRestore(snap);run(A,30*20);const hB=hashG(A);
-  let a=ok(hA===hB,'save: walls + gate + bunker with cargo + battery + mine + 6 attackers: 20 s after restore = 20 s without ('+hA.toString(16)+'/'+hB.toString(16)+')');
+  A.sandbox.Math.random=rnd;run(A,30*4);let hA=hashG(A);run(A,30*16);hA=hA+'.'+hashG(A);
+  st=1234;A.gameRestore(snap);run(A,30*4);let hB=hashG(A);run(A,30*16);hB=hB+'.'+hashG(A);
+  let a=ok(hA===hB,'save: walls + gate + bunker with cargo + battery + mine + 6 attackers: 4 s and 20 s after restore = without ('+hA+' / '+hB+')');
   const B=mk();B.sandbox.Math.random=(()=>{let s=1234;return()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};})();
   const C2=mk();C2.sandbox.Math.random=(()=>{let s=1234;return()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};})();
   run(B,30*23);run(C2,30*23);

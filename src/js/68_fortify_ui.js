@@ -95,7 +95,8 @@ function fortGhost(p){
     return true;}
   if(d.gate){const w=s2w(ui.mx,ui.my),bl=(x,y)=>!inMap(x,y)||G.blocked[y*MW+x];
     const hx=Math.round(w.x/TILE-1),hy=Math.floor(w.y/TILE),vx=Math.floor(w.x/TILE),vy=Math.round(w.y/TILE-1);
-    const sh=(bl(hx-1,hy)?1:0)+(bl(hx+2,hy)?1:0),sv=(bl(vx,vy-1)?1:0)+(bl(vx,vy+2)?1:0);
+    const okH=canPlace(0,'gate',hx,hy),okV=canPlace(0,'gatev',vx,vy);
+    const sh=(bl(hx-1,hy)?1:0)+(bl(hx+2,hy)?1:0)+(okH?4:0),sv=(bl(vx,vy-1)?1:0)+(bl(vx,vy+2)?1:0)+(okV?4:0);   // a placeable orientation first, then the one whose ends touch walls
     if(sv>sh)p.id='gatev';else if(sh>sv)p.id='gate';}
   return false;
 }
