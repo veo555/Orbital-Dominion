@@ -167,5 +167,9 @@ for (const tier of QUICK ? ['master'] : ['easy', 'master']) {
   console.log(`info  ms/tick: T2-master game ${a.msTick.toFixed(3)} (T2 AI ${a.ai0.toFixed(4)}, worst think ${a.worst0.toFixed(1)} ms) | v3-hard game ${b.msTick.toFixed(3)} (v3 AI ${b.ai0.toFixed(4)}, worst ${b.worst0.toFixed(1)} ms)`);
   ok(isolated <= 1.25, `CPU: replacing the v3-hard AI by T2 master costs ${((isolated - 1) * 100).toFixed(1)} % of the total tick time (budget +25 %)`);
   ok(a.worst0 < 40, `CPU: worst single T2 think ${a.worst0.toFixed(1)} ms (bound 40 ms; v3 hard worst ${b.worst0.toFixed(1)} ms)`);
+  // v5: the planner's cost against the v4 Master (same tier without search), same game, sim cost held fixed
+  const c = profile({ kind: 't2', tier: 'master', cfg: { plan: { sims: 0 } } }, { kind: 'v3', diff: 'hard' }, 3, secs), vsV4 = (simA + a.ai0 + a.ai1) / (simA + c.ai0 + a.ai1);
+  console.log(`info  v4 Master (no planner) AI ${c.ai0.toFixed(4)} ms/tick, worst think ${c.worst0.toFixed(1)} ms | v5 Master (planner) AI ${a.ai0.toFixed(4)} ms/tick`);
+  ok(vsV4 <= 1.25, `CPU: the v5 Master (with planner) costs ${((vsV4 - 1) * 100).toFixed(1)} % more total tick time than the v4 Master (budget +25 %)`);
 }
 console.log(fails ? `\n${fails} AI AGENT CHECK(S) FAILED` : '\nALL AI AGENT CHECKS PASSED'); process.exit(fails ? 1 : 0);
