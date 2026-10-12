@@ -23,7 +23,8 @@ function cmdTipHTML(c,i){
   if(d&&d.hp&&!d.isB){
     h+='<div class="tstat">HP '+d.hp+(d.dmg?' · ATK '+d.dmg+' · RNG '+d.range:'')+' · ARM '+d.armor+(d.speed?' · SPD '+d.speed:'')+'</div>';
     if(d.dmg)h+='<div class="tstat">Hits '+hitsText(d)+(Object.keys(d.bon||{}).length?' · <span class="ok">'+bonText(d)+'</span>':'')+'</div>';
-    h+='<div class="tstat dim">'+Object.keys(d.tags).map(t=>TAGNAME[t]).join(', ')+'</div>';
+    h+='<div class="tstat dim">'+Object.keys(d.tags).map(t=>TAGNAME[t]).join(', ')+(d.dmg?' · '+dtText(d)+' damage':'')+'</div>';
+    if(d.role)h+='<div class="tstat dim">Role: '+d.role+'</div>';
   }else if(d&&c.isB){h+='<div class="tstat">HP '+d.hp+' · ARM '+d.armor+(d.dmg?' · ATK '+d.dmg+' · RNG '+d.range:'')+'</div>';}
   h+='<div class="d">'+c.tip+'</div>';
   if(d&&d.note&&!c.isB)h+='<div class="d warn">'+d.note+'</div>';
@@ -55,7 +56,7 @@ function orderText(u){
   const o=u.order;
   switch(o.t){case'idle':return u.sieged?'Sieged':u.def.worker?'Idle':'Idle — guarding';case'hold':return'Holding position';case'move':return'Moving';case'attackmove':return'Attack-moving';
     case'attack':return'Attacking '+(o.target&&o.target.def?o.target.def.name:'');case'gather':return o.res&&o.res.type==='geyser'?'Extracting ether':'Mining crystals';case'build':return'Constructing '+BDEF[o.type].name;
-    case'repair':return'Repairing';case'trade':return'Trade route — '+(o.st==='toPost'?'outbound':'returning');case'garrison':return'Sheltering in the Hub';case'cast':return'Casting';}return'';
+    case'repair':return'Repairing';case'trade':return'Trade route — '+(o.st==='toPost'?'outbound':'returning');case'garrison':return'Sheltering in the Hub';case'cast':return'Casting';case'abil':return ABIL[o.id]?ABIL[o.id].name:'Ability';}return'';
 }
 const bar=(f,cls,txt)=>'<div class="pbar '+(cls||'')+'"><i style="width:'+clamp(f,0,1)*100+'%"></i><span>'+txt+'</span></div>';
 function factionName(t){return t===2?'Wild creature':FACTIONS[G.teams[t].faction].name;}
@@ -83,11 +84,12 @@ function renderInfo(){
     h+=bar(e.hp/e.maxhp,e.hp/e.maxhp>0.5?'':e.hp/e.maxhp>0.25?'mid':'low',Math.ceil(e.hp)+' / '+e.maxhp);
     if(e.kind==='unit'){
       if(d.hero){const H=T.hero,nx=HERO_LVL_XP[Math.min(HERO_MAXLVL,H.level+1)],pv=HERO_LVL_XP[H.level];h+='<div class="bars2">'+bar(H.level>=HERO_MAXLVL?1:(H.xp-pv)/(nx-pv),'xp','XP '+Math.floor(H.xp)+(H.level>=HERO_MAXLVL?' (max)':' / '+nx))+bar(e.mana/heroMaxMana(e),'mana','Mana '+Math.floor(e.mana)+' / '+heroMaxMana(e))+'</div>';}
-      else if(d.energy)h+=bar(e.energy/100,'mana','Energy '+Math.floor(e.energy));
+      else if(d.energy)h+=bar(e.energy/(e.emax||100),'mana','Energy '+Math.floor(e.energy)+(e.emax?' / '+e.emax:''));
       const Tm=G.teams[e.team<2?e.team:0],wl=e.team<2?Tm.wl:0,al=e.team<2?Tm.al:0;
       if(d.dmg){const atk=baseDmgOf(e);h+='<div class="st">ATK <b>'+atk.toFixed(0)+'</b>'+(Object.keys(bonOf(e)||{}).length?' <span class="ok">('+bonText({bon:bonOf(e)})+')</span>':'')+' · RNG <b>'+rangeOf(e)+'</b> · ARM <b>'+(d.armor+al+(e.armAdd||0))+'</b> · SPD <b>'+d.speed+'</b> · Hits '+hitsText(d)+'</div>';}
       else h+='<div class="st">ARM <b>'+(d.armor+al)+'</b> · SPD <b>'+d.speed+'</b></div>';
       h+='<div class="chips">'+Object.keys(d.tags).map(t=>'<span class="chipx">'+TAGNAME[t]+'</span>').join('')+(d.supply?'<span class="chipx sup">'+d.supply+' supply</span>':'')+buffChips(e)+'</div>';
+      h+=arsenalUnitInfo(e,own);
       if(own)h+='<div class="ds"><b>'+orderText(e)+'</b>'+(e.carry>0?' · carrying '+e.carry+(e.carryType==='c'?' crystals':' ether'):'')+'</div>';
       if(!(d.hero&&own))h+='<div class="ds">'+d.desc+(d.note?' <span class="warn">'+d.note+'</span>':'')+'</div>';
       if(d.hero&&own){h+='<div class="skills">';for(let i=0;i<3;i++){const s=SKILLS[e.type][i],lv=T.hero.sk[i];h+='<div class="sk'+(lv?'':' off')+'" title="'+s.name+': '+s.desc(Math.max(1,lv)).replace(/"/g,'')+'"><img src="'+iconURL('g:'+s.id)+'"><b>'+s.name+'</b><span>'+'★'.repeat(lv)+'☆'.repeat(s.max-lv)+'</span></div>';}h+='</div>';}

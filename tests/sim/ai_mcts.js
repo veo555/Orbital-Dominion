@@ -20,7 +20,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'ok    ' : 'FAIL  ') + m)
 const SRC = path.join(__dirname, '..', '..', 'src', 'js');
 function mutatedTree(file, edits) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-mcts-mut-'));
-  for (const f of fs.readdirSync(SRC)) if (/^(00|10|20|25|26|27|30|40|41|42|43|44|45|46)_/.test(f)) {
+  for (const f of fs.readdirSync(SRC)) if (/^(00|06|10|20|25|26|27|30|33|40|41|42|43|44|45|46)_/.test(f)) {
     let t = fs.readFileSync(path.join(SRC, f), 'utf8');
     if (f === file) for (const [a, b] of edits) { if (!t.includes(a)) throw new Error('mutation anchor not found: ' + a.slice(0, 60)); t = t.replace(a, b); }
     fs.writeFileSync(path.join(dir, f), t);

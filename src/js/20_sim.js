@@ -5,9 +5,11 @@ let G=null;
 const NOGFX=(typeof window!=='undefined'&&window.__NOGFX);
 
 function mkTeam(faction){
-  return{c:500,e:0,used:0,cap:0,wl:0,al:0,stims:0,mining:0,compress:0,cargo:0,kills:0,lost:0,mined:0,minedC:0,minedE:0,mult:1,era:1,faction,pal:FACTIONS[faction].col,
+  const t_={c:500,e:0,used:0,cap:0,wl:0,al:0,stims:0,mining:0,compress:0,cargo:0,kills:0,lost:0,mined:0,minedC:0,minedE:0,mult:1,era:1,faction,pal:FACTIONS[faction].col,
     morale:62,mt:62,tax:1,rl:0,rk:0,colonists:0,hab:0,taxEarn:0,tradeEarn:0,tradeMul:faction==='aurora'?1.3:1,built:0,sold:0,
-    hero:{alive:false,level:1,xp:0,sk:[0,0,0],uid:0,reviving:false},idleAlert:0};
+    hero:{alive:false,level:1,xp:0,sk:[0,0,0],uid:0,reviving:false},idleAlert:0,arsOff:false};
+  for(const id in TECH)if(t_[TECH[id].key]===undefined)t_[TECH[id].key]=0;   // v6: every tech line has a level counter (06_content_units.js adds lines)
+  return t_;
 }
 function mkG(seed,diff,f0,f1){
   return{seed,diff,time:0,tick:0,nextId:1,units:[],buildings:[],res:[],neutrals:[],camps:[],proj:[],parts:[],fx:[],decals:[],zones:[],
@@ -24,6 +26,7 @@ function newGame(opts){
   if(f1===f0)f1=FACTION_IDS.find(f=>f!==f0);
   do{G=mkG(seed+att*131,diff,f0,f1);genMap();att++;}while(!mapConnected()&&att<30);
   G.mapAttempts=att;
+  arsenalInit(opts);   // 33_abilities.js: campaign missions play the v5 roster (G.teams[t].arsOff) unless setup.arsenal
   G.aiKind=opts.aiKind||(opts.campaign?'v3':'t2');   // skirmish: T2 opponent (42_ai_agent.js); campaign missions keep the v3 wave AI they were balanced with
   for(let t=0;t<2;t++){
     const s=G.sites[t],hub=addBuilding('hub',t,s.tx,s.ty,true);
@@ -50,6 +53,7 @@ function addUnit(type,team,x,y){
     buffs:[],spdMul:1,atkMul:1,dmgMul:1,armAdd:0,stunned:0,revealT:0,cloaked:false,energy:d.energy||0,sieged:false,siegeT:0,cds:[0,0,0],mana:d.mana||0,camp:-1,provoked:0,garr:0,
     healFx:0,gsCap:0,lastHit:-99,bornT:G.time,wob:Math.random()*6};
   if(d.hero&&team<2){const H=G.teams[team].hero;H.alive=true;H.uid=u.id;heroApply(u,true);}
+  if(d.abil)abInit(u);   // 33_abilities.js
   G.units.push(u);return u;
 }
 function heroApply(u,full){
@@ -181,11 +185,7 @@ function pathLength(ax,ay,bx,by){
 }
 
 /* ------------------------------ vision ------------------------------- */
-function isDetected(team,e){
-  const L=G.det[team];if(!L)return false;
-  for(let i=0;i<L.length;i++){const d=L[i],dx=e.x-d.x,dy=e.y-d.y;if(dx*dx+dy*dy<=d.r*d.r)return true;}
-  return false;
-}
+function isDetected(team,e){return detectorsCover(team,e.x,e.y);}   // 33_abilities.js (the shared detector-coverage helper)
 function inFog(team,e){
   const v=G.vis[team];
   if(e.kind==='building'){for(const x of[e.tx,e.tx+e.w-1])for(const y of[e.ty,e.ty+e.h-1])if(v[y*MW+x]===2)return true;return false;}
@@ -245,19 +245,23 @@ function uTime(team,id){let t=UDEF[id].time;if(G.teams[team].faction==='obsidian
 function reqBuild(team,id){
   const d=BDEF[id],T=G.teams[team];
   if(G.camp){const L=campLocked(team,'building',id);if(L)return{ok:false,why:L};}
+  {const L=arsenalLocked(team,'building',id);if(L)return{ok:false,why:L};}
   if(T.era<d.era)return{ok:false,why:'Requires Era '+ERAS[d.era].rom};
   if(d.req&&!hasDone(team,d.req))return{ok:false,why:'Requires '+BDEF[d.req].name};
   const c=bCost(team,id);if(T.c<c.c)return{ok:false,why:'Not enough crystals'};if(T.e<c.e)return{ok:false,why:'Not enough ether'};return{ok:true};}
 function reqUnit(team,id){
   const d=UDEF[id],T=G.teams[team];
   if(G.camp){const L=campLocked(team,'unit',id);if(L)return{ok:false,why:L};}
+  {const L=arsenalLocked(team,'unit',id);if(L)return{ok:false,why:L};}
+  if(!unitFacOK(team,id))return{ok:false,why:'Not available to your faction'};
   if(T.era<d.era)return{ok:false,why:'Requires Era '+ERAS[d.era].rom};
   if(id==='titan'&&!hasDone(team,'foundry'))return{ok:false,why:'Requires Foundry'};
+  if(d.req&&!hasDone(team,d.req))return{ok:false,why:'Requires '+BDEF[d.req].name};
   const c=uCost(team,id);if(T.c<c.c)return{ok:false,why:'Not enough crystals'};if(T.e<c.e)return{ok:false,why:'Not enough ether'};
   if(T.used+d.supply>T.cap)return{ok:false,why:T.cap>=MAXSUP?'Supply limit reached':'Build more Generators'};return{ok:true};}
 function prodList(b){
-  if(b.type==='garrison'){const T=G.teams[b.team];return['rifleman','raptor','rocketeer','mender',FACTIONS[T.faction].unique];}
-  return b.def.prod||[];
+  if(b.type==='garrison'){const T=G.teams[b.team];return arsenalProd(b,['rifleman','raptor','rocketeer','mender',FACTIONS[T.faction].unique]);}
+  return arsenalProd(b,b.def.prod||[]);   // v6: + BDEF.prodAdd, minus what this faction / this campaign may not train
 }
 function queueUnit(b,id){
   if(!b.done||b.dead)return false;
@@ -268,7 +272,7 @@ function queueUnit(b,id){
   if(b.team===0)sfx('train',undefined,undefined,b);uiDirty();return true;
 }
 function techLevel(T,id){return T[TECH[id].key]||0;}
-function techNext(T,id){const R=TECH[id],lvl=techLevel(T,id);return lvl<R.lv.length?R.lv[lvl]:null;}
+function techNext(T,id){const R=TECH[id],lvl=techLevel(T,id);return lvl<techCap(T,id)?R.lv[lvl]:null;}   // techCap: 33_abilities.js (campaign: v5 tiers only)
 function queueResearch(b,id){
   const T=G.teams[b.team],R=TECH[id],L=techNext(T,id);
   if(!L){msg(b.team,'Fully researched');return false;}
@@ -358,7 +362,7 @@ function recalcBuffs(u,dt){
   if(u.def.hero){const l=G.teams[u.team].hero.level;dmg*=1+0.10*(l-1);arm+=Math.floor((l-1)/2);}
   if(u.ag){const m=u.ag.m;spd*=m.spd;dmg*=m.dmg;arm+=m.arm;}
   u.spdMul=spd;u.atkMul=atk;u.dmgMul=dmg;u.armAdd=arm;u.stunned=stun;
-  const wasCl=u.cloaked;u.cloaked=!!((u.def.cloak||hasBuff(u,'cloak'))&&u.revealT<=0);if(u.def.cloak&&wasCl!==u.cloaked)sfx('cloak',u.x,u.y,u);
+  const wasCl=u.cloaked;u.cloaked=!!((cloakBase(u)||hasBuff(u,'cloak'))&&u.revealT<=0);if(cloakBase(u)&&wasCl!==u.cloaked)sfx('cloak',u.x,u.y,u);
 }
 
 /* ------------------------------ orders ------------------------------- */
@@ -383,6 +387,7 @@ function setOrder(u,o,q){
   u.order=o;u.path=null;u.target=null;u.stuck=0;u.chasing=false;u.returning=false;
   if(o.t==='gather'&&u.carry>0&&u.carryType!==(o.res&&o.res.type==='crystal'?'c':'e'))u.carry=0;
   if(u.sieged&&(o.t==='move'||o.t==='attackmove'||o.t==='gather'||o.t==='build'))toggleSiege(u,true);
+  if(u.ab)abOnOrder(u,o);
 }
 function goIdle(u){u.order={t:'idle'};u.path=null;u.target=null;u.home={x:u.x,y:u.y};u.chasing=false;u.returning=false;}
 function finishOrder(u){
@@ -392,7 +397,7 @@ function finishOrder(u){
 }
 function orderBuild(u,type,tx,ty,q){
   const T=G.teams[u.team],c=bCost(u.team,type);
-  if(G.camp&&campLocked(u.team,'building',type))return false;   // mission restriction (the UI already greys the button; this stops agents / the Overseer)
+  if(G.camp&&campLocked(u.team,'building',type)||arsenalLocked(u.team,'building',type))return false;   // mission restriction (the UI already greys the button; this stops agents / the Overseer)
   if(!afford(T,c))return false;
   const prev=u.order,after=(!q&&prev.t==='gather')?{t:'gather',res:prev.res,st:u.carry>0?'ret':'go',hx:prev.hx,hy:prev.hy}:null;
   pay(T,c);
@@ -424,7 +429,7 @@ function moveUnit(u,dx,dy){
 function navigate(u,gx,gy,dt,stopDist,cap){
   const d=u.def,dd=hyp(gx-u.x,gy-u.y);
   if(dd<=stopDist){u.path=null;return true;}
-  if(u.stunned>0||u.sieged||u.siegeT>0)return false;
+  if(u.stunned>0||u.sieged||u.siegeT>0||u.root)return false;
   let sp=d.speed*u.spdMul;if(cap&&cap<sp)sp=cap;const spd=sp*dt;u.moving=true;
   if(u.flying){const a=Math.atan2(gy-u.y,gx-u.x);u.ang=turn(u.ang,a,dt*10);const s=Math.min(spd,dd);moveUnit(u,Math.cos(a)*s,Math.sin(a)*s);return false;}
   const need=!u.path||Math.abs(u.ngx-gx)+Math.abs(u.ngy-gy)>28;
@@ -464,8 +469,8 @@ function separate(){
 
 /* ------------------------------- combat ------------------------------ */
 function canAttack(def,t){return t.flying?def.air:def.ground;}
-function validTarget(src,t){return!!t&&!t.dead&&t.hp>0&&t.team!==src.team&&!t.hidden&&canAttack(src.def,t)&&seen(src.team,t);}
-function rangeOf(u){const d=u.def;return u.sieged&&d.siege?d.siege.range:d.range;}
+function validTarget(src,t){return!!t&&!t.dead&&t.hp>0&&t.team!==src.team&&!t.hidden&&canAttack(src.def,t)&&seen(src.team,t)&&!(src.sieged&&tooClose(src,t));}
+function rangeOf(u){const d=u.def;return u.sieged&&d.siege?d.siege.range+siegeRangeAdd(u):d.range;}
 function bonOf(u){const d=u.def;return u.sieged&&d.siege&&d.siege.bon?d.siege.bon:d.bon;}
 function splashOf(u){const d=u.def;return u.sieged&&d.siege?d.siege.splash:(d.splash||0);}
 function baseDmgOf(u){
@@ -474,42 +479,45 @@ function baseDmgOf(u){
   return b*(1+0.15*(T.wl||0))*(u.dmgMul||1);
 }
 function cdOf(u){const d=u.def;return((u.sieged&&d.siege)?d.siege.cd:d.cd)/(u.atkMul||1);}
-function dmgVs(base,bon,tgt,ranged){
+function dmgVs(base,bon,tgt,ranged,dt,pen){   // dt / pen: damage type and armor penetration (06_content_units.js, 33_abilities.js); undefined = the v5 formula
   let a=base;for(const k in bon)if(tgt.def.tags[k])a+=bon[k];
+  if(dt&&dt!=='kin')a*=DMGX[dt][armorClassOf(tgt)];
   let arm=tgt.def.armor+(tgt.armAdd||0);if(tgt.kind==='unit'&&tgt.team<2)arm+=G.teams[tgt.team].al||0;
   if(ranged&&tgt.def.projArmor)arm+=tgt.def.projArmor;
+  if(pen)arm=Math.max(0,arm-pen);
   return Math.max(1,a-arm);
 }
 function acquire(u,range){
   let best=null,bs=1e9;const d=u.def;
   forNear(u.x,u.y,range+24,e=>{
     if(e.team===u.team||e.dead||e.hidden||!canAttack(d,e))return;
-    const dd=hyp(e.x-u.x,e.y-u.y)-e.r;if(dd>range||!seen(u.team,e))return;
+    const dd=hyp(e.x-u.x,e.y-u.y)-e.r;if(dd>range||!seen(u.team,e))return;if(u.sieged&&d.siege&&d.siege.minr&&dd<d.siege.minr)return;
     let s=dd;if(e.def.worker)s+=40;else if(e.def.noWeapon)s+=90;if(e.def.hero)s-=15;if(s<bs){bs=s;best=e;}});
   if(d.ground&&u.team<2||d.ground&&u.team===2){
     for(const b of G.buildings){
-      if(b.team===u.team||b.dead)continue;const dd=rectDist(u.x,u.y,b);if(dd>range||!seen(u.team,b))continue;
+      if(b.team===u.team||b.dead)continue;const dd=rectDist(u.x,u.y,b);if(dd>range||!seen(u.team,b))continue;if(u.sieged&&d.siege&&d.siege.minr&&dd<d.siege.minr)continue;
       const s=dd+(b.def.dmg?0:140);if(s<bs){bs=s;best=b;}}}
   return best;
 }
 function fire(src,t){
-  const d=src.def;src.cd=cdOf(src);src.ang=Math.atan2(t.y-src.y,t.x-src.x);src.revealT=1.6;
-  const base=baseDmgOf(src),bon=bonOf(src),spl=splashOf(src);
+  if(src.mute)return;   // burrowed (33_abilities.js)
+  const d=src.def;src.cd=cdOf(src);src.ang=Math.atan2(t.y-src.y,t.x-src.x);src.revealT=cloakHold(src)?0:1.6;   // a toggled cloak (energy) survives firing; v5 cloaks are revealed for 1.6 s
+  const base=baseDmgOf(src),bon=bonOf(src),spl=splashOf(src),dt=dtOf(src),pen=d.pen||0;
   if(d.proj){
     const c=Math.cos(src.ang),s=Math.sin(src.ang),lift=src.flying?10:0;
-    G.proj.push({x:src.x+c*10,y:src.y+s*10-lift,sx:src.x,sy:src.y,t,tx:t.x,ty:t.y,sp:d.pspd,kind:d.proj,team:src.team,base,bon,splash:spl,src,life:4,total:Math.max(1,hyp(t.x-src.x,t.y-src.y)),dead:false});
-    sfx(d.proj==='bullet'?'shoot':d.proj==='rocket'?'rocket':d.proj==='shell'?'shell':d.proj==='acid'?'acid':'bolt',src.x,src.y,src);
+    G.proj.push({x:src.x+c*10,y:src.y+s*10-lift,sx:src.x,sy:src.y,t,tx:t.x,ty:t.y,sp:d.pspd,kind:d.proj,team:src.team,base,bon,splash:spl,dt,pen,aas:!!d.aaSplash,src,life:4,total:Math.max(1,hyp(t.x-src.x,t.y-src.y)),dead:false});
+    sfx(d.proj==='bullet'?'shoot':d.proj==='rocket'?'rocket':d.proj==='shell'?'shell':d.proj==='acid'?'acid':d.proj==='flak'?'flak':'bolt',src.x,src.y,src);
     addPart(src.x+c*12,src.y+s*12,0,0,0.09,5,d.proj==='bolt'?G.teams[src.team].pal.light:(d.proj==='acid'?'#c8ff6a':'#ffe9a0'),1);
     if(src.kind==='unit'&&d.proj==='shell'&&src.type==='howitzer'||d.proj==='shell'&&src.type==='titan')G.shake=Math.max(G.shake,2);
   }else{
-    const dmg=dmgVs(base,bon,t,false),dealt=damageEnt(t,dmg,src.team,src);
+    const dmg=dmgVs(base,bon,t,false,dt,pen),dealt=damageEnt(t,dmg,src.team,src);
     if(d.lifesteal&&src.kind==='unit'){src.hp=Math.min(src.maxhp,src.hp+dealt*d.lifesteal);src.healFx=0.4;}
     sfx('melee',src.x,src.y,src);addPart(t.x,t.y,0,0,0.12,5,'#fff',1);
   }
   if(src.kind==='unit'&&hasBuff(src,'cloak'))src.buffs=src.buffs.filter(b=>b.k!=='cloak');
 }
 function damageEnt(e,amt,from,srcEnt){
-  if(e.dead)return 0;const real=Math.min(amt,e.hp);e.hp-=amt;e.flash=0.12;e.lastHit=G.time;if(srcEnt&&srcEnt.ag)e.lastAtk=srcEnt;
+  if(e.dead)return 0;if(e.sh>0)amt=shieldHit(e,amt);const real=Math.min(amt,e.hp);e.hp-=amt;e.flash=0.12;e.lastHit=G.time;if(srcEnt&&srcEnt.ag)e.lastAtk=srcEnt;
   if(e.team===0&&from!==0)alertPlayer(e);
   if(e.team===2&&e.kind==='unit'&&from!==2)provokeCamp(e,srcEnt);
   if(e.kind==='building')e.dmgFlash=0.2;
@@ -572,13 +580,13 @@ function projHit(p){
   const enemyOf=e=>e.team!==p.team&&!e.dead;
   if(p.splash){
     forNear(p.x,p.y,p.splash+36,e=>{
-      if(!enemyOf(e)||e.flying||e.hidden)return;
-      if(hyp(e.x-p.x,e.y-p.y)-e.r<=p.splash)damageEnt(e,dmgVs(p.base,p.bon,e,true),p.team,p.src);});
-    for(const b of G.buildings){if(!enemyOf(b))continue;if(rectDist(p.x,p.y,b)<=p.splash)damageEnt(b,dmgVs(p.base,p.bon,b,true),p.team,p.src);}
+      if(!enemyOf(e)||!!e.flying!==!!p.aas||e.hidden)return;   // shells splash the ground, flak (aaSplash) only the air
+      if(hyp(e.x-p.x,e.y-p.y)-e.r<=p.splash)damageEnt(e,dmgVs(p.base,p.bon,e,true,p.dt,p.pen),p.team,p.src);});
+    if(!p.aas)for(const b of G.buildings){if(!enemyOf(b))continue;if(rectDist(p.x,p.y,b)<=p.splash)damageEnt(b,dmgVs(p.base,p.bon,b,true,p.dt,p.pen),p.team,p.src);}
     G.fx.push({x:p.x,y:p.y,t:0,max:0.35,kind:'ring',r:p.splash,col:'#ffb15a'});explode(p.x,p.y,false);sfx('boom',p.x,p.y,{team:p.team});
     G.decalDirty.push({x:p.x,y:p.y,r:p.splash*0.7,k:'scorch'});
   }else if(p.t&&!p.t.dead){
-    damageEnt(p.t,dmgVs(p.base,p.bon,p.t,true),p.team,p.src);if(p.t.kind==='unit'&&p.t.def.armor>0)sfx('hit',p.t.x,p.t.y,p.t);
+    damageEnt(p.t,dmgVs(p.base,p.bon,p.t,true,p.dt,p.pen),p.team,p.src);if(p.t.kind==='unit'&&p.t.def.armor>0)sfx('hit',p.t.x,p.t.y,p.t);
     addPart(p.x,p.y,0,0,0.14,p.kind==='rocket'?9:5,p.kind==='bolt'?G.teams[p.team].pal.light:(p.kind==='acid'?'#c8ff6a':'#ffd27a'),1);
     if(p.kind==='rocket')explode(p.x,p.y,false);
   }

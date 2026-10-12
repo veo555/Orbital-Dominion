@@ -107,6 +107,7 @@ function applyTarget(wx,wy,shift){
     if(e&&e.team===0&&e.hp<e.maxhp&&(e.kind==='building'||e.def.tags.mech)&&ws.length){for(const u of ws)setOrder(u,{t:'repair',target:e},shift);ping(e.x,e.y,'#7cc4ff');sfx('ack',undefined,undefined,ws[0]);}else msg(0,'Nothing to repair there');}
   else if(k==='trade'){const e=entityAt(wx,wy),fs=ownUnits().filter(u=>u.def.trade);
     if(e&&e.kind==='neutral'&&e.type==='post'&&fs.length){for(const u of fs)setOrder(u,{t:'trade',post:e,st:'toPost'},shift);ping(e.x,e.y,'#ffd45a');sfx('ack',undefined,undefined,fs[0]);}else msg(0,'Pick a Trading Post');}
+  else if(k.startsWith('abil:'))abilApply(k.slice(5),wx,wy,shift);   // 72_arsenal_ui.js
   else if(k.startsWith('skill')){const h=heroUnit(0),i=+k.slice(5);if(h){setOrder(h,{t:'cast',i,x:wx,y:wy});ping(wx,wy,'#ff9a6a');sfx('ack',undefined,undefined,h);}}
   else issueGroup(ownUnits(),wx,wy,k,shift);
 }
