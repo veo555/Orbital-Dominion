@@ -60,7 +60,9 @@ function duel(S,a,b,seed,o){
     S.step();
     if(t%20===0){ // re-issue attack-move for idle survivors (units that finished their move stand idle and still acquire)
       for(const u of ua)if(!u.dead&&u.order.t==='idle'&&!u.sieged&&!u.mute)S.setOrder(u,{t:'attackmove',x:xb,y:cy,gs:0});
-      for(const u of ub)if(!u.dead&&u.order.t==='idle'&&!u.sieged&&!u.mute)S.setOrder(u,{t:'attackmove',x:xa,y:cy,gs:0});}
+      for(const u of ub)if(!u.dead&&u.order.t==='idle'&&!u.sieged&&!u.mute)S.setOrder(u,{t:'attackmove',x:xa,y:cy,gs:0});
+      for(const d of det){if(d.dead)continue;const own=d.team===0?ua:ub,al=own.filter(u=>!u.dead&&!u.def.noWeapon&&u.def.speed<=140);   // the detector follows its army (as the AI's Watcher does)
+        if(al.length){let cx=0,cy2=0;for(const u of al){cx+=u.x;cy2+=u.y;}cx/=al.length;cy2/=al.length;const bx=cx+(d.team===0?-40:40);if(Math.hypot(d.x-bx,d.y-cy2)>60)S.setOrder(d,{t:'move',x:bx,y:cy2});}}}
     if(!alive(ua)||!alive(ub))break;
   }
   const left=L=>L.reduce((s,u)=>s+(u.dead?0:value(S,u.type)*Math.max(0,u.hp)/u.maxhp),0);

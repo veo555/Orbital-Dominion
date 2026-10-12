@@ -119,3 +119,6 @@ function arsenalDrawZone(z,t){
 function arsenalDrawFx(f,t){
   if(f.kind==='shot'){const p=f.t/f.max;ctx.globalAlpha=1-p;ctx.strokeStyle=f.col;ctx.lineWidth=2.4-1.4*p;ctx.beginPath();ctx.moveTo(f.x0,f.y0);ctx.lineTo(f.x,f.y);ctx.stroke();ctx.globalAlpha=1;}
 }
+
+/* test-side seam (window.__TEST='live' only, 90_main.js): the sim API the browser gate drives */
+function arsenalTestApi(){return{ABIL,DMGX,abUse,abCheck,abOn,abilCommand,abilApply,abilityButtons,techNext,queueResearch,queueEra,armorClassOf,arsenalOn,prodList,reqUnit,reqBuild,detectorsCover,findEnt,emaxOf,seen,dmgVs,uCost,bCost,glyphURL,iconURL,meshFor,unitSprite,buildingSprite,BUILD_PAGES,hasDone,spawnUnit,setOrder,recalcTeams,GLX};}

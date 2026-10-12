@@ -164,11 +164,11 @@ function abUse(u,id,x,y,tgt){           // execute now (range is the caller's jo
     case'stim':if(!useStim(u))return false;if(team===0)sfx('stim');break;
     case'siege':toggleSiege(u);return true;
     case'cloak':{if(s.on){s.on=false;if(team===0)sfx('cloak',u.x,u.y,u);}else{s.on=true;u.revealT=0;if(team===0)sfx('cloak',u.x,u.y,u);}s.cd=A.cd;return true;}
-    case'burrow':{if(s.on){s.on=false;u.root=0;u.mute=0;u.revealT=Math.max(u.revealT,.8);G.fx.push({x:u.x,y:u.y,t:0,max:.5,kind:'ring',r:26,col:'#caa070'});sfx('burrowOut',u.x,u.y,u);}
-      else{s.on=true;u.root=1;u.mute=1;u.path=null;u.target=null;G.fx.push({x:u.x,y:u.y,t:0,max:.5,kind:'ring',r:26,col:'#caa070'});sfx('burrowIn',u.x,u.y,u);}s.cd=A.cd;return true;}
-    case'sprint':addBuff(u,'haste',.7,A.dur);G.fx.push({x:u.x,y:u.y,t:0,max:.4,kind:'ring',r:20,col:'#ffe27a'});sfx('sprint',u.x,u.y,u);break;
-    case'overcharge':addBuff(u,'banner',3,A.dur);u.sh=90;u.shMax=90;u.shExp=G.time+A.dur;u.shT=G.time;G.fx.push({x:u.x,y:u.y,t:0,max:.7,kind:'ring',r:34,col:'#8fd0ff'});sfx('overcharge',u.x,u.y,u);break;
-    case'pounce':{s.t=1.8;s.tid=tgt.id;addBuff(u,'haste',1.4,1.8);u.order={t:'attack',target:tgt};u.path=null;u.target=tgt;sfx('pounce',u.x,u.y,u);break;}
+    case'burrow':{if(s.on){s.on=false;u.root=0;u.mute=0;u.revealT=Math.max(u.revealT,.8);G.fx.push({x:u.x,y:u.y,t:0,max:.5,kind:'ring',r:26,col:'#caa070'});sfx('skill.burrowOut',u.x,u.y,u);}
+      else{s.on=true;u.root=1;u.mute=1;u.path=null;u.target=null;G.fx.push({x:u.x,y:u.y,t:0,max:.5,kind:'ring',r:26,col:'#caa070'});sfx('skill.burrowIn',u.x,u.y,u);}s.cd=A.cd;return true;}
+    case'sprint':addBuff(u,'haste',.7,A.dur);G.fx.push({x:u.x,y:u.y,t:0,max:.4,kind:'ring',r:20,col:'#ffe27a'});sfx('skill.sprint',u.x,u.y,u);break;
+    case'overcharge':addBuff(u,'banner',3,A.dur);u.sh=90;u.shMax=90;u.shExp=G.time+A.dur;u.shT=G.time;G.fx.push({x:u.x,y:u.y,t:0,max:.7,kind:'ring',r:34,col:'#8fd0ff'});sfx('skill.overcharge',u.x,u.y,u);break;
+    case'pounce':{s.t=1.8;s.tid=tgt.id;addBuff(u,'haste',1.4,1.8);u.order={t:'attack',target:tgt};u.path=null;u.target=tgt;sfx('skill.pounce',u.x,u.y,u);break;}
     case'emp':{
       aoeEnemies(team,x,y,A.radius,e=>{
         if(e.kind==='unit'){
@@ -177,17 +177,17 @@ function abUse(u,id,x,y,tgt){           // execute now (range is the caller's jo
           e.revealT=Math.max(e.revealT,3);if(e.ab&&e.ab.cloak&&e.ab.cloak.on){e.ab.cloak.on=false;e.ab.cloak.cd=3;}
           G.fx.push({x:e.x,y:e.y-6,t:0,max:.5,kind:'ring',r:14,col:'#9fe8ff'});}
         else{e.sh=0;e.shT=G.time;}});
-      G.fx.push({x,y,t:0,max:.8,kind:'ring',r:A.radius,col:'#6ad4f2'});explode(x,y,false);sfx('emp',x,y,u);break;}
+      G.fx.push({x,y,t:0,max:.8,kind:'ring',r:A.radius,col:'#6ad4f2'});explode(x,y,false);sfx('skill.emp',x,y,u);break;}
     case'snipe':{
       const dmg=tgt.def.hero?70:130;damageEnt(tgt,dmg,team,u);
       G.fx.push({x:tgt.x,y:tgt.y,t:0,max:.35,kind:'shot',x0:u.x,y0:u.y,col:'#fff3c0'});G.fx.push({x:tgt.x,y:tgt.y-10,t:0,max:1.1,kind:'text',txt:'-'+dmg,col:'#ffe27a'});
-      u.revealT=Math.max(u.revealT,1.6);sfx('snipe',u.x,u.y,u);break;}
+      u.revealT=Math.max(u.revealT,1.6);sfx('skill.snipe',u.x,u.y,u);break;}
     case'lance':
-      G.zones.push({type:'lance',x:tgt.x,y:tgt.y,sx:u.x,sy:u.y,sid:u.id,tid:tgt.id,r:40,t:0,max:1.6,team,fired:false});u.revealT=Math.max(u.revealT,2);sfx('lanceCharge',u.x,u.y,u);break;
+      G.zones.push({type:'lance',x:tgt.x,y:tgt.y,sx:u.x,sy:u.y,sid:u.id,tid:tgt.id,r:40,t:0,max:1.6,team,fired:false});u.revealT=Math.max(u.revealT,2);sfx('skill.lanceCharge',u.x,u.y,u);break;
     case'scan':
-      G.zones.push({type:'scan',x,y,r:A.radius,t:0,max:A.dur,team});G.fx.push({x,y,t:0,max:.9,kind:'ring',r:A.radius,col:'#a8e6ff'});sfx('scan',x,y,u);break;
+      G.zones.push({type:'scan',x,y,r:A.radius,t:0,max:A.dur,team});G.fx.push({x,y,t:0,max:.9,kind:'ring',r:A.radius,col:'#a8e6ff'});sfx('skill.scan',x,y,u);break;
     case'barrage':
-      G.zones.push({type:'barrage',x,y,r:A.radius,t:0,max:3.6,acc:0.55,n:0,team,sid:u.id});sfx('barrage',x,y,u);break;
+      G.zones.push({type:'barrage',x,y,r:A.radius,t:0,max:3.6,acc:0.55,n:0,team,sid:u.id});sfx('skill.salvo',x,y,u);break;
     default:return false;
   }
   if(A.energy)u.energy-=A.energy;
@@ -195,19 +195,17 @@ function abUse(u,id,x,y,tgt){           // execute now (range is the caller's jo
 }
 function abOnOrder(u,o){               // setOrder hook: a move / attack order surfaces a burrowed unit
   const s=u.ab&&u.ab.burrow;
-  if(s&&s.on&&(o.t==='move'||o.t==='attackmove'||o.t==='attack'||o.t==='gather')){s.on=false;u.root=0;u.mute=0;s.cd=1;u.revealT=Math.max(u.revealT,.8);sfx('burrowOut',u.x,u.y,u);}
+  if(s&&s.on&&(o.t==='move'||o.t==='attackmove'||o.t==='attack'||o.t==='gather')){s.on=false;u.root=0;u.mute=0;s.cd=1;u.revealT=Math.max(u.revealT,.8);sfx('skill.burrowOut',u.x,u.y,u);}
 }
 function abilCommand(units,id,x,y,tgt,queue){   // the UI / tests: one command to a selection. Returns the number of units that accepted it
   const A=ABIL[id];let n=0;if(!A)return 0;
   if(A.tgt==='self'||A.tgt==='toggle'){
     const L=units.filter(u=>u.ab&&u.ab[id]);
-    if(A.tgt==='toggle'){const on=L.some(u=>abOn(u,id));for(const u of L){if(on===abOn(u,id)&&!abCheck(u,id)&&abUse(u,id))n++;}}   // all on, or all off
+    if(A.tgt==='toggle'){const on=L.some(u=>abOn(u,id));for(const u of L){if(on===abOn(u,id)&&!abCheck(u,id)&&abUse(u,id)){n++;if(A.autoOK)u.ab[id].auto=false;}}}   // all on, or all off; a manual toggle takes the unit off autocast for it
     else for(const u of L)if(abUse(u,id))n++;
     return n;}
-  const L=units.filter(u=>u.ab&&u.ab[id]&&!abCheck(u,id)||u.ab&&u.ab[id]&&queue&&!abCheck(u,id));
-  let best=null,bd=1e9;                  // targeted: the READY unit nearest to the target casts; the others keep their orders
-  for(const u of units){if(!u.ab||!u.ab[id]||abCheck(u,id))continue;const d=hyp(u.x-x,u.y-y);if(d<bd){bd=d;best=u;}}
-  void L;
+  let best=null,bd=1e9;                  // targeted: the READY unit nearest to the target casts; the others keep their orders (a queued cast may still be recharging)
+  for(const u of units){if(!u.ab||!u.ab[id])continue;const w=abCheck(u,id);if(w&&!(queue&&(w==='Recharging'||w==='Not enough energy')))continue;const d=hyp(u.x-x,u.y-y);if(d<bd){bd=d;best=u;}}
   if(!best)return 0;
   if(A.tgt==='unit'&&!abTargetOK(best,id,tgt))return-1;
   setOrder(best,{t:'abil',id,x,y,tgt:tgt||null},queue);return 1;
@@ -230,7 +228,7 @@ function abilStep(u,dt){                // order 'abil': walk into range, then c
 function abilTick(u,dt){
   const d=u.def,ab=u.ab;if(!ab)return;
   for(const id in ab){const s=ab[id];if(s.cd>0)s.cd-=dt;}
-  if(d.energy){u.emax=emaxOf(u);if(u.energy<u.emax)u.energy=Math.min(u.emax,u.energy+eregenOf(u)*dt);else if(u.energy>u.emax)u.energy=u.emax;}
+  if(d.energy){u.emax=emaxOf(u);if(u.energy<u.emax){if(!(ab.cloak&&ab.cloak.on))u.energy=Math.min(u.emax,u.energy+eregenOf(u)*dt);}else if(u.energy>u.emax)u.energy=u.emax;}   // no regeneration while cloaked
   if(u.shExp&&G.time>=u.shExp){u.sh=0;u.shExp=0;}
   if(d.regen&&u.hp<u.maxhp&&G.time-u.lastHit>5)u.hp=Math.min(u.maxhp,u.hp+d.regen*dt);
   const c=ab.cloak;
@@ -243,7 +241,7 @@ function abilTick(u,dt){
   if(p&&p.t>0){
     p.t-=dt;const t=G.units.find(z=>z.id===p.tid);   // (rare: once per pounce)
     if(!t||t.dead){p.t=0;}
-    else if(edgeDist(u,t)<=u.r+10){p.t=0;damageEnt(t,18,u.team,u);addBuff(t,'stun',1,.5);G.fx.push({x:t.x,y:t.y,t:0,max:.35,kind:'ring',r:20,col:'#ffb36a'});sfx('pounceHit',t.x,t.y,t);}}
+    else if(edgeDist(u,t)<=u.r+10){p.t=0;damageEnt(t,18,u.team,u);addBuff(t,'stun',1,.5);G.fx.push({x:t.x,y:t.y,t:0,max:.35,kind:'ring',r:20,col:'#ffb36a'});sfx('skill.pounceHit',t.x,t.y,t);}}
   // autocast: one rule check per ability every 6 ticks (staggered by id), never while stunned / hidden / in a manual targeted order
   if(u.hidden||u.stunned>0||(G.tick+u.id)%6!==0)return;
   const ot=u.order.t;if(ot!=='idle'&&ot!=='attackmove'&&ot!=='hold'&&ot!=='attack'&&ot!=='move')return;
@@ -280,7 +278,7 @@ function arsenalZones(dt){              // step() hook, BEFORE updateZones() (wh
     if(z.type==='lance'){
       const t=findEnt(z.tid);if(t&&!t.dead){z.x=t.x;z.y=t.y;}const s=findEnt(z.sid);if(s&&!s.dead){z.sx=s.x;z.sy=s.y;}
       if(!z.fired&&z.t+dt>=z.max){z.fired=true;
-        if(t&&!t.dead){damageEnt(t,t.kind==='building'?420:260,z.team,s||null);G.fx.push({x:t.x,y:t.y,t:0,max:.9,kind:'beam',r:46});explode(t.x,t.y,true);G.shake=Math.max(G.shake,6);sfx('lanceHit',t.x,t.y,{team:z.team});}}}
+        if(t&&!t.dead){damageEnt(t,t.kind==='building'?420:260,z.team,s||null);G.fx.push({x:t.x,y:t.y,t:0,max:.9,kind:'beam',r:46});explode(t.x,t.y,true);G.shake=Math.max(G.shake,6);sfx('skill.lanceHit',t.x,t.y,{team:z.team});}}}
     else if(z.type==='scan'){
       forNear(z.x,z.y,z.r+30,e=>{if(e.team===z.team||e.dead||e.hidden||hyp(e.x-z.x,e.y-z.y)>z.r)return;e.revealT=Math.max(e.revealT,.4);});
       for(const b of G.buildings)if(!b.dead&&b.team!==z.team&&rectDist(z.x,z.y,b)<=z.r)b.revealT=Math.max(b.revealT,.4);}

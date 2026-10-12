@@ -32,11 +32,11 @@ TAGNAME.massive='massive';TAGNAME.shield='shielded';
 
 /* ---------------------------------- units ---------------------------------- */
 const NEWU={
-  lancer:{name:'Lancer',hp:105,armor:1,speed:74,r:10,sight:210,cost:{c:110,e:60},supply:2,time:24,dmg:30,cd:1.5,range:145,air:false,proj:'bolt',pspd:720,era:2,tags:tg('light','bio'),dt:'prc',pen:3,
+  lancer:{name:'Lancer',hp:110,armor:1,speed:74,r:10,sight:210,cost:{c:100,e:50},supply:2,time:24,dmg:30,cd:1.5,range:145,air:false,proj:'bolt',pspd:720,era:2,tags:tg('light','bio'),dt:'prc',pen:3,
     role:'Anti-armor infantry',aiCls:'anti',desc:'Armor-piercing slug thrower. Piercing damage ignores 3 armor and hits armored units and massive targets hard. Ground only.',note:'Weak against light infantry and melee rushers. Cannot hit air.'},
   flaktrooper:{name:'Flak Trooper',hp:70,armor:0,speed:80,r:9,sight:220,cost:{c:90,e:40},supply:2,time:22,dmg:8,bon:{air:9},cd:.9,range:190,air:true,ground:false,proj:'flak',pspd:560,splash:44,aaSplash:true,era:2,tags:tg('light','bio'),dt:'exp',
     role:'Anti-air specialist',aiCls:'aa',desc:'Flak cannon with a burst that hits every aircraft in the blast. Cannot target the ground.',note:'Helpless against ground units. Raptors, Reavers and Jackals eat it.'},
-  interceptor:{name:'Interceptor',hp:100,armor:0,speed:175,r:10,sight:260,cost:{c:110,e:90},supply:2,time:24,dmg:9,bon:{air:5},cd:.55,range:150,air:true,ground:false,flying:true,proj:'bolt',pspd:720,era:2,tags:tg('air','mech'),dt:'en',
+  interceptor:{name:'Interceptor',hp:100,armor:0,speed:175,r:10,sight:260,cost:{c:110,e:90},supply:2,time:24,dmg:10,bon:{air:6},cd:.55,range:150,air:true,ground:false,flying:true,proj:'bolt',pspd:720,era:2,tags:tg('air','mech'),dt:'en',
     role:'Air superiority fighter',aiCls:'air',desc:'Very fast air-to-air fighter with energy cannons. Cannot attack ground targets.',note:'Loses to Flak Troopers, Rocketeers and Turrets.'},
   watcher:{name:'Watcher',hp:55,armor:0,speed:115,r:9,sight:320,cost:{c:60,e:60},supply:1,time:16,flying:true,detect:260,noWeapon:true,era:2,tags:tg('air','mech'),energy:100,estart:100,eregen:.5,abil:['scan'],
     role:'Detector flyer',aiCls:'det',desc:'Flying sensor platform. Reveals cloaked units in a wide radius. Pulse Scan lights up an area (and strips cloaks) for a few seconds.',note:'Unarmed and fragile. Keep it behind the army.'},
@@ -51,7 +51,7 @@ const NEWU={
   /* Obsidian */
   jackal:{name:'Jackal',hp:62,armor:0,speed:165,r:8,sight:280,cost:{c:70,e:0},supply:1,time:14,dmg:5,bon:{light:2},cd:.45,range:105,air:false,proj:'bullet',pspd:660,era:2,tags:tg('light','bio'),
     abil:['sprint'],fac:['obsidian'],role:'Fast raider / scout',aiCls:'light',desc:'Cheap and very fast skirmisher. Scouts, picks off Haulers and runs. Sprint (S) adds a burst of speed.',note:'Dies to anything that catches it. Ground only.'},
-  mauler:{name:'Mauler',hp:210,armor:1,speed:80,r:12,sight:215,cost:{c:100,e:50},supply:3,time:26,dmg:15,bon:{light:4},cd:.9,range:55,air:false,proj:'acid',pspd:480,era:2,tags:tg('armored','bio'),regen:1.5,
+  mauler:{name:'Mauler',hp:190,armor:1,speed:80,r:12,sight:215,cost:{c:100,e:60},supply:3,time:26,dmg:15,bon:{light:4},cd:.9,range:55,air:false,proj:'acid',pspd:480,era:2,tags:tg('armored','bio'),regen:1.5,
     abil:['burrow'],fac:['obsidian'],role:'Regenerating brawler',aiCls:'heavy',desc:'Tough biomech brawler that regenerates when left alone. Burrow (S) hides it underground (cloaked, healing fast) until it springs out.',note:'Short range. Lancers and Rocketeers hurt it; a detector exposes a burrowed Mauler.'},
   /* Aurora */
   marksman:{name:'Marksman',hp:72,armor:0,speed:80,r:9,sight:250,cost:{c:125,e:100},supply:2,time:26,dmg:14,cd:1.2,range:175,air:false,proj:'bullet',pspd:900,era:2,tags:tg('light','bio'),dt:'prc',pen:1,

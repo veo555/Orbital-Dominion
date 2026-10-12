@@ -311,5 +311,6 @@ if(window.__TEST){window.__RTS={BUILD,makeAI,DIFF,newGame,startGame,startDemo,st
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
   get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,drawPortrait,PORTRAIT_PAINT,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents,AUD,MUSIC,MUSIC_DATA,MOTIF,musicInfo,musicState,musicRestore,musicRegister};}
+if(window.__TEST)Object.assign(window.__RTS,arsenalTestApi());   // 72_arsenal_ui.js
 if(window.__TEST)window.__RTS.guard=guardApi();   // fault-injection seam (tests/e2e/e2e_robust_*.py)
 boot();

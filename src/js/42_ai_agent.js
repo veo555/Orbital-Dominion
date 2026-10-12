@@ -384,11 +384,11 @@ function aiBuild2(ai,type,R){
    off = sum_t share_t * dps(s->t) * cost_t / hp_t   (enemy value destroyed per second by one unit of type s)
    def = sum_t share_t * dps(t->s) / hp_s            (fraction of one s lost per second per enemy unit)
    eff = off / (def * cost_s)                                                                                       */
-function aiCounterEff(recs,list,team){
+function aiCounterEff(recs,list,team,byId){
   const es=aiStacksOf(recs,team);let N=0;for(const t of es)N+=t.n;const eff={};
   for(const id of list){const c=AI_CLS[id];if(!c||UDEF[id].arsenal&&UDEF[id].noWeapon)continue;const s=cmbStackOf(id,1,{});let off=0,def=0;
     for(const t of es){const sh=t.n/N;off+=sh*cmbDmg(s,t)/s.cd*t.cost/t.hp;def+=sh*cmbDmg(t,s)/t.cd/s.hp;}
-    const e=off/(Math.max(0.004,def)*aiVal(id));eff[c]=Math.max(eff[c]||0,e);}
+    const e=off/(Math.max(0.004,def)*aiVal(id));eff[c]=Math.max(eff[c]||0,e);if(byId)byId[id]=e;}
   return eff;
 }
 function aiUnitPick(ai,R,b,spend){
@@ -400,21 +400,25 @@ function aiUnitPick(ai,R,b,spend){
   for(const x of R.prod)for(const q of x.queue)if(q.k==='u'){const c=AI_CLS[q.id];if(c){have[c]+=UDEF[q.id].supply;tot.v+=UDEF[q.id].supply;}}
   const W={};let wsum=0;
   for(const c of AI_CLASSES){W[c]=Math.max(0.02,th[AI_CKEY[c]]);}
-  if(recs.length&&th.counter>0){const eff=aiCounterEff(recs,list,team);let me=0,n=0;for(const c in eff){me+=eff[c];n++;}
+  const effId={};
+  if(recs.length&&th.counter>0){const eff=aiCounterEff(recs,list,team,effId);let me=0,n=0;for(const c in eff){me+=eff[c];n++;}
     if(n){me/=n;for(const c in eff)W[c]*=Math.pow(Math.max(0.05,eff[c]/me),th.counter);}}
   const menders=R.army.filter(u=>u.type==='mender').length,armySup=tot.v;
   if(menders>=Math.max(1,armySup/9))W.sup=0.001;
   /* v6 observation rules (fog-honest: only what aiEnemyRecs remembers): AA when enemy air was seen, a detector when enemy cloakers were seen, one caster per ~8 supply of army, a capital ship when rich */
   {let air=0,cl=0,all=0;for(const r of recs){const d=UDEF[r.type];if(!d||d.worker||d.trade)continue;const v=aiVal(r.type);all+=v;if(d.flying)air+=v;if(d.cloak||d.abil&&d.abil.indexOf('cloak')>=0)cl+=v;}
-   const T=G.teams[team];
-   W.aa=0.02+Math.min(0.9,all>0?1.4*air/all:0);
-   W.det=cl>0&&have.det<2&&menders<1?0.5:0.02;
-   W.cast=armySup>=16&&have.cast/Math.max(1,tot.v)<0.12?Math.max(0.12,0.5*th.cSup):0.02;
-   W.cap=T.era>=3&&T.c>=650&&T.e>=420&&have.cap<1+(T.c>1800?1:0)*2?Math.max(0.25,0.9*th.cHeavy):0.02;}
+   const T=G.teams[team];let oth=0;for(const c of['light','melee','anti','heavy','art','air','sup'])oth+=W[c];
+   W.aa=oth*(0.03+Math.min(0.9,all>0?1.1*air/all:0));                                       // enemy air seen: AA share follows the enemy's air share
+   W.det=cl>0&&have.det<2&&menders<1?0.14*oth:0.003*oth;                                    // enemy cloakers seen and no detector of ours: a Watcher first
+   W.cast=armySup>=14&&have.cast/Math.max(1,tot.v)<0.1?0.11*oth:0.003*oth;                  // ~one caster per 10 supply of army
+   W.cap=T.era>=3&&T.c>=650&&T.e>=420&&have.cap<1+(T.c>1800?1:0)*2?0.2*oth:0.003*oth;}      // a capital ship when rich
   for(const c of AI_CLASSES)wsum+=W[c];
+  const effMeanC={};{const cn={};for(const id of list){const c=AI_CLS[id];if(c&&effId[id]){effMeanC[c]=(effMeanC[c]||0)+effId[id];cn[c]=(cn[c]||0)+1;}}for(const c in effMeanC)effMeanC[c]/=cn[c];}
   let best=null,bs=-1e9;
   for(const id of list){const c=AI_CLS[id];if(!c)continue;if(!reqUnit(team,id).ok)continue;const cc=uCost(team,id);if(cc.c>spend.c||cc.e>spend.e)continue;
-    const want=W[c]/wsum,share=tot.v?have[c]/tot.v:0;const s=want-share+airand(ai)*0.02;if(s>bs){bs=s;best=id;}}
+    const want=W[c]/wsum,share=tot.v?have[c]/tot.v:0;let s=want-share+airand(ai)*0.02;
+    if(effId[id]&&UDEF[id].arsenal)s+=0.03*Math.max(-1,Math.min(1,Math.log(effId[id]/(effMeanC[c]||effId[id]))));   // v6: within a class (anti: Rocketeer / Lancer) the better counter to what was seen wins the tie
+    if(s>bs){bs=s;best=id;}}
   return best;
 }
 function aiMacro(ai,R){

@@ -506,7 +506,7 @@ function fire(src,t){
   if(d.proj){
     const c=Math.cos(src.ang),s=Math.sin(src.ang),lift=src.flying?10:0;
     G.proj.push({x:src.x+c*10,y:src.y+s*10-lift,sx:src.x,sy:src.y,t,tx:t.x,ty:t.y,sp:d.pspd,kind:d.proj,team:src.team,base,bon,splash:spl,dt,pen,aas:!!d.aaSplash,src,life:4,total:Math.max(1,hyp(t.x-src.x,t.y-src.y)),dead:false});
-    sfx(d.proj==='bullet'?'shoot':d.proj==='rocket'?'rocket':d.proj==='shell'?'shell':d.proj==='acid'?'acid':d.proj==='flak'?'flak':'bolt',src.x,src.y,src);
+    sfx(d.proj==='bullet'?'shoot':d.proj==='rocket'?'rocket':d.proj==='shell'?'shell':d.proj==='acid'?'acid':d.proj==='flak'?'skill.flak':'bolt',src.x,src.y,src);
     addPart(src.x+c*12,src.y+s*12,0,0,0.09,5,d.proj==='bolt'?G.teams[src.team].pal.light:(d.proj==='acid'?'#c8ff6a':'#ffe9a0'),1);
     if(src.kind==='unit'&&d.proj==='shell'&&src.type==='howitzer'||d.proj==='shell'&&src.type==='titan')G.shake=Math.max(G.shake,2);
   }else{
@@ -514,7 +514,7 @@ function fire(src,t){
     if(d.lifesteal&&src.kind==='unit'){src.hp=Math.min(src.maxhp,src.hp+dealt*d.lifesteal);src.healFx=0.4;}
     sfx('melee',src.x,src.y,src);addPart(t.x,t.y,0,0,0.12,5,'#fff',1);
   }
-  if(src.kind==='unit'&&hasBuff(src,'cloak'))src.buffs=src.buffs.filter(b=>b.k!=='cloak');
+  if(src.kind==='unit'&&hasBuff(src,'cloak')&&!(src.ab&&src.ab.cloak&&src.ab.cloak.on))src.buffs=src.buffs.filter(b=>b.k!=='cloak');   // (Phase Veil is broken by firing; a toggled cloak is not)
 }
 function damageEnt(e,amt,from,srcEnt){
   if(e.dead)return 0;if(e.sh>0)amt=shieldHit(e,amt);const real=Math.min(amt,e.hp);e.hp-=amt;e.flash=0.12;e.lastHit=G.time;if(srcEnt&&srcEnt.ag)e.lastAtk=srcEnt;
