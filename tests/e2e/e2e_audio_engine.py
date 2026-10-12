@@ -487,7 +487,7 @@ with sync_playwright() as p:
         ('mute ignored', "else if(muted){r='muted';C.muted++;}", "else if(false){r='muted';C.muted++;}", chk_mute, True),
         ('ring-mod depth ignored', "g.gain.value=1-dp;c.type=R.type||'sine'", "g.gain.value=1;c.type=R.type||'sine'", chk_kit, False),
         ('pitch glide target ignored', "if(b!==a){const tt=t+(P.t!==undefined?P.t:len);", "if(false){const tt=t+(P.t!==undefined?P.t:len);", chk_kit, False),
-        ('orphaned nodes never retired', "function sweepNodes(now,force){\n  if(!AC||", "function sweepNodes(now,force){\n  if(true||!AC||", chk_orphan, True),
+        # ('orphaned nodes never retired') REMOVED from the mutation list in v5: with the sweep disabled the 3 orphaned test nodes are still retired within 1.8 s in current Chromium, so this check cannot be mutation-proven here (rule 15). chk_orphan stays as a regression check only; KNOWN_LIMITATIONS lists it.
         ('spam merge removed', "if(v.gap>0&&now-v.last<v.gap){v.pend++;C.merged++;return'merge';}", "if(false){v.pend++;C.merged++;return'merge';}", chk_spam, True),
     ]
     ENGINE_MUTS = {'every voice silent', 'unit voice from `who` never derived'}   # these checks only make sense before content registers -> mutate the engine-only variant

@@ -12,6 +12,8 @@ game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship
 * **ElevenLabs**: never called (egress blocked, no key). Free plan: about 10 000 credits per month, no commercial licence (so not for the store build), API access on it disputed. The pipeline exists, is offline and optional.
 * **Sources**: DeepMind's AlphaStar page, the video, arXiv and gwern were unreachable; the research note says which facts come from search summaries and which from memory.
 
+* **Weak check (v5):** `e2e_audio_engine.py` `chk_orphan` (orphaned audio source nodes are retired) cannot be mutation-proven any more: with the sweep disabled the test nodes still retire in current Chromium. It stays as a regression check only.
+
 ## 1. What was verified, and how
 
 | Claim | Evidence | Reproduce |
