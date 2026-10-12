@@ -1,23 +1,34 @@
-# Publishes the installable web app (dist/pwa) to GitHub Pages on every push to main. Enable it once in
-# Settings -> Pages -> Source: "GitHub Actions". NOTE: GitHub Pages ignores dist/pwa/_headers (no custom headers there);
-# use Cloudflare Pages or Netlify if you want the security headers and the CSP (see docs/DEPLOY.md). Not executed where authored.
-name: Deploy web app
+# Publishes the installable web app (dist/pwa, committed by `python3 build.py`) to GitHub Pages.
+# One-time owner step: Settings > Pages > Build and deployment > Source = "GitHub Actions".
+# Then every push that changes dist/pwa (or a manual run from the Actions tab) redeploys it.
+name: Deploy to GitHub Pages
 on:
-  push: { branches: [main] }
-  workflow_dispatch: {}
-permissions: { contents: read, pages: write, id-token: write }
-concurrency: { group: pages, cancel-in-progress: true }
+  push:
+    paths: ['dist/pwa/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: { name: github-pages, url: '${{ steps.deployment.outputs.page_url }}' }
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: python3 build.py pwa
+      - name: Prepare site
+        run: |
+          mkdir _site && cp -r dist/pwa/. _site/
+          touch _site/.nojekyll
+          test -f _site/index.html && test -f _site/sw.js && test -f _site/manifest.webmanifest
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with: { path: dist/pwa }
+        with:
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
