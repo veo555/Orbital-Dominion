@@ -53,7 +53,8 @@ function hideAndScramble(S, team) { // mutate everything the AI's team cannot se
   return { moved, added, hurt, leaked };
 }
 function noPeek(src, label, expectSame) {
-  const S = sim(src); const G = start(S, 31, 'meridian', 'obsidian', { kind: 't2', tier: 'master' }, { kind: 't2', tier: 'master' });
+  const S = sim(src); S.__run('AI_PARAMS.tiers.master.plan.sims=128');   // v5: the planner ships OFF; the no-peek probe must exercise it
+  const G = start(S, 31, 'meridian', 'obsidian', { kind: 't2', tier: 'master' }, { kind: 't2', tier: 'master' });
   for (let i = 0; i < 330 * 30; i++) { S.step(); if (G.over) break; }
   let snap = S.gameSnapshot(); const team = 1, K = 16;
   const think = (mut) => {

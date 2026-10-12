@@ -1,6 +1,6 @@
 'use strict';
 /* =========================================================================
-   ORBITAL DOMINION v4 — core constants, helpers and data tables
+   ORBITAL DOMINION v5 — core constants, helpers and data tables
    ========================================================================= */
 const TILE=32,MW=88,MH=88,WW=MW*TILE,WH=MH*TILE,NN=MW*MH,TICK=1/30,CS=64,CW=Math.ceil(WW/CS),CH=Math.ceil(WH/CS);
 const TAU=Math.PI*2,MAXSUP=120;

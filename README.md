@@ -1,4 +1,4 @@
-# Orbital Dominion v4 — project handoff package
+# Orbital Dominion v5 — project handoff package
 
 A real-time strategy game (three factions, three eras, fog of war, heroes, a Caesar-style colony economy, a
 Patrizier-style market) with a **swarm-agent layer**: every unit can be an autonomous agent with a role, a wallet and
@@ -6,11 +6,24 @@ XP; a master AI ("the Overseer") directs the colony; a labour marketplace lets y
 five billing cadences (minute / hour / day / month / per task).
 
 It ships three ways from one source tree (`python3 build.py`): a **single self-contained HTML file**
-(`dist/orbital_dominion_v4.html`, ≈ 1.4 MB since 4.0 (2.0 MB with the 3.x films), no external requests, no libraries) to download and share; an **installable,
+(`dist/orbital_dominion_v4.html`, ≈ 1.2 MB since 5.0 (2.0 MB with the 3.x films), no external requests, no libraries) to download and share; an **installable,
 offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) for Capacitor wrappers. See `docs/DEPLOY.md`.
 
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
+
+## 000. What changed in 5.0 (12 Oct 2026): 3D-style sprites, console HUD, no speech, lean + robust file
+
+| Area | What is in the build | Evidence (Chromium headless / Node; nothing heard, no real phone) | Not verified / honest limits |
+|---|---|---|---|
+| **3D look** | Units and buildings are **pre-rendered 3D**: a small bake-time software rasteriser (`56_mesh3d.js`) renders procedural meshes (recipes in `57_recipes.js`) with key light, ambient occlusion and a glowing team-colour layer into per-facing sprites, cached lazily; tilted camera, visible roofs and fronts, depth-sorted draw order, cliff faces and shaded terrain, boulders and crystals, sun shadows, bloom on the top tier. `docs/GRAPHICS_V5.md`, before/after in `docs/img/v5/` | `e2e_visual.py` (pixel assertions incl. draw order, with mutation proofs), terrain/touch/platform gates | no GPU, no iOS WebKit, no real phone frame times; the look is "StarCraft II-inspired", all art is original and procedural |
+| **Console HUD** | chamfered metal panels, glowing accent line, glassy command buttons, segmented health bars (CSS only, geometry unchanged) | e2e touch / campaign layouts at 5 viewports, screenshots looked at | |
+| **No speech** | the speech engine, announcer, barks, voice-pack pipeline and ElevenLabs tooling are **removed**; radio lines and dispatches are silent text; music (25 cues) and all sound effects stay (creature growls kept, human-vowel layers removed) | audio engine / wiring / Sound Lab / mix gates, `units_gate` | nothing heard by a person; `world_gate.py` known failing; one engine check (orphan nodes) is regression-only |
+| **Lean + robust** | safe build-time minifier (`tools/minify.js`, no renaming): standalone **2.03 MB (v3.3) to 1.17 MB, 372 KB gzipped**; error boundaries (frame loop in guarded stages, recovery dialog after repeated faults, global handlers), audio can never break gameplay, storage faults tolerated, service-worker stale-build repair, watchdog, camera/viewport repair, each with a fault-injection test and mutation proof | `tests/minify/*`, `tests/sim/minify_determinism.js` (sim hashes identical minified vs readable), `e2e_robust_core/audio/storage`, `e2e_pwa_stale` | 1.0 MB target missed (icons and tables); offline fallback page untested |
+| **AI** | AlphaGo-family ideas added on top of the 4.0 league AI: a PUCT macro-planner on a calibrated abstract model with determinised worlds from the belief grid, expert iteration (policy head fitted to search visit counts), and a computed "win chance a % to b %" line on Overseer proposals. **The planner ships switched off**: measured planner on vs off 50.0 % [36, 64] over 48 mirrored games, no gain, +10.7 % CPU. Tier ladder as in 4.0 (Master vs Hard not above 50 %). **No language model anywhere**: the opponent and the Overseer are rule-based + search + tiny learned value models. `docs/AI_DESIGN.md`, `docs/AI_LEAGUE_RESULTS.md` | `tests/sim/ai_*.js` incl. PUCT mutants and a no-peek mutant, determinism, save round trip, `off.js` identical to v2 | nobody has played against it; bot-vs-bot Elo is not human Elo; the abstract model does not predict battles; campaign missions still use the v3 AI (the new AI fails m05/m06/m08 balance) |
+| **Publishing** | installable PWA (`dist/pwa`), GitHub Pages workflow, iPhone install guide `docs/INSTALL_IPHONE.md` | served from a `/claude/` sub-path: service worker, manifest, match start, offline reload all OK | Pages must be enabled by the repository owner (private repos need a paid plan); never run on a real iPhone |
+
+---
 
 ## 00. What changed in 4.0 (9 Oct 2026): no video, new graphics, new AI, new audio chain, Material 3 shell
 

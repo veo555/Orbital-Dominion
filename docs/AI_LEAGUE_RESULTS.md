@@ -345,3 +345,7 @@ node tools/league/exploit.js '<target spec>' out.json 4 6 12 1
 node tools/league/calib_combat.js 600 3
 node tools/league/export_params.js tiers.json --vf vf.json           # writes src/js/41_ai_params.js
 ```
+
+
+## v5 shipping decision (lead)
+The PUCT planner (41_ai_mcts.js) is **shipped switched off** (`tiers.master.plan.sims = 0` in `src/js/41_ai_params.js`, edited by hand after generation). Evidence: planner on vs off 50.0 % [36.4, 63.6] over 48 mirrored games (no gain), Master vs Hard 49.0 %, CPU +10.7 % at the halved budget. The code, tests and the Overseer's "win chance a % to b %" advisor remain; to enable the planner set `plan.sims` to 128 (the configuration the final evaluation measured used 256 and cost +42 % tick time). Tier separation therefore stays as in section 2a: Easy < Normal < Hard ~ Master, Master vs Hard not significantly above 50 %.
