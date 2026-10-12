@@ -17,7 +17,7 @@ function terrainSetup(){
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){let s=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const t=tt(x+dx,y+dy);if(t===1||t===3)s+=(dx&&dy)?0.7:1;}occ[y*MW+x]=Math.min(1,s/4.5);}
   /* 1) per-pixel ground colour at quarter resolution, upscaled smoothly */
   const LS=4,LW=WW/LS,LH=WH/LS,lc=mkCanvas(LW,LH),lg2=lc.getContext('2d'),img=lg2.createImageData(LW,LH),d=img.data;
-  const PAL=[[[132,102,72],[166,130,92]],[[104,98,96],[140,128,118]],[[78,96,120],[112,134,160]]];
+  const PAL=[[[150,110,70],[196,148,96]],[[110,106,102],[156,146,134]],[[80,104,138],[124,152,188]]];
   const hAt=(fx,fy)=>{const x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0,hc=H[clamp(Math.round(fy),0,MH-1)*MW+clamp(Math.round(fx),0,MW-1)];let s=0;
     for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){let v=H[clamp(y0+dy,0,MH-1)*MW+clamp(x0+dx,0,MW-1)];if(Math.abs(v-hc)>0.99)v=hc;s+=v*(dx?tx:1-tx)*(dy?ty:1-ty);}return s;};
   const oAt=(fx,fy)=>{const x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0;let s=0;
@@ -32,14 +32,14 @@ function terrainSetup(){
     /* macro variation: two very low-frequency fields shift the ground between warm dust and cool stone and breathe the brightness,
        so no region of the map looks like a copy of another (period ~ 90 tiles; the 128-cell noise table wraps far beyond the map) */
     const m1=nA(fx*.021+31,fy*.021+11)-.5,m2=nB(fx*.045+5,fy*.045+77)-.5;
-    r*=1+m1*.30+m2*.08;gg*=1+m1*.10+m2*.12;b*=1-m1*.22+m2*.06;
+    r*=1+m1*.22+m2*.08;gg*=1+m1*.08+m2*.12;b*=1-m1*.16+m2*.06;
     let sh=1-0.30*oAt(fx,fy);
     if(RAMP[ti]){const xi=ti%MW,yi=(ti/MW)|0,ax=Math.abs(H[yi*MW+Math.min(MW-1,xi+1)]-H[yi*MW+Math.max(0,xi-1)]),ay=Math.abs(H[Math.min(MH-1,yi+1)*MW+xi]-H[Math.max(0,yi-1)*MW+xi]);
       sh*=1.06+0.06*Math.sin((ax>=ay?fx:fy)*TAU*1.6);}
     d[o]=clamp(r*sh,0,255);d[o+1]=clamp(gg*sh,0,255);d[o+2]=clamp(b*sh,0,255);d[o+3]=255;
   }
   lg2.putImageData(img,0,0);
-  return{seed,nA,nB,H,TT,RAMP,tt,occ,lc};
+  const T={seed,nA,nB,H,TT,RAMP,tt,occ,lc};sceneryPlan(T);return T;
 }
 function* terrainPaint(g,T){
   const{seed,nA,nB,H,TT,RAMP,tt,lc}=T,R=mulberry32(seed*31+5);
@@ -100,6 +100,7 @@ function* terrainPaint(g,T){
     if(n.type==='tower'){g.fillStyle='rgba(30,28,50,.35)';g.beginPath();g.arc(x,y,54,0,TAU);g.fill();g.strokeStyle='rgba(190,170,255,.25)';g.lineWidth=2;for(const k of[44,56]){g.beginPath();g.arc(x,y,k,0,TAU);g.stroke();}}
     else{rr(g,x-52,y-52,104,104,12,'rgba(70,50,24,.35)');g.strokeStyle='rgba(255,220,150,.14)';g.lineWidth=1.5;for(let i=-3;i<=3;i++){g.beginPath();g.moveTo(x-52,y+i*14);g.lineTo(x+52,y+i*14);g.stroke();}}}
 
+  sceneryDraw(g,T);
   yield 5;
   /* 5) cliffs: cast shadows on the lower ground, then the rock faces */
   const D4=[[1,0],[-1,0],[0,1],[0,-1]];
@@ -116,6 +117,8 @@ function* terrainPaint(g,T){
     q.addColorStop(0,tone[0]);q.addColorStop(.35,tone[1]);q.addColorStop(1,tone[2]);g.fillStyle=q;g.fillRect(x*TILE,y*TILE,TILE,TILE);
     g.strokeStyle='rgba(10,12,24,.30)';g.lineWidth=1.2;const px=-vy,py=vx;
     for(let k=0;k<4;k++){const o=(R()-.5)*TILE*.9,l0=-.2+R()*.4,l1=.35+R()*.45;g.beginPath();g.moveTo(cx+px*o+vx*TILE*l0,cy+py*o+vy*TILE*l0);g.lineTo(cx+px*o+vx*TILE*l1+ (R()-.5)*4,cy+py*o+vy*TILE*l1+(R()-.5)*4);g.stroke();}
+    for(let k=0;k<3;k++){const o=(k-.8)*TILE*.24,j=(R()-.5)*3;g.strokeStyle=k&1?'rgba(255,255,255,.10)':'rgba(6,8,20,.28)';g.lineWidth=1.3;g.beginPath();g.moveTo(cx+vx*o-px*TILE/2,cy+vy*o-py*TILE/2+j);g.lineTo(cx+vx*o+px*TILE/2,cy+vy*o+py*TILE/2-j);g.stroke();}   // rock strata parallel to the lip
+    if(vy>.5){const q2=g.createLinearGradient(0,y*TILE+TILE*.55,0,y*TILE+TILE);q2.addColorStop(0,'rgba(4,6,16,0)');q2.addColorStop(1,'rgba(4,6,16,.5)');g.fillStyle=q2;g.fillRect(x*TILE,y*TILE+TILE*.55,TILE,TILE*.45);}   // south faces (the ones the camera sees) darken towards the foot: ambient occlusion
     g.strokeStyle='rgba(255,255,255,.22)';g.lineWidth=1.4;g.beginPath();
     if(Math.abs(vx)>=Math.abs(vy)){const ex=vx>0?x*TILE+1:x*TILE+TILE-1;g.moveTo(ex,y*TILE);g.lineTo(ex,y*TILE+TILE);}else{const ey=vy>0?y*TILE+1:y*TILE+TILE-1;g.moveTo(x*TILE,ey);g.lineTo(x*TILE+TILE,ey);}g.stroke();}
 
@@ -123,10 +126,13 @@ function* terrainPaint(g,T){
   /* 6) boulders: shadow, base, extruded top with rounded outer corners */
   const isR=(x,y)=>tt(x,y)===1;
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(isR(x,y)){g.fillStyle='rgba(6,8,16,.34)';g.fillRect(x*TILE+3,y*TILE+8,TILE+4,TILE+2);}
-  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(isR(x,y)){g.fillStyle='hsl(228,14%,'+(13+nA(x*.3,y*.3)*6).toFixed(1)+'%)';g.fillRect(x*TILE,y*TILE,TILE,TILE);}
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(isR(x,y)){   // footprint = the visible south face of the block: dark gradient with strata
+    const X=x*TILE,Y=y*TILE,q=g.createLinearGradient(0,Y+TILE-14,0,Y+TILE+2);q.addColorStop(0,'#3b445c');q.addColorStop(1,'#10131e');g.fillStyle='hsl(228,14%,'+(13+nA(x*.3,y*.3)*6).toFixed(1)+'%)';g.fillRect(X,Y,TILE,TILE);
+    if(!isR(x,y+1)){g.fillStyle=q;g.fillRect(X,Y+TILE-14,TILE,16);g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1;g.beginPath();for(let k=0;k<3;k++){const yy=Y+TILE-11+k*4.5;g.moveTo(X,yy);g.lineTo(X+TILE,yy+(R()-.5)*2);}g.stroke();
+      g.strokeStyle='rgba(255,255,255,.07)';g.beginPath();for(let k=0;k<2;k++){const yy=Y+TILE-9+k*4.5;g.moveTo(X,yy);g.lineTo(X+TILE,yy);}g.stroke();}}
   const cr=(a,b,cc)=>(!isR(a[0],a[1])&&!isR(b[0],b[1]))?11:(isR(cc[0],cc[1])?0:2);
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(isR(x,y)){
-    const n=nA(x*.3+9,y*.3+4),m=nB(x*1.1,y*1.1),X=x*TILE,Y=y*TILE-9,
+    const n=nA(x*.3+9,y*.3+4),m=nB(x*1.1,y*1.1),X=x*TILE,Y=y*TILE-12,
       r0=cr([x-1,y],[x,y-1],[x-1,y-1]),r1=cr([x+1,y],[x,y-1],[x+1,y-1]),r2=cr([x+1,y],[x,y+1],[x+1,y+1]),r3=cr([x-1,y],[x,y+1],[x-1,y+1]);
     g.beginPath();g.moveTo(X+r0,Y);g.lineTo(X+TILE-r1,Y);g.arcTo(X+TILE,Y,X+TILE,Y+r1,r1||.01);g.lineTo(X+TILE,Y+TILE-r2);g.arcTo(X+TILE,Y+TILE,X+TILE-r2,Y+TILE,r2||.01);
     g.lineTo(X+r3,Y+TILE);g.arcTo(X,Y+TILE,X,Y+TILE-r3,r3||.01);g.lineTo(X,Y+r0);g.arcTo(X,Y,X+r0,Y,r0||.01);g.closePath();
@@ -134,6 +140,12 @@ function* terrainPaint(g,T){
     g.strokeStyle='rgba(5,7,14,.45)';g.lineWidth=1.2;g.stroke();
     if(!isR(x,y-1)){g.fillStyle='rgba(255,255,255,.13)';g.fillRect(X+r0,Y+1,TILE-r0-r1,2);}
     if(!isR(x-1,y)){g.fillStyle='rgba(255,255,255,.06)';g.fillRect(X+1,Y+r0,2,TILE-r0-r3);}
+    g.save();g.clip();   // faceted top: 2-3 lit/shadow wedges, a warm or cool tint per block, grit
+    for(let k=0;k<3;k++){const a=R()*TAU,l=TILE*(.5+R()*.6),cx2=X+TILE/2+(R()-.5)*14,cy2=Y+TILE/2+(R()-.5)*14;g.fillStyle=R()<.5?'rgba(255,240,220,.07)':'rgba(4,6,20,.10)';
+      g.beginPath();g.moveTo(cx2,cy2);g.lineTo(cx2+Math.cos(a)*l,cy2+Math.sin(a)*l);g.lineTo(cx2+Math.cos(a+.9)*l,cy2+Math.sin(a+.9)*l);g.closePath();g.fill();}
+    g.fillStyle=n>.5?'rgba(120,90,60,.10)':'rgba(70,110,170,.10)';g.fillRect(X,Y,TILE,TILE);
+    for(let k=0;k<6;k++){g.fillStyle=R()<.5?'rgba(255,255,255,.12)':'rgba(0,0,0,.18)';g.fillRect(X+R()*TILE,Y+R()*TILE,1.2,1.2);}
+    g.restore();
     if(R()<.55){g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=1.2;g.beginPath();const fx=X+4+R()*(TILE-8),fy=Y+4+R()*(TILE-8);g.moveTo(fx,fy);g.lineTo(fx+(R()-.5)*16,fy+(R()-.5)*16);g.lineTo(fx+(R()-.5)*22,fy+(R()-.5)*22);g.stroke();}
     if(R()<.4){g.fillStyle='rgba(255,255,255,.06)';g.beginPath();g.moveTo(X+4,Y+TILE-4);g.lineTo(X+10+R()*10,Y+4);g.lineTo(X+TILE-4,Y+8+R()*10);g.closePath();g.fill();}
     if(R()<.05){g.fillStyle='rgba(130,255,220,.5)';g.beginPath();g.moveTo(X+16,Y+6);g.lineTo(X+21,Y+18);g.lineTo(X+16,Y+24);g.lineTo(X+11,Y+18);g.closePath();g.fill();}}

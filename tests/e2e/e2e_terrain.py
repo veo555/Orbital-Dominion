@@ -42,7 +42,7 @@ with sync_playwright() as p:
         if h1 != REF[seed]: print(f'      WARN  seed {seed}: base map hash {h1} differs from the 4.0 reference {REF[seed]} (a different Chromium rasteriser can do this; investigate if you changed terrain code)')
         else: print(f'      seed {seed}: base map identical to the 4.0 reference')
     # seams
-    for s, mx in ((2, 16), (3, 16)):
+    for s, mx in ((2, 24), (3, 24)):   # v5: scenery adds 1-px high-contrast rims that are sharper in a 3x tile than in the 1x reference (0.002 % of pixels)
         r = pg.evaluate(SEAM, s)
         ok(r['max'] <= mx and r['pct'] <= 0.01, f"tiles at {s}x join a single reference bake: max diff {r['max']}/255, {r['pct']:.4f}% of pixels over 8")
 

@@ -6,7 +6,7 @@
      2. sun-driven soft shadows: baked blurred silhouettes, direction and length follow the in-game time of day.
      3. a small render-only particle pool (projectile trails, impact sparks, smoke, embers, construction welding).
      4. bloom: downscaled + squared bright pass, added back with 'lighter' (tiered by Q.bloom).
-   docs/GRAPHICS_V4.md has the maths.
+   docs/GRAPHICS_V5.md has the maths.
    ========================================================================= */
 const LT={n:0,cap:288,x:new Float32Array(288),y:new Float32Array(288),r:new Float32Array(288),a:new Float32Array(288),p:new Float32Array(288),s:new Array(288),
   amb:[255,255,255],ambStr:'rgb(255,255,255)',nd:0,sx:0,sy:1,sl:1,sa:.3,sp:{},puff:null,ring:null,
@@ -91,23 +91,24 @@ function drawLighting(t){
 
 /* ---------------------------------- shadows ---------------------------------- */
 /* blurred black silhouette of a sprite, baked once, lazily, 1 px per world unit (it is blurred, so no more is needed). */
-function shadowOf(sp,w,h){
+function shadowOf(sp,w,h){   // blurred ground footprint of a sprite (sp.fp, or its own alpha for legacy sprites), cached on the sprite
   if(sp.sh)return sp.sh;
-  const P=Math.round(5+Math.min(w,h)*.08),cw=Math.ceil(w)+2*P,ch=Math.ceil(h)+2*P,c=mkCanvas(cw,ch),g=c.getContext('2d'),off=cw*3;
-  g.shadowColor='#000';g.shadowBlur=P*.8;g.shadowOffsetX=off;g.drawImage(sp.cv,P-off,P,w,h);
-  return sp.sh={cv:c,P,w,h};
+  const x0=sp.x0===undefined?-w/2:sp.x0,y0=sp.y0===undefined?-h/2:sp.y0,W=sp.w||w,Hh=sp.h||h;
+  const P=Math.round(5+Math.min(W,Hh)*.08),cw=Math.ceil(W)+2*P,ch=Math.ceil(Hh)+2*P,c=mkCanvas(cw,ch),g=c.getContext('2d'),off=cw*3;
+  g.shadowColor='#000';g.shadowBlur=P*.8;g.shadowOffsetX=off;g.drawImage(sp.fp||sp.cv,P-off,P,W,Hh);
+  return sp.sh={cv:c,P,x0,y0,w:W,h:Hh};
 }
-/* a building shadow, drawn with the origin at the building centre (before the sprite). Stacked copies along the sun vector fake the long soft tail. */
+/* a building shadow, drawn with the origin at the building centre (before the sprite). Stacked copies along the sun vector fake the long soft tail;
+   the tail length follows the building's height. */
 function drawBuildingShadow(sp,w,h,b){
-  const sh=shadowOf(sp,w,h),P=sh.P,L=(10+h*.3)*LT.sl,n=Q.shd>=3?3:Q.shd>=2?2:1,a=LT.sa*(n>1?.95:.95);
-  for(let i=0;i<n;i++){const f=n>1?(i+1)/n:.6,o=L*f;ctx.globalAlpha=a*(1-i*.18);ctx.drawImage(sh.cv,-w/2-P+LT.sx*o,-h/2-P+LT.sy*o,w+2*P,h+2*P);}
+  const sh=shadowOf(sp,w,h),P=sh.P,L=(8+(sp.hz||h*.4)*.9)*LT.sl,n=Q.shd>=3?3:Q.shd>=2?2:1,a=LT.sa*.95;
+  for(let i=0;i<n;i++){const f=n>1?(i+1)/n:.6,o=L*f;ctx.globalAlpha=a*(1-i*.18);ctx.drawImage(sh.cv,sh.x0-P+LT.sx*o,sh.y0-P+LT.sy*o,sh.w+2*P,sh.h+2*P);}
   ctx.globalAlpha=1;
 }
-/* a unit shadow, drawn in world orientation but with the sprite's heading, origin at the unit centre */
+/* a unit shadow: the footprint of the baked facing, pushed along the sun vector (flyers: further, lighter) */
 function drawUnitShadow(sp,u,d){
-  const S=sp.S,sh=shadowOf(sp,S,S),P=sh.P,k=(u.flying?24:d.r*.55+2)*LT.sl;
-  ctx.save();ctx.translate(LT.sx*k,LT.sy*k+(u.flying?4:0));ctx.rotate(u.ang);
-  ctx.globalAlpha=LT.sa*(u.flying?.55:.8)*(ctx.globalAlpha||1);ctx.drawImage(sh.cv,-S/2-P,-S/2-P,S+2*P,S+2*P);ctx.restore();
+  const sh=shadowOf(sp,sp.w,sp.h),P=sh.P,k=(u.flying?24:(sp.hz||10)*.55+d.r*.3)*LT.sl;
+  ctx.globalAlpha=LT.sa*(u.flying?.55:.85)*(ctx.globalAlpha||1);ctx.drawImage(sh.cv,sh.x0-P+LT.sx*k,sh.y0-P+LT.sy*k+(u.flying?4:0),sh.w+2*P,sh.h+2*P);ctx.globalAlpha=1;
 }
 
 /* ------------------------------ particle pool -------------------------------- */
@@ -146,6 +147,11 @@ function fxEmit(dt,t){
   for(const p of G.proj){
     if(!onScreen(p.x,p.y,40))continue;
     const kind=p.kind;
+    if(!PT.seen.has(p)){PT.seen.add(p);   // muzzle flash: a hot core, a coloured halo and two sparks along the barrel
+      const a=Math.atan2(p.ty-p.y,p.tx-p.x),ca=Math.cos(a),sa=Math.sin(a),pc=p.team<2?G.teams[p.team].pal.glow:'#ffd27a';
+      if(kind!=='shell'){ptAdd(0,p.x+ca*7,p.y+sa*7,0,0,.1,kind==='bolt'?26:20,gl(kind==='bolt'?rgbOf(pc):'255,214,130'));ptAdd(0,p.x+ca*7,p.y+sa*7,0,0,.06,10,gl('255,255,235'));
+        for(let i=0;i<2;i++){const sp=140+R()*120,sj=(R()-.5)*.5;ptAdd(3,p.x+ca*8,p.y+sa*8,Math.cos(a+sj)*sp,Math.sin(a+sj)*sp,.12+R()*.1,0,'rgba(255,230,160,1)');}}
+      else{ptAdd(0,p.x,p.y,0,0,.14,34,gl('255,190,110'));for(let i=0;i<3;i++)ptAdd(1,p.x,p.y,(R()-.5)*24,(R()-.5)*24,.8,8+R()*4,null);}}
     if(kind==='bolt')ptAdd(0,p.x,p.y,0,0,.28,13,gl(rgbOf((p.team<2?G.teams[p.team].pal:NEUTRAL_COL).glow)));
     else if(kind==='rocket'){ptAdd(0,p.x,p.y,0,0,.22,11,gl('255,170,90'));if(R()<.7)ptAdd(1,p.x,p.y,(R()-.5)*14,(R()-.5)*14,.7,6+R()*3,null);}
     else if(kind==='shell'){const pr=clamp(1-hyp(p.tx-p.x,p.ty-p.y)/p.total,0,1);ptAdd(0,p.x,p.y-Math.sin(pr*Math.PI)*58,0,0,.3,10,gl('255,190,110'));}
@@ -160,20 +166,23 @@ function fxEmit(dt,t){
     if(f.kind!=='flash'||PT.seen.has(f))continue;PT.seen.add(f);
     if(!onScreen(f.x,f.y,100))continue;const big=f.r>=60,n=big?14:6;
     for(let i=0;i<n;i++){const a=R()*TAU,v=60+R()*(big?260:140);ptAdd(3,f.x,f.y,Math.cos(a)*v,Math.sin(a)*v,.28+R()*.3,0,R()<.5?'rgba(255,224,150,1)':'rgba(255,160,80,1)');}
-    if(big){ptAdd(4,f.x,f.y,0,0,.45,f.r*1.3,null);for(let i=0;i<6;i++){const a=R()*TAU,v=10+R()*34;ptAdd(1,f.x+Math.cos(a)*10,f.y+Math.sin(a)*10,Math.cos(a)*v,Math.sin(a)*v-8,1.1+R()*.8,12+R()*8,null);}}
+    if(big){for(let i=0;i<8;i++){const a=R()*TAU,d=R()*f.r*.35;ptAdd(0,f.x+Math.cos(a)*d,f.y+Math.sin(a)*d,Math.cos(a)*30,Math.sin(a)*30,.5+R()*.35,f.r*(.7+R()*.5),gl(R()<.5?'255,150,60':'255,200,110'));}   // fireball lobes
+      for(let i=0;i<10;i++){const a=R()*TAU,v=40+R()*130;ptAdd(2,f.x,f.y,Math.cos(a)*v,Math.sin(a)*v-30,.7+R()*.7,9,gl('255,140,60'));}                  // glowing debris
+      for(let i=0;i<4;i++)ptAdd(1,f.x+(R()-.5)*18,f.y,(R()-.5)*10,-26-R()*22,1.8+R()*.8,16+R()*10,null);                                                  // smoke column
+      ptAdd(4,f.x,f.y,0,0,.45,f.r*1.3,null);for(let i=0;i<6;i++){const a=R()*TAU,v=10+R()*34;ptAdd(1,f.x+Math.cos(a)*10,f.y+Math.sin(a)*10,Math.cos(a)*v,Math.sin(a)*v-8,1.1+R()*.8,12+R()*8,null);}}
     else if(R()<.5)ptAdd(1,f.x,f.y,(R()-.5)*12,-6,.7,6+R()*4,null);
   }
   for(const b of G.buildings){
     if(b.dead||!entVisible(b)||!onScreen(b.x,b.y,90))continue;
-    const w=b.w*TILE,h=b.h*TILE;
+    const w=b.w*TILE,h=b.h*TILE,sp=buildingSprite(b.type,G.teams[b.team].faction),lift=sp.hz*K3;
     if(!b.done){   // welding sparks on the build line + a little dust at the foot
-      if(R()<dt*16){const y=b.y+h/2-h*b.prog;ptAdd(3,b.x+(R()-.5)*w*.8,y,(R()-.5)*120,-30-R()*70,.25+R()*.2,0,'rgba(255,214,120,1)');}
+      if(R()<dt*16){const y=b.y+sp.y0+sp.h*(1-b.prog);ptAdd(3,b.x+(R()-.5)*w*.8,y,(R()-.5)*120,-30-R()*70,.25+R()*.2,0,'rgba(255,214,120,1)');}
       if(R()<dt*3)ptAdd(1,b.x+(R()-.5)*w,b.y+h/2,(R()-.5)*10,-4,.9,7+R()*5,null);
       continue;
     }
     const fr=b.hp/b.maxhp;
-    if(fr<.55){const rate=(.55-fr)*9;if(R()<rate*dt)ptAdd(1,b.x+(R()-.5)*w*.6,b.y+(R()-.5)*h*.5,(R()-.5)*10,-12,1.4+R(),9+R()*8,null);}
-    if(fr<.3&&R()<dt*(.3-fr)*60)ptAdd(2,b.x+(R()-.5)*w*.6,b.y+(R()-.5)*h*.5,(R()-.5)*20,-10,.6+R()*.5,10,gl('255,140,60'));
+    if(fr<.55){const rate=(.55-fr)*9;if(R()<rate*dt)ptAdd(1,b.x+(R()-.5)*w*.6,b.y-lift*.8+(R()-.5)*h*.4,(R()-.5)*10,-12,1.4+R(),9+R()*8,null);}
+    if(fr<.3&&R()<dt*(.3-fr)*60)ptAdd(2,b.x+(R()-.5)*w*.6,b.y-lift*.8+(R()-.5)*h*.4,(R()-.5)*20,-10,.6+R()*.5,10,gl('255,140,60'));
   }
   for(const u of G.units){
     if(u.dead||u.hidden||u.team>1||!entVisible(u)||!onScreen(u.x,u.y,40))continue;
@@ -209,20 +218,10 @@ function drawBloom(){
 }
 
 /* ------------------------------ baked sprite lighting ------------------------------ */
-/* One pass over a freshly drawn sprite (clipped to its own alpha with 'source-atop'): edge occlusion, bevel rim light,
-   a directional key light for buildings (they never rotate) or a rotation-free dome highlight for units (they do). */
-function spritePolish(c,kind){
-  const W=c.width,H=c.height,g=c.getContext('2d'),m=Math.min(W,H),b=kind==='b';
-  const t=mkCanvas(W,H),tg=t.getContext('2d');tg.fillStyle='#000';tg.fillRect(0,0,W,H);tg.globalCompositeOperation='destination-out';tg.drawImage(c,0,0);   // t = everything OUTSIDE the sprite
-  g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';const off=W*3,d=Math.max(1,m*(b?.007:.012));
-  g.shadowColor='rgba(0,0,0,'+(b?.5:.55)+')';g.shadowBlur=m*(b?.022:.045);g.shadowOffsetX=off;g.shadowOffsetY=0;g.drawImage(t,-off,0);             // ambient occlusion inside the outline
-  if(b){g.shadowColor='rgba(255,255,255,.34)';g.shadowBlur=d*1.6;g.shadowOffsetX=off+d;g.shadowOffsetY=d;g.drawImage(t,-off,0);                       // light rim on the top-left edges
-    g.shadowColor='rgba(0,0,0,.32)';g.shadowOffsetX=off-d;g.shadowOffsetY=-d;g.drawImage(t,-off,0);}                                                  // dark lip on the bottom-right edges
-  g.shadowColor='transparent';g.shadowBlur=0;g.shadowOffsetX=0;g.shadowOffsetY=0;
-  if(b){const q=g.createLinearGradient(0,0,W,H);q.addColorStop(0,'rgba(255,255,255,.13)');q.addColorStop(.5,'rgba(255,255,255,0)');q.addColorStop(1,'rgba(0,0,12,.22)');g.fillStyle=q;g.fillRect(0,0,W,H);}
-  else{const q=g.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,m*.5);q.addColorStop(0,'rgba(255,255,255,.12)');q.addColorStop(.6,'rgba(255,255,255,0)');q.addColorStop(1,'rgba(0,0,10,.12)');g.fillStyle=q;g.fillRect(0,0,W,H);}
-  g.restore();
+/* additive glow of a sprite's emissive mask (soft because the mask is stored at 1/3 size and upscaled bilinearly) */
+function drawEmissive(sp,x,y,w,h,a){
+  if(!sp.cv._em||Q.fx<1)return;const pa=ctx.globalAlpha;ctx.globalAlpha=pa*a;ctx.globalCompositeOperation='lighter';ctx.drawImage(sp.cv._em,x,y,w,h);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=pa;
 }
 
 /* test-side hook (same convention as window.__RTS in 90_main.js): lets tests/e2e/e2e_visual.py reach the lighting internals. Not used by the game. */
-if(window.__TEST)window.__RTSV={LT,PT,shadowOf,lightFrame,collectLights,drawLighting,drawBloom,spritePolish,buildingSprite,unitSprite,lightSprite,ptAdd,ptStep,fxEmit,AMB_STOPS};
+
