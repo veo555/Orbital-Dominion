@@ -785,13 +785,14 @@ audioOnReady(()=>{ensureTimer();});
 ensureTimer();
 return{musicPlay:apiPlay,musicStop:apiStop,musicScene:apiScene,musicStinger:apiStinger,musicDuck:apiDuck,musicMood:apiMood,musicState:apiState,musicRestore:apiRestore,musicRegister:apiRegister};
 })();
-function musicPlay(cue,opts){return MUSE.musicPlay(cue,opts);}
-function musicStop(fade){MUSE.musicStop(fade);}
-function musicScene(sc){return MUSE.musicScene(sc);}
-function musicStinger(cue){return MUSE.musicStinger(cue);}
-function musicDuck(amount,ms){MUSE.musicDuck(amount,ms);}
-function musicMood(m){return MUSE.musicMood(m);}
-function musicState(){return MUSE.musicState();}
-function musicRestore(s){MUSE.musicRestore(s);}
+/* v5 robustness: the music API never throws into the game (a throwing Web Audio node or a bad cue is counted and ignored) */
+function musicPlay(cue,opts){try{return MUSE.musicPlay(cue,opts);}catch(e){return audioFault(e);}}
+function musicStop(fade){try{MUSE.musicStop(fade);}catch(e){audioFault(e);}}
+function musicScene(sc){try{return MUSE.musicScene(sc);}catch(e){return audioFault(e);}}
+function musicStinger(cue){try{return MUSE.musicStinger(cue);}catch(e){return audioFault(e);}}
+function musicDuck(amount,ms){try{MUSE.musicDuck(amount,ms);}catch(e){audioFault(e);}}
+function musicMood(m){try{return MUSE.musicMood(m);}catch(e){return audioFault(e);}}
+function musicState(){try{return MUSE.musicState();}catch(e){audioFault(e);return null;}}
+function musicRestore(s){try{MUSE.musicRestore(s);}catch(e){audioFault(e);}}
 function musicRegister(id,def){return MUSE.musicRegister(id,def);}
 function musicInfo(id){return MUSIC.info(id);}

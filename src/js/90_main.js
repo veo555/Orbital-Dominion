@@ -111,7 +111,7 @@ function applyTarget(wx,wy,shift){
   else issueGroup(ownUnits(),wx,wy,k,shift);
 }
 function bindInput(){
-  window.addEventListener('resize',resizeView);
+  window.addEventListener('resize',()=>resizeView());
   cv.addEventListener('contextmenu',e=>e.preventDefault());mm.addEventListener('contextmenu',e=>e.preventDefault());
   document.addEventListener('mouseleave',()=>{ui.inWin=false;});document.addEventListener('mouseenter',()=>{ui.inWin=true;});
   const mmWorld=e=>{const r=mm.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*WW,y:(e.clientY-r.top)/r.height*WH};};
@@ -232,25 +232,71 @@ let lastT=0,acc=0;
 function frame(ts){
   requestAnimationFrame(frame);
   if(Q.fps&&ts-lastT<1000/Q.fps-1.5)return;           // battery saver: render at most 30 fps (the sim keeps its own fixed step)
-  qualityFrame(ts-lastT);
+  guardRun('view',qualityFrame,ts-lastT);
   const dt=Math.min(0.1,(ts-lastT)/1000||0.016);lastT=ts;
   if(!G||!ui.running)return;
   frameBody(dt,ts/1000);
 }
+/* v5: four SEPARATE guarded stages (91_guard.js). A render error never stops the simulation, a HUD error never stops rendering; more than 5 errors in 2 s trip the
+   recovery dialog (pause + autosave + Reload / Continue / Main menu). */
 function frameBody(dt,t){
-  if(G.camp&&G.camp.hold)acc=0;   // a blocking campaign dispatch card holds the world (step() also returns early): no catch-up burst after the resume
-  else if(!G.paused&&(!G.over||G.time-G.overT<3)){acc+=dt*G.speed;let n=0;while(acc>=TICK&&n<14){step();acc-=TICK;n++;}if(n>=14)acc=0;}
+  if(guardS().tripped)return;
+  guardRun('sim',frameSim,dt);
+  guardRun('view',frameView,dt);
+  guardRun('render',frameRender,dt,t);
+  if(!ui.demo)guardRun('ui',frameUi,dt);
+}
+/* stage 1: the fixed-step simulation, with the spiral-of-death guard: at most 14 steps (2 in shed mode) and a wall-clock budget per frame; whatever is left over is dropped
+   (the game runs slower than real time instead of falling further behind).  A step slower than 250 ms three frames in a row switches the loop to shed mode. */
+function frameSim(dt){
+  const S=guardS();
+  if(S.fault.sim>0){S.fault.sim--;throw new Error('injected sim fault');}
+  if(G.camp&&G.camp.hold){acc=0;return;}   // a blocking campaign dispatch card holds the world (step() also returns early): no catch-up burst after the resume
+  if(G.paused||(G.over&&G.time-G.overT>=3))return;
+  acc+=dt*G.speed;
+  const max=S.shed?2:14,budget=S.shed?S.cfg.shedBudget:S.cfg.budget,t0=performance.now();let n=0,slow=false;
+  while(acc>=TICK&&n<max){
+    const s0=performance.now();step();acc-=TICK;n++;
+    if(S.fault.stepMs)guardBusy(S.fault.stepMs);
+    const now=performance.now();if(now-s0>S.cfg.slowStep)slow=true;
+    if(now-t0>budget)break;
+  }
+  if(acc>=TICK)acc=0;
+  const spent=performance.now()-t0;S.lastStepMs=spent;
+  if(slow||spent>S.cfg.slowStep){S.fastFrames=0;if(++S.slowFrames>=3)guardShed(true);}
+  else{S.slowFrames=0;if(S.shed&&++S.fastFrames>=300)guardShed(false);}
+}
+/* stage 2: camera, zoom, fog and terrain streaming (visual state only) */
+function frameView(dt){
+  const S=guardS();
+  if(S.fault.view>0){S.fault.view--;throw new Error('injected view fault');}
+  if(S.rvPending&&guardViewportOK()){S.rvPending=false;resizeView();}
+  guardCam();
   if(Math.abs(cam.tz-cam.z)>0.002)setZoom(cam.z+(cam.tz-cam.z)*Math.min(1,dt*12),ui.zx,ui.zy);
   if(ui.demo)demoUpdate(dt);else{cameraUpdate(dt);touchUpdate(dt);if(ui.place)updatePlaceGhost();}
+  guardCam();
   updateFog(dt,ui.fogForce);ui.fogForce=false;
-  terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
+  if(!S.shed)terrainStream(dt>0.028?2:5);   // sharp ground tiles: a few ms per frame, less when the frame is already slow
+}
+/* stage 3: drawing */
+function frameRender(dt,t){
+  const S=guardS();
+  if(S.fault.render>0){S.fault.render--;throw new Error('injected render fault');}
+  if(!(VW>0&&VH>0))return;   // an invalid (0-size) viewport: nothing to draw into
   render(t,dt);drawMinimap();fpsOverlay(dt);
-  if(!ui.demo){hudUpdate(dt);cursorUpdate();if(typeof resumeTick==='function')resumeTick(dt);if(typeof campUiTick==='function')campUiTick(dt);
-    if(ui.endRes&&performance.now()>ui.endAt&&!(G.camp&&G.camp.hold))showEnd();}   // a held dispatch card is read first, then the debrief
+}
+/* stage 4: HUD, cursor, autosave timer, campaign UI, end screen */
+function frameUi(dt){
+  const S=guardS();
+  if(S.fault.ui>0){S.fault.ui--;throw new Error('injected ui fault');}
+  hudUpdate(dt);cursorUpdate();if(typeof resumeTick==='function')resumeTick(dt);if(typeof campUiTick==='function')campUiTick(dt);
+  if(ui.endRes&&performance.now()>ui.endAt&&!(G.camp&&G.camp.hold))showEnd();   // a held dispatch card is read first, then the debrief
 }
 
 /* -------------------------------- boot ---------------------------------- */
-function boot(){
+function boot(){try{guardInstall();bootInner();}catch(e){guardBootFailed(e);}}
+function bootInner(){
+  if(window.__TEST&&window.__FAULT_BOOT)throw new Error('injected boot fault');   // test seam (tests/e2e/e2e_robust_core.py)
   cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
   initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();campInit();soundLabInit();m3Init();ui.inWin=true;
@@ -259,9 +305,10 @@ function boot(){
   if(!window.__TEST||window.__TEST==='live')startDemo();
   if(!window.__TEST||window.__TEST==='live')requestAnimationFrame(frame);
 }
-if(window.__TEST){window.__RTS={makeAI,DIFF,newGame,startGame,startDemo,step,get G(){return G;},ui,cam,SET,UDEF,BDEF,TECH,FACTIONS,aiThink,setSel,buildCommands,runCmd,renderInfo,renderCmdCard,hudUpdate,entityAt,issueGroup,contextCommand,clickSelect,boxSelect,
+if(window.__TEST){window.__RTS={BUILD,makeAI,DIFF,newGame,startGame,startDemo,step,get G(){return G;},ui,cam,SET,UDEF,BDEF,TECH,FACTIONS,aiThink,setSel,buildCommands,runCmd,renderInfo,renderCmdCard,hudUpdate,entityAt,issueGroup,contextCommand,clickSelect,boxSelect,
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),
   get TOPBAR(){return TOPBAR;},get BOTTOM(){return BOTTOM;},tch,tileFor,tileScaleWanted,terrainStream,terrainPaint,mkCanvas,Q,QUALITY,applyQuality,setQualityMode,get SC(){return SC;},get DPR(){return DPR;},TP,tpTap,tpLongTap,setTouchMode,measureHud,STORY,MUSIC_CUES,drawPortrait,PORTRAIT_PAINT,musicPlay,musicStop,musicScene,musicStinger,musicDuck,musicMood,sfxUnit,sfxBuilding,audioVoices,audioRender,swui,swRender,swSend,swAct,swHud,ovCommand,ovPreset,ovApprove,econHire,econAccept,agEnroll,agDirect,enrollAll,cadenceTable,wageNow,swAgents,swAssignRole,swApplyRole,swToggleMaster,ROLES,CADI,DOMAINS,jobCancel,econFire,swTaskOpts,swPickAgents,AUD,MUSIC,MUSIC_DATA,MOTIF,musicInfo,musicState,musicRestore,musicRegister};}
+if(window.__TEST)window.__RTS.guard=guardApi();   // fault-injection seam (tests/e2e/e2e_robust_*.py)
 boot();

@@ -17,7 +17,7 @@ const STRIPE_LINK=/^https:\/\/(buy|checkout|donate)\.stripe\.com\//;
 const THEMES={gold:{base:'#e0a526',glow:'#ffd566'},magenta:{base:'#d94fb0',glow:'#ff84dc'},ice:{base:'#4fd0e8',glow:'#a6f0ff'}};
 
 function supSave(){try{if(SUP.tier)localStorage.setItem(SUPKEY,JSON.stringify({tier:SUP.tier,token:SUP.token,honor:SUP.honor}));else localStorage.removeItem(SUPKEY);}catch(e){}}
-function supLoad(){try{const s=JSON.parse(localStorage.getItem(SUPKEY)||'null');if(s&&s.tier){SUP.tier=String(s.tier);SUP.token=s.token||null;SUP.honor=!!s.honor;}}catch(e){}}
+function supLoad(){try{const s=JSON.parse(localStorage.getItem(SUPKEY)||'null');if(s&&typeof s==='object'&&typeof s.tier==='string'&&/^[\w.-]{1,64}$/.test(s.tier)){SUP.tier=s.tier;SUP.token=typeof s.token==='string'&&s.token.length<=2000?s.token:null;SUP.honor=s.honor===true;}}catch(e){}}   // v5: validated (a corrupt value is ignored, never trusted)
 function supIsSupporter(){return !!SUP.tier;}
 function supEnabled(){
   const c=SUP.cfg;

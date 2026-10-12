@@ -25,6 +25,8 @@ Limits: observes calls, not sound; it cannot tell that the right sound was chose
 import os, re, sys, json, time, pathlib, subprocess, tempfile, collections, urllib.request
 from urllib.parse import unquote, urlparse
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from readable_build import readable_html
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
@@ -86,7 +88,7 @@ REF_PATCHES = [
     ('the menu plays the title cue', "function toMenu(){", "function toMenu(){musicPlay('title');", ['title']),
     ('the campaign UI reacts to mood', "function onCampaignEvent(e){}", "function onCampaignEvent(e){if(e&&e.type==='mood')musicMood(e.mood);}", ['camp.mood']),
 ]
-NOWHO = ("function sfx(name,x,y,who){return AUDIO.sfx(name,x,y,who);}", "function sfx(name,x,y,who){return AUDIO.sfx(name,x,y);}")
+NOWHO = ("function sfx(name,x,y,who){try{return AUDIO.sfx(name,x,y,who);}catch(e){return audioFault(e);}}", "function sfx(name,x,y,who){try{return AUDIO.sfx(name,x,y);}catch(e){return audioFault(e);}}")
 
 
 def story_fixture():
@@ -264,9 +266,7 @@ def call_sites():
 
 with sync_playwright() as p:
     b = p.chromium.launch(args=['--no-sandbox'])        # no autoplay flag: the real autoplay policy applies
-    html = None
-    if URL.startswith('file:'): html = pathlib.Path(unquote(urlparse(URL).path)).read_text(encoding='utf-8')
-    else: html = urllib.request.urlopen(URL, timeout=10).read().decode('utf-8')
+    html = readable_html()      # the instrumented copy needs the READABLE bundle (the shipped one is minified)
     real, missing = probe(html)
     ok(not missing, 'the music functions are plain `function` declarations (so calls to them can be observed)' + (f' - NOT FOUND exactly once: {missing}' if missing else ''))
 

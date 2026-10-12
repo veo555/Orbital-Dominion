@@ -494,7 +494,8 @@ function audioInit(){
   if(!AC){
     const Ctor=window.AudioContext||window.webkitAudioContext;if(!Ctor)return;
     try{AC=new Ctor({latencyHint:'interactive'});}catch(e){try{AC=new Ctor();}catch(e2){AC=null;return;}}
-    S.fresh=true;buildGraph();applyVolumes();
+    S.fresh=true;
+    try{buildGraph();applyVolumes();}catch(e){AUD.lastError='graph: '+(e&&e.message||e);C.errors++;try{AC.close();}catch(_){}AC=null;S.buses=[];S.A=[];return;}   // a context that cannot build its graph is no context: sound off, game on
     try{const b=AC.createBuffer(1,1,22050),s=AC.createBufferSource();s.buffer=b;s.connect(AC.destination);s.start(0);}catch(e){}   // iOS unlock
     if(legacyOn)legacyStart();
     for(const f of READY){try{f(AC);}catch(e){}}
@@ -737,7 +738,7 @@ function lgTick(){
 function legacyStart(){
   if(LG.timer||!AC)return;
   LG.out=AC.createGain();LG.out.gain.value=1.1;LG.out.connect(S.buses[BM].inn);audioDelay('music',0.42,0.38);
-  LG.next=AC.currentTime+0.2;LG.timer=setInterval(lgTick,140);
+  LG.next=AC.currentTime+0.2;LG.timer=setInterval(()=>{try{lgTick();}catch(e){audioFault(e);}},140);
 }
 function audioLegacyScore(on){legacyOn=!!on;if(on&&AC)legacyStart();}
 
@@ -793,19 +794,22 @@ for(const id in G0){const d=G0[id];registerVoice('global.'+id,d,{fallback:true,g
 return{init:audioInit,applyVolumes,toggleMute,sfx,sfxUnit,sfxBuilding,registerVoice,registerRenderer,audioVoices,audioRender,audioStats,audioPlay,audioDuck,audioBus,audioA,audioDelay,
   audioOffline:renderOffline,audioMixdown,audioRoom,logReset,audioAnalyse,audioHash,audioClasses,audioOnReady,audioLegacyScore,audioMeter,tone,noiseBurst,mkVoice,VOICES,RENDERERS,resolve,calcPos,CLS,PRIO,hz,S};
 })();
-function audioInit(){AUDIO.init();}
-function applyVolumes(){AUDIO.applyVolumes();}
-function toggleMute(){return AUDIO.toggleMute();}
-function sfx(name,x,y,who){return AUDIO.sfx(name,x,y,who);}
-function sfxUnit(type,ev,x,y,faction){return AUDIO.sfxUnit(type,ev,x,y,faction);}
-function sfxBuilding(type,ev,x,y,faction){return AUDIO.sfxBuilding(type,ev,x,y,faction);}
+/* v5 robustness: audio can never break gameplay.  Every entry point the game calls (the sim calls sfx() from inside step()) catches whatever the Web Audio graph throws,
+   counts it (AUD.counters.errors, AUD.lastError) and returns a harmless value.  tests/e2e/e2e_robust_audio.py injects a missing / throwing AudioContext and throwing nodes. */
+function audioFault(e){try{AUD.lastError=String(e&&e.message||e);AUD.counters.errors++;}catch(_){}return false;}
+function audioInit(){try{AUDIO.init();}catch(e){audioFault(e);}}
+function applyVolumes(){try{AUDIO.applyVolumes();}catch(e){audioFault(e);}}
+function toggleMute(){try{return AUDIO.toggleMute();}catch(e){audioFault(e);return muted;}}
+function sfx(name,x,y,who){try{return AUDIO.sfx(name,x,y,who);}catch(e){return audioFault(e);}}
+function sfxUnit(type,ev,x,y,faction){try{return AUDIO.sfxUnit(type,ev,x,y,faction);}catch(e){return audioFault(e);}}
+function sfxBuilding(type,ev,x,y,faction){try{return AUDIO.sfxBuilding(type,ev,x,y,faction);}catch(e){return audioFault(e);}}
 function registerVoice(id,def,meta){return AUDIO.registerVoice(id,def,meta);}
 function registerRenderer(kind,fn){AUDIO.registerRenderer(kind,fn);}
 function audioVoices(opt){return AUDIO.audioVoices(opt);}
 function audioRender(spec,seconds,sr){return AUDIO.audioRender(spec,seconds,sr);}
 function audioStats(){return AUDIO.audioStats();}
-function audioPlay(what,opt){return AUDIO.audioPlay(what,opt);}
-function audioDuck(bus,amount,ms){AUDIO.audioDuck(bus,amount,ms);}
+function audioPlay(what,opt){try{return AUDIO.audioPlay(what,opt);}catch(e){return audioFault(e);}}
+function audioDuck(bus,amount,ms){try{AUDIO.audioDuck(bus,amount,ms);}catch(e){audioFault(e);}}
 function audioBus(name){return AUDIO.audioBus(name);}
 function audioA(name){return AUDIO.audioA(name);}
 function audioDelay(bus,time,fb){AUDIO.audioDelay(bus,time,fb);}
@@ -817,9 +821,9 @@ function audioHash(ch,exact){return AUDIO.audioHash(ch,exact);}
 function audioClasses(){return AUDIO.audioClasses();}
 function audioOnReady(fn){AUDIO.audioOnReady(fn);}
 function audioLegacyScore(on){AUDIO.audioLegacyScore(on);}
-function audioMeter(){return AUDIO.audioMeter();}
-function tone(f,d,type,v,slide,delay,pan){AUDIO.tone(f,d,type,v,slide,delay,pan);}
-function noiseBurst(d,v,f0,pan,type){AUDIO.noiseBurst(d,v,f0,pan,type);}
+function audioMeter(){try{return AUDIO.audioMeter();}catch(e){audioFault(e);return{peak:0,rms:0};}}
+function tone(f,d,type,v,slide,delay,pan){try{AUDIO.tone(f,d,type,v,slide,delay,pan);}catch(e){audioFault(e);}}
+function noiseBurst(d,v,f0,pan,type){try{AUDIO.noiseBurst(d,v,f0,pan,type);}catch(e){audioFault(e);}}
 Object.defineProperty(AUD,'ctx',{get(){return AC;}});
 Object.assign(AUD,{sfx,sfxUnit,sfxBuilding,init:audioInit,mute:toggleMute,stats:audioStats,registerVoice,registerRenderer,voices:audioVoices,render:audioRender,play:audioPlay,duck:audioDuck,analyse:audioAnalyse,hash:audioHash,
   offline:audioOffline,mixdown:audioMixdown,room:audioRoom,classes:audioClasses,KIT,resolve:AUDIO.resolve,calcPos:AUDIO.calcPos,meter:audioMeter,tone,noiseBurst,audioA,bus:audioBus,delay:audioDelay,onReady:audioOnReady,legacyScore:audioLegacyScore,

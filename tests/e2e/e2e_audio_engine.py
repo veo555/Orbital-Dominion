@@ -13,6 +13,8 @@ Asserts the ENGINE contract of docs/AUDIO_SPEC.md §1/§2/§8 (not the content o
 import os, re, sys, json, pathlib, tempfile, time, urllib.request
 from urllib.parse import unquote, urlparse
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from readable_build import readable_html
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
@@ -461,12 +463,7 @@ with sync_playwright() as p:
 
     # ------------------------------------------------------------ mutation checks
     # ------------------------------------------------------------ engine-only page: the contracts that exist BEFORE any content module registers
-    html = None
-    if URL.startswith('file:'):
-        html = pathlib.Path(unquote(urlparse(URL).path)).read_text(encoding='utf-8')
-    else:
-        try: html = urllib.request.urlopen(URL, timeout=10).read().decode('utf-8')
-        except Exception as e: print('cannot fetch the page for the mutation checks:', e)
+    html = readable_html()      # the mutation snippets are readable source text; the shipped build is minified
     if html is not None:
         tmp0 = tempfile.mkdtemp(prefix='od_audio_eng_'); ef = pathlib.Path(tmp0) / 'engine.html'; ef.write_text(engine_html(html), encoding='utf-8')
         ep = new_page(b, ef.as_uri(), nocontent=True)

@@ -28,6 +28,8 @@ Limits: it observes the DOM and the calls the lab makes; it cannot judge layout 
 import os, re, sys, json, time, pathlib, tempfile, argparse, collections, urllib.request
 from urllib.parse import unquote, urlparse
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from readable_build import readable_html
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 URL = os.environ.get('OD_URL') or (ROOT / 'dist' / 'orbital_dominion_v4.html').as_uri()
@@ -68,7 +70,7 @@ AUDIO_WRAPPERS = ['audioPlay']
 
 
 def probe(html):
-    """log every call of the music / voice functions and of the engine's audioPlay wrapper into window.__WL (a COPY of the build)"""
+    """log every call of the music functions and of the engine's audioPlay wrapper into window.__WL (a COPY of the build)"""
     missing = []
     for n in PROBED:
         ms = list(re.finditer(r'function\s+' + n + r'\s*\(([^)]*)\)\s*\{', html))
@@ -297,9 +299,9 @@ def run_checks(pg, touch, mode, entry_kb, label, res):
 
 with sync_playwright() as p:
     b = p.chromium.launch(args=['--no-sandbox'])
-    html = pathlib.Path(unquote(urlparse(URL).path)).read_text(encoding='utf-8') if URL.startswith('file:') else urllib.request.urlopen(URL, timeout=10).read().decode('utf-8')
+    html = readable_html()      # the instrumented copy needs the READABLE bundle (the shipped one is minified)
     inst, missing = probe(html)
-    ok(not missing, 'the music / voice functions and the audioPlay wrapper are plain declarations (calls to them can be observed)' + (f' - NOT FOUND exactly once: {missing}' if missing else ''))
+    ok(not missing, 'the music functions and the audioPlay wrapper are plain declarations (calls to them can be observed)' + (f' - NOT FOUND exactly once: {missing}' if missing else ''))
 
     # ---------------------------------------------------------------- 1. desktop: the full check list
     ctx, pg = boot(b, inst, {'width': 1366, 'height': 800}, ref=ARGS.ref, track=True)
