@@ -14,6 +14,7 @@ node tests/sim/save.js
 node tests/sim/ai_lib.js
 node tests/sim/ai_combat.js
 node tests/sim/ai_agent.js --quick
+node tests/sim/ai_mcts.js --quick
 node tests/sim/campaign.js
 node tests/sim/campaign_walkthrough.js
 python3 tests/e2e/e2e_smoke.py

@@ -244,6 +244,7 @@ function aiPlanConf(ai){
    the root visit counts decide the macro-action. All planner state lives in ai.pl as plain data (save/resume). */
 function aiPlan(ai,R,own,en,army,known,myVal,stale){
   const C0=ai.cfg.plan,pl=ai.pl,now=G.time;if(!pl)return;
+  if(C0.every>1&&((pl.tick=(pl.tick||0)+1)%C0.every))return;                 // CPU budget: search on every n-th strategy think only
   if(!pl.root||pl.w>=pl.K){const r=aiPlanRoot(ai,R,own,en,known,myVal,stale);pl.root=Array.from(r.s);pl.est=r.est;pl.w=0;pl.t0=now;
     pl.N=new Array(PL_NA).fill(0);pl.W=new Array(PL_NA).fill(0);
     const C=aiPlanConf(ai);pl.P=Array.from(plPrior(r.s,0,C.th,C.phi));}

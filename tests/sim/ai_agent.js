@@ -55,7 +55,7 @@ function hideAndScramble(S, team) { // mutate everything the AI's team cannot se
 function noPeek(src, label, expectSame) {
   const S = sim(src); const G = start(S, 31, 'meridian', 'obsidian', { kind: 't2', tier: 'master' }, { kind: 't2', tier: 'master' });
   for (let i = 0; i < 330 * 30; i++) { S.step(); if (G.over) break; }
-  const snap = S.gameSnapshot(), team = 1, K = 16;
+  let snap = S.gameSnapshot(); const team = 1, K = 16;
   const think = (mut) => {
     S.gameRestore(snap); const G2 = S.G; S.__run('rebuildCells()'); let info = null;
     if (mut) info = hideAndScramble(S, team);
@@ -63,7 +63,10 @@ function noPeek(src, label, expectSame) {
     try { for (let k = 0; k < K; k++) { G2.time += ai.P.iv; S.__run(`aiThink(G.ais[${team}])`); } } finally { rec.stop(); }
     return { log: rec.log, st: stateOf(G2.ais[team]), info };
   };
-  const A = think(false), B = think(true);
+  // probe moment: the first of t = 330, 345, 360 ... s at which the AI issues >= 5 commands in K thinks on the true world (deterministic)
+  let A = think(false);
+  for (let tries = 0; tries < 12 && A.log.length < 5; tries++) { S.gameRestore(snap); S.__run('rebuildCells()'); for (let i = 0; i < 450; i++) S.step(); snap = S.gameSnapshot(); A = think(false); }
+  const B = think(true);
   if (expectSame) {
     ok(A.log.length >= 5, `${label}: the AI acted in the probe (${A.log.length} commands in ${K} thinks) - not a vacuous comparison`);
     const pl = JSON.parse(A.st).pl;

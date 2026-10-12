@@ -396,8 +396,10 @@ hidden state) is acceptable here because no macro-action gathers information.
   rules on noise (a policy-improvement step inside a trust region; compare the KL constraint of §13). The first version without it let the
   model "raid" with no fast units and withhold attacks the rules would have made.
 * **Time slicing.** The planner runs inside the strategy think (2 Hz at Master); each slice searches ⌈K / slices⌉ worlds; a decision is made
-  when all K worlds are done. Master: 256 simulations per decision, K = 4 worlds of 64, 8 slices → a decision every 4 s of game time, 32
-  simulations in the worst think. Planner state (`ai.pl`: root state, point estimate, accumulated N and W, prior, RNG state) is plain data:
+  when all K worlds are done; `every` = n runs the planner on every n-th strategy think only. Shipped Master: 128 simulations per
+  decision, K = 4 worlds of 32, one world per slice, every 2nd strategy think → a decision every 4 s of game time, 32 simulations in the
+  worst think (+10.7 % total tick time vs the v4 Master, +18.2 % vs v3-Hard; budget +25 %). The training league and the final evaluation
+  used 256 simulations (4 × 64) per decision, which cost +42 % and was cut for the budget. Planner state (`ai.pl`: root state, point estimate, accumulated N and W, prior, RNG state) is plain data:
   `46_save.js` round-trips it (tested); the search uses only the AI's own mulberry32 state, so it is deterministic.
 * **Tiers.** Easy / Normal / Hard: no search. Master: the full budget (`41_ai_params.js`, results doc §10).
 
