@@ -371,12 +371,13 @@ const CR=(function(){
       case'lose':finish('defeat',isStr(a[1])?a[1]:bad('lose needs a reason id'));break;
       case'unlock':case'lock':{
         const kind=a[1],id=a[2],lockIt=op==='lock';
-        if(kind==='building'){if(!isStr(id)||!has(BDEF,id))bad('unknown building '+short(id));if(lockIt)K.locks.building[id]=true;else delete K.locks.building[id];}
+        if(kind==='building'){if(!isStr(id)||!has(BDEF,id)&&!FORT_NEW[id])bad('unknown building '+short(id));if(lockIt)K.locks.building[id]=true;else delete K.locks.building[id];}
         else if(kind==='unit'){if(!isStr(id)||!has(UDEF,id))bad('unknown unit '+short(id));
           if(lockIt)K.locks.unit[id]=true;else delete K.locks.unit[id];
           if(UDEF[id].hero&&id===FACTIONS[T0.faction].hero)K.heroPolicy=lockIt?'none':'available';}
         else if(kind==='era'){if(id!==2&&id!==3)bad('era must be 2 or 3');K.maxEra=lockIt?Math.min(K.maxEra,id-1):Math.max(K.maxEra,id);}
         else bad('lock kind must be building|unit|era');
+        if(FORT_NEW[id]){const A=K.allowNew||(K.allowNew={});if(lockIt)delete A[id];else A[id]=true;}
         emit('unlock',{kind,id,locked:lockIt});uiDirty();break;}
       case'herolevel':{const n=Math.floor(num(a[1]));if(n<1||n>HERO_MAXLVL)bad('hero level must be 1..'+HERO_MAXLVL);
         const H=T0.hero;if(n>H.level){H.level=n;H.xp=Math.max(H.xp,HERO_LVL_XP[n]);
@@ -401,6 +402,7 @@ const CR=(function(){
   /* ----------------------------------- sim hooks / queries ----------------------------------- */
   function locked(team,kind,id){
     const C=G&&G.camp;if(!C||team!==0)return null;                         // restrictions bind the player's side only
+    if(FORT_NEW[id]&&!(C.allowNew&&C.allowNew[id]))return LOCKMSG;            // v6-G1: every new structure / unit / Hub ability is locked unless the mission unlocks it
     if(kind==='building')return C.locks.building[id]?LOCKMSG:null;
     if(kind==='unit')return C.locks.unit[id]?LOCKMSG:null;
     if(kind==='era')return id>C.maxEra?LOCKMSG:null;

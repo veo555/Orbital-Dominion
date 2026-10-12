@@ -16,7 +16,7 @@ function saveSane(g){
 }
 const SAVE_SKIP={terrainCv:1,mmBg:1,tInfo:1};
 let SAVE_STAT=null;                                                    // Map object -> JSON path of the static table it lives in (built once)
-function saveRoots(){return{UDEF,BDEF,FACTIONS,DIFF,SKILLS,TECH,TAX,CAMP_TYPES,CADI,ROLES,GEAR,ERAS,TAGNAME,NEUTRAL_COL,JOB_NAMES,PAY};}
+function saveRoots(){return{UDEF,BDEF,FACTIONS,DIFF,SKILLS,TECH,TAX,CAMP_TYPES,CADI,ROLES,GEAR,ERAS,TAGNAME,NEUTRAL_COL,JOB_NAMES,PAY,FORT,FORT_NEW};}
 function saveStatics(){
   if(SAVE_STAT)return SAVE_STAT;
   SAVE_STAT=new Map();const R=saveRoots();

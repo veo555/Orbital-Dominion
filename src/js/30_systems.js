@@ -21,8 +21,9 @@ function updateUnit(u,dt){
   if(d.hero){u.mana=Math.min(heroMaxMana(u),u.mana+(1.1+0.12*G.teams[u.team].hero.level)*dt);if(u.hp<u.maxhp&&G.time-u.lastHit>6)u.hp=Math.min(u.maxhp,u.hp+u.maxhp*0.006*dt);}
   if(d.heal)menderStep(u,dt);
   if(u.stunned>0)return;
-  if(u.hidden){if(o.t==='gather'&&!u.garr)gatherStep(u,dt);return;}
+  if(u.hidden){if(u.inside){cargoInsideStep(u,dt);return;}if(o.t==='gather'&&!u.garr)gatherStep(u,dt);return;}
   if(u.team===2){creepStep(u,dt);return;}
+  if(fortUnitStep(u,dt))return;   // 31_defense.js / 32_cargo.js: breach a wall, load into a host, Dropship drop
   const isArmed=!d.noWeapon&&!d.worker||d.worker;
   switch(o.t){
     case'idle':{
@@ -123,7 +124,7 @@ function gatherStep(u,dt){
   if(o.st==='work'){
     o.gt-=dt;
     if(o.gt<=0){const r=o.res;
-      let n=r.type==='crystal'?5*(1+0.2*T.mining):4*(1+0.2*T.compress);n=Math.round(n)+2*T.cargo+(T.faction==='aurora'?1:0)+(u.ag?u.ag.m.carry:0);n=Math.min(n,Math.ceil(r.amount));
+      let n=r.type==='crystal'?5*(1+0.2*T.mining)*(r.rich?FORT.richMul:1):4*(1+0.2*T.compress);n=Math.round(n)+2*T.cargo+(T.faction==='aurora'?1:0)+(u.ag?u.ag.m.carry:0);n=Math.min(n,Math.ceil(r.amount));   // r.rich: rich crystal field (skirmish map features, 31_defense.js)
       const i=r.users.indexOf(u.id);if(i>=0)r.users.splice(i,1);u.inRes=null;
       if(u.hidden&&!u.garr){u.hidden=false;popOut(u);}
       u.carry=n;u.carryType=r.type==='crystal'?'c':'e';r.amount-=n;o.st='ret';u.path=null;sfx('mine',u.x,u.y,u);
@@ -159,7 +160,7 @@ function buildStep(u,dt){
       return;}
     if(!canPlace(u.team,o.type,o.tx,o.ty,true)||footprintBusy(site,u)){
       msg(u.team,'Cannot build here');refundOrder(u,o);o.paid=false;finishBuild(u,o);return;}
-    b=addBuilding(o.type,u.team,o.tx,o.ty,false);ejectUnits(b);o.bld=b;o.paid=false;G.teams[u.team].built++;
+    b=addBuilding(o.type,u.team,o.tx,o.ty,false);if(!d.noBlock)ejectUnits(b);o.bld=b;o.paid=false;G.teams[u.team].built++;
     if(u.team===0&&!G.ais[0])sfx('place',undefined,undefined,b);uiDirty();}
   if(b.dead||b.done){finishBuild(u,o);return;}
   if(rectDist(u.x,u.y,b)>u.r+15){const p=approachPoint(b,u.x,u.y);navigate(u,p.x,p.y,dt,4);return;}
@@ -298,6 +299,7 @@ function buildDetectors(){
   G.det[0].length=0;G.det[1].length=0;
   for(const u of G.units)if(!u.dead&&u.team<2&&u.def.detect&&!u.hidden)G.det[u.team].push({x:u.x,y:u.y,r:u.def.detect});
   for(const b of G.buildings)if(!b.dead&&b.done&&b.def.detect)G.det[b.team].push({x:b.x,y:b.y,r:b.def.detect});
+  if(G.scans&&G.scans.length)fortDetectors();   // Scanner Sweeps detect (31_defense.js)
 }
 function updateBuilding(b,dt){
   const d=b.def,T=G.teams[b.team];
@@ -327,6 +329,7 @@ function updateBuilding(b,dt){
         G.fx.push({x:b.x,y:b.y,t:0,max:1.4,kind:'ring',r:b.r*2.5,col:'#ffe27a'});}
       else if(q.k==='hero'){T.hero.reviving=false;const u=spawnUnit(b,FACTIONS[T.faction].hero);
         if(b.team===0&&!G.ais[0]){toast(u.def.name+' has arrived','good');sfx(q.revive?'heroRevive':'hero',undefined,undefined,u);}}
+      else if(q.k==='fort')fortressDone(b);   // 31_defense.js
       uiDirty();}}
 }
 function neutralsStep(dt){
@@ -386,6 +389,7 @@ function step(){
   neutralsStep(TICK);
   for(const b of G.buildings)if(!b.dead)updateBuilding(b,TICK);
   for(const u of G.units)if(!u.dead)updateUnit(u,TICK);
+  fortStep(TICK);   // 31_defense.js: mines, Repair Batteries, Fortress cannons, scans, Hub energy, cargo positions
   separate();
   for(const p of G.proj){
     const live=p.t&&!p.t.dead&&p.kind!=='shell';

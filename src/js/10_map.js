@@ -74,9 +74,10 @@ function genMap(){
     for(let a=0;a<2;a++)for(let b=0;b<2;b++)used.add((x+a)+','+(y+b));
     G.res.push({id:G.nextId++,kind:'res',type:'geyser',tx:x,ty:y,w:2,h:2,x:(x+1)*TILE,y:(y+1)*TILE,amount:2500,max:2500,users:[],cap:3,siphon:null,seed:rnd()*100,dead:false,hp:1});};
   for(const d of SITE_DEFS){
-    for(let i=0;i<d.n;i++){const a=d.ang+(i-(d.n-1)/2)*0.37,rad=5.5+((i&1)?0.8:-0.1);
+    const rich=G.mapFx&&d===SITE_DEFS[3],dn=rich?4:d.n,amt=rich?2600:d.amt;   // map features (31_defense.js): the outer lowland field is a rich one, 4 patches of 2600 (+40 % per trip)
+    for(let i=0;i<dn;i++){const a=d.ang+(i-(dn-1)/2)*0.37,rad=5.5+((i&1)?0.8:-0.1);
       const x=Math.round(d.x+Math.cos(a)*rad-0.5),y=Math.round(d.y+Math.sin(a)*rad-0.5);
-      addCrystal(x,y,d.h,d.amt);addCrystal(MW-1-x,MH-1-y,d.h,d.amt);}
+      const n0=G.res.length;addCrystal(x,y,d.h,amt);addCrystal(MW-1-x,MH-1-y,d.h,amt);if(rich)for(let k=n0;k<G.res.length;k++)G.res[k].rich=true;}
     for(const k of[-1,1]){const a=d.ang+k*1.75,rad=6.4;
       const x=Math.round(d.x+Math.cos(a)*rad-1),y=Math.round(d.y+Math.sin(a)*rad-1);
       addGeyser(x,y,d.h);addGeyser(MW-2-x,MH-2-y,d.h);}}
@@ -93,6 +94,7 @@ function genMap(){
       const u=addUnit(t,2,camp.x+Math.cos(a)*rr,camp.y+Math.sin(a)*rr);u.camp=camp.id;u.home={x:u.x,y:u.y};camp.units.push(u.id);});};
   for(const[x,y,l]of NEUTRAL_DEFS.camps){addCamp(x,y,l);addCamp(MW-x,MH-y,l);}
   { const[x,y,l]=NEUTRAL_DEFS.centerCamp;addCamp(x,y,l); }
+  if(G.mapFx)fortMapFeatures(rnd);   // neutral rock formations (31_defense.js); never on campaign maps
 }
 /* reachability check — every key location must be connected to both start bases */
 function mapConnected(){

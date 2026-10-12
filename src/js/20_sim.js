@@ -22,7 +22,7 @@ function newGame(opts){
   let seed=opts.seed!==undefined?opts.seed:((Math.random()*1e9)|0),att=0,f1=opts.enemy&&opts.enemy!=='random'?opts.enemy:null;
   if(!f1){const others=FACTION_IDS.filter(f=>f!==f0);f1=others[Math.floor(mulberry32(seed+3)()*others.length)];}
   if(f1===f0)f1=FACTION_IDS.find(f=>f!==f0);
-  do{G=mkG(seed+att*131,diff,f0,f1);genMap();att++;}while(!mapConnected()&&att<30);
+  do{G=mkG(seed+att*131,diff,f0,f1);if(opts.mapFx&&!opts.campaign)G.mapFx=true;genMap();att++;}while(!mapConnected()&&att<30);   // mapFx: rocks + rich field (skirmish/random maps only, 31_defense.js)
   G.mapAttempts=att;
   G.aiKind=opts.aiKind||(opts.campaign?'v3':'t2');   // skirmish: T2 opponent (42_ai_agent.js); campaign missions keep the v3 wave AI they were balanced with
   for(let t=0;t<2;t++){
@@ -70,9 +70,9 @@ function addBuilding(type,team,tx,ty,done){
 function rebuildBlocked(){
   const b=G.blocked;for(let i=0;i<NN;i++)b[i]=G.TT[i]!==0?1:0;
   for(const r of G.res){if(r.dead)continue;for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++)b[(r.ty+y)*MW+r.tx+x]=1;}
-  for(const e of G.buildings){if(e.dead)continue;for(let y=0;y<e.h;y++)for(let x=0;x<e.w;x++)b[(e.ty+y)*MW+e.tx+x]=1;}
+  for(const e of G.buildings){if(e.dead||e.def.noBlock)continue;for(let y=0;y<e.h;y++)for(let x=0;x<e.w;x++)b[(e.ty+y)*MW+e.tx+x]=1;}
   for(const n of G.neutrals){for(let y=0;y<n.h;y++)for(let x=0;x<n.w;x++)b[(n.ty+y)*MW+n.tx+x]=1;}
-  G.needBlocked=false;labelComps();
+  G.needBlocked=false;labelComps();fortTeamBlocked();   // 31_defense.js: per-team views G.bt / G.compT (gates); aliases of G.blocked / G.comp while no gate exists
 }
 /* connected walkable regions — lets placement and pathing reject unreachable targets cheaply */
 const compQ=new Int32Array(NN);
@@ -88,8 +88,8 @@ function labelComps(){
     out:for(let y=hub.ty-1;y<=hub.ty+hub.h;y++)for(let x=hub.tx-1;x<=hub.tx+hub.w;x++){if(x<0||y<0||x>=MW||y>=MH)continue;if(comp[y*MW+x]>0){G.refComp[t]=comp[y*MW+x];break out;}}}
 }
 function siteReach(team,tx,ty,w,h){
-  const ref=G.refComp&&G.refComp[team];if(!ref)return true;
-  for(let y=ty-1;y<=ty+h;y++)for(let x=tx-1;x<=tx+w;x++){if(x<0||y<0||x>=MW||y>=MH)continue;if(x>=tx&&x<tx+w&&y>=ty&&y<ty+h)continue;if(G.comp[y*MW+x]===ref)return true;}
+  const ref=G.refCompT?G.refCompT[team]:G.refComp&&G.refComp[team],C=G.compT?G.compT[team]||G.comp:G.comp;if(!ref)return true;
+  for(let y=ty-1;y<=ty+h;y++)for(let x=tx-1;x<=tx+w;x++){if(x<0||y<0||x>=MW||y>=MH)continue;if(x>=tx&&x<tx+w&&y>=ty&&y<ty+h)continue;if(C[y*MW+x]===ref)return true;}
   return false;
 }
 function nearestRes(x,y,type,freeOnly,maxD,team){
@@ -103,20 +103,21 @@ function removeRes(r){r.dead=true;G.needBlocked=true;}
 
 /* ----------------------------- geometry ------------------------------ */
 function inMap(x,y){return x>=0&&y>=0&&x<MW&&y<MH;}
-function freeT(x,y){return x>=0&&y>=0&&x<MW&&y<MH&&!G.blocked[y*MW+x];}
+function blkOf(team){return(team===0||team===1)&&G.bt?G.bt[team]:G.blocked;}   // team view of the blocked grid (own gates passable: 31_defense.js)
+function freeT(x,y,team){return x>=0&&y>=0&&x<MW&&y<MH&&!blkOf(team)[y*MW+x];}
 function tileOf(x,y){return clamp(y/TILE|0,0,MH-1)*MW+clamp(x/TILE|0,0,MW-1);}
 function heightAt(x,y){return G.H[tileOf(x,y)];}
-function canStand(x,y){const r=8,b=G.blocked;
+function canStand(x,y,team){const r=8,b=blkOf(team);
   const x0=Math.floor((x-r)/TILE),x1=Math.floor((x+r)/TILE),y0=Math.floor((y-r)/TILE),y1=Math.floor((y+r)/TILE);
   if(x0<0||y0<0||x1>=MW||y1>=MH)return false;
   return!(b[y0*MW+x0]||b[y0*MW+x1]||b[y1*MW+x0]||b[y1*MW+x1]);}
-function losClear(x0,y0,x1,y1){const d=hyp(x1-x0,y1-y0),n=Math.ceil(d/10);
-  for(let i=1;i<=n;i++){const t=i/n;if(!canStand(x0+(x1-x0)*t,y0+(y1-y0)*t))return false;}return true;}
-function nearestFree(tx,ty,maxR){
-  if(freeT(tx,ty))return[tx,ty];
+function losClear(x0,y0,x1,y1,team){const d=hyp(x1-x0,y1-y0),n=Math.ceil(d/10);
+  for(let i=1;i<=n;i++){const t=i/n;if(!canStand(x0+(x1-x0)*t,y0+(y1-y0)*t,team))return false;}return true;}
+function nearestFree(tx,ty,maxR,team){
+  if(freeT(tx,ty,team))return[tx,ty];
   for(let r=1;r<=maxR;r++){let best=null,bd=1e9;
     for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;
-      if(freeT(tx+dx,ty+dy)){const d=dx*dx+dy*dy;if(d<bd){bd=d;best=[tx+dx,ty+dy];}}}
+      if(freeT(tx+dx,ty+dy,team)){const d=dx*dx+dy*dy;if(d<bd){bd=d;best=[tx+dx,ty+dy];}}}
     if(best)return best;}
   return null;
 }
@@ -128,7 +129,7 @@ function approachPoint(e,fx,fy){
   let dx=fx-nx,dy=fy-ny,d=hyp(dx,dy);if(d<0.01){dx=0;dy=1;d=1;}
   return{x:nx+dx/d*10,y:ny+dy/d*10};}
 function turn(a,b,k){let d=b-a;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;return a+d*Math.min(1,k);}
-function popOut(u){const f=nearestFree(clamp(u.x/TILE|0,0,MW-1),clamp(u.y/TILE|0,0,MH-1),8);
+function popOut(u){const f=nearestFree(clamp(u.x/TILE|0,0,MW-1),clamp(u.y/TILE|0,0,MH-1),8,u.team);
   if(f){u.x=(f[0]+.5)*TILE+(Math.random()-.5)*8;u.y=(f[1]+.5)*TILE+(Math.random()-.5)*8;}u.path=null;}
 
 /* ----------------------------- pathfinding --------------------------- */
@@ -140,21 +141,22 @@ function hPop(){const top=hN[0],ln=hN.pop(),lk=hK.pop(),n=hN.length;
   if(n>0){let i=0;while(true){let c=2*i+1;if(c>=n)break;if(c+1<n&&hK[c+1]<hK[c])c++;if(hK[c]>=lk)break;hN[i]=hN[c];hK[i]=hK[c];i=c;}hN[i]=ln;hK[i]=lk;}
   return top;}
 function heur(x,y,gx,gy){const dx=Math.abs(x-gx),dy=Math.abs(y-gy);return dx+dy-0.5858*Math.min(dx,dy);}
-function findPath(sx,sy,gx,gy){
-  const s=nearestFree(clamp(sx/TILE|0,0,MW-1),clamp(sy/TILE|0,0,MH-1),4);if(!s)return null;
+function findPath(sx,sy,gx,gy,team){
+  FP_SEALED=false;const C=(team===0||team===1)&&G.compT?G.compT[team]:G.comp;   // team: the walker's side (own gates are open for it); FP_SEALED: the goal is walled off (31_defense.js breach rule)
+  const s=nearestFree(clamp(sx/TILE|0,0,MW-1),clamp(sy/TILE|0,0,MH-1),4,team);if(!s)return null;
   let gtx=clamp(gx/TILE|0,0,MW-1),gty=clamp(gy/TILE|0,0,MH-1);
-  const g0=nearestFree(gtx,gty,10);if(!g0)return null;
+  const g0=nearestFree(gtx,gty,10,team);if(!g0)return null;
   let snapped=g0[0]!==gtx||g0[1]!==gty;gtx=g0[0];gty=g0[1];
   const start=s[1]*MW+s[0];let goal=gty*MW+gtx;
-  if(G.comp&&G.comp[goal]!==G.comp[start]){ // goal is in a sealed-off region: head for the nearest reachable tile instead
-    let bt=-1,bd=1e9;const R=14;
-    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=gtx+dx,y=gty+dy;if(x<0||y<0||x>=MW||y>=MH)continue;const i=y*MW+x;if(G.comp[i]!==G.comp[start])continue;const d2=dx*dx+dy*dy;if(d2<bd){bd=d2;bt=i;}}
+  if(C&&C[goal]!==C[start]){ // goal is in a sealed-off region: head for the nearest reachable tile instead
+    FP_SEALED=true;let bt=-1,bd=1e9;const R=14;
+    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=gtx+dx,y=gty+dy;if(x<0||y<0||x>=MW||y>=MH)continue;const i=y*MW+x;if(C[i]!==C[start])continue;const d2=dx*dx+dy*dy;if(d2<bd){bd=d2;bt=i;}}
     if(bt<0)return[];gtx=bt%MW;gty=(bt/MW)|0;goal=bt;snapped=true;}
   if(start===goal)return[{x:snapped?(gtx+.5)*TILE:gx,y:snapped?(gty+.5)*TILE:gy}];
   stampN++;hN.length=0;hK.length=0;
   gS[start]=0;par[start]=-1;openSt[start]=stampN;
   let best=start,bestH=heur(s[0],s[1],gtx,gty);hPush(start,bestH);
-  const blocked=G.blocked;let iter=0;
+  const blocked=blkOf(team);let iter=0;
   while(hN.length&&iter<9000){
     const cur=hPop();if(closedSt[cur]===stampN)continue;closedSt[cur]=stampN;iter++;
     if(cur===goal){best=goal;break;}
@@ -171,7 +173,7 @@ function findPath(sx,sy,gx,gy){
   const pts=tiles.map(i=>({x:((i%MW)+.5)*TILE,y:(((i/MW)|0)+.5)*TILE}));
   if(best===goal&&!snapped&&pts.length)pts[pts.length-1]={x:gx,y:gy};
   const out=[];let ax=sx,ay=sy,i=0;
-  while(i<pts.length){let j=pts.length-1;while(j>i&&!losClear(ax,ay,pts[j].x,pts[j].y))j--;out.push(pts[j]);ax=pts[j].x;ay=pts[j].y;i=j+1;}
+  while(i<pts.length){let j=pts.length-1;while(j>i&&!losClear(ax,ay,pts[j].x,pts[j].y,team))j--;out.push(pts[j]);ax=pts[j].x;ay=pts[j].y;i=j+1;}
   return out;
 }
 /* length (tiles) of the real walking route — used for trade profit */
@@ -210,9 +212,10 @@ function updateVision(){
   for(const b of G.buildings){if(b.dead)continue;mark(b.team,b.x,b.y,(b.done?b.def.sight:120)*sm,G.H[tileOf(b.x,b.y)],false);}
   for(const n of G.neutrals){if(n.type==='tower'&&n.ctrl>=0)mark(n.ctrl,n.x,n.y,20*TILE,9,true);}
   if(G.camp&&G.camp.reveals.length)campReveal();   // mission `reveal` actions: timed live vision for the player
+  if(G.scans&&G.scans.length)fortVision();          // Scanner Sweeps (31_defense.js)
   for(const b of G.buildings){if(b.dead)continue;
-    if(b.team===1&&!b.seen0&&inFog(0,b))b.seen0=true;
-    if(b.team===0&&!b.seen1&&inFog(1,b))b.seen1=true;}
+    if(b.team===1&&!b.seen0&&inFog(0,b)&&(!b.cloaked||isDetected(0,b)))b.seen0=true;
+    if(b.team===0&&!b.seen1&&inFog(1,b)&&(!b.cloaked||isDetected(1,b)))b.seen1=true;}
 }
 
 /* --------------------------- spatial hash ---------------------------- */
@@ -247,6 +250,7 @@ function reqBuild(team,id){
   if(G.camp){const L=campLocked(team,'building',id);if(L)return{ok:false,why:L};}
   if(T.era<d.era)return{ok:false,why:'Requires Era '+ERAS[d.era].rom};
   if(d.req&&!hasDone(team,d.req))return{ok:false,why:'Requires '+BDEF[d.req].name};
+  if(d.mine&&fortMineCount(team)>=d.limit)return{ok:false,why:'Mine limit reached ('+d.limit+')'};
   const c=bCost(team,id);if(T.c<c.c)return{ok:false,why:'Not enough crystals'};if(T.e<c.e)return{ok:false,why:'Not enough ether'};return{ok:true};}
 function reqUnit(team,id){
   const d=UDEF[id],T=G.teams[team];
@@ -304,6 +308,7 @@ function cancelQueue(b,i){
   else if(q.k==='r'){const R=TECH[q.id];refund(b.team,R.lv[techLevel(T,q.id)]);}
   else if(q.k==='era')refund(b.team,ERAS[q.to].cost);
   else if(q.k==='hero'){refund(b.team,heroCost(b.team));T.hero.reviving=false;}
+  else if(q.k==='fort')refund(b.team,FORT.fortress.cost);
   b.queue.splice(i,1);uiDirty();
 }
 function spawnPoint(b,d){
@@ -311,7 +316,7 @@ function spawnPoint(b,d){
   for(let k=0;k<26;k++){
     const a=base+((k&1)?1:-1)*Math.ceil(k/2)*0.38,c=Math.cos(a),s=Math.sin(a);
     const t=Math.min(Math.abs(c)>1e-4?hw/Math.abs(c):1e9,Math.abs(s)>1e-4?hh/Math.abs(s):1e9);
-    for(const ex of[0,12,26]){const dd=t+d.r+6+ex,x=b.x+c*dd,y=b.y+s*dd;if(d.flying||canStand(x,y))return{x,y};}
+    for(const ex of[0,12,26]){const dd=t+d.r+6+ex,x=b.x+c*dd,y=b.y+s*dd;if(d.flying||canStand(x,y,b.team))return{x,y};}
   }
   return{x:b.x,y:b.y+hh+20};
 }
@@ -320,6 +325,7 @@ function spawnUnit(b,id){
   const enroll=b.team===0&&G.sw&&G.sw.pol.autoEnroll&&!d.hero;
   if(b.rally){const r=b.rally;
     if(r.res&&!r.res.dead&&d.worker)setOrder(u,{t:'gather',res:r.res,st:'go',hx:r.res.x,hy:r.res.y});
+    else if(r.host&&!r.host.dead&&cargoCan(r.host,u))setOrder(u,{t:'load',host:r.host});   // rally-load onto an own Bunker (32_cargo.js)
     else if(r.post&&d.trade)setOrder(u,{t:'trade',post:r.post,st:'toPost'});
     else if(d.worker)setOrder(u,{t:'move',x:r.x,y:r.y});
     else if(!d.noWeapon||d.heal)setOrder(u,{t:'attackmove',x:r.x,y:r.y,gs:0});
@@ -374,6 +380,7 @@ function leaveGarrison(u){
 }
 function refundOrder(u,o){if(o&&o.t==='build'&&o.paid&&!o.bld)refund(u.team,bCost(u.team,o.type));}
 function setOrder(u,o,q){
+  if(u.inside)return;   // inside a Bunker / Dropship: only cargoUnload() lets it out (32_cargo.js)
   if(u.ag&&!AGI)agManual(u,o,q);
   if(q&&u.order.t!=='idle'&&!u.garr){if(u.oq.length<12)u.oq.push(o);return;}
   for(const x of u.oq)refundOrder(u,x);u.oq.length=0;
@@ -407,6 +414,7 @@ function canPlace(team,type,tx,ty,ignoreFog){
   for(let y=0;y<d.h;y++)for(let x=0;x<d.w;x++){const i=(ty+y)*MW+tx+x;
     if(G.blocked[i]||G.RAMP[i]||G.H[i]!==h0)return false;
     if(team===0&&!ignoreFog&&G.vis[0][i]===0)return false;}
+  if((d.wall||d.mine)&&!fortPlaceOK(team,type,tx,ty))return false;   // 31_defense.js: no self-sealing walls, one mine per tile
   return siteReach(team,tx,ty,d.w,d.h);
 }
 function ejectUnits(b){
@@ -418,8 +426,8 @@ function ejectUnits(b){
 /* ------------------------------ movement ----------------------------- */
 function moveUnit(u,dx,dy){
   if(u.flying){u.x=clamp(u.x+dx,8,WW-8);u.y=clamp(u.y+dy,8,WH-8);return;}
-  const nx=u.x+dx;if(canStand(nx,u.y))u.x=nx;
-  const ny=u.y+dy;if(canStand(u.x,ny))u.y=ny;
+  const nx=u.x+dx;if(canStand(nx,u.y,u.team))u.x=nx;
+  const ny=u.y+dy;if(canStand(u.x,ny,u.team))u.y=ny;
 }
 function navigate(u,gx,gy,dt,stopDist,cap){
   const d=u.def,dd=hyp(gx-u.x,gy-u.y);
@@ -429,8 +437,8 @@ function navigate(u,gx,gy,dt,stopDist,cap){
   if(u.flying){const a=Math.atan2(gy-u.y,gx-u.x);u.ang=turn(u.ang,a,dt*10);const s=Math.min(spd,dd);moveUnit(u,Math.cos(a)*s,Math.sin(a)*s);return false;}
   const need=!u.path||Math.abs(u.ngx-gx)+Math.abs(u.ngy-gy)>28;
   if(need){
-    if(dd<240&&losClear(u.x,u.y,gx,gy)){u.path=[{x:gx,y:gy}];u.pi=0;u.ngx=gx;u.ngy=gy;}
-    else if(G.pathBudget>0&&(u.repathCd<=0||!u.path)){G.pathBudget--;u.path=findPath(u.x,u.y,gx,gy)||[];u.pi=0;u.ngx=gx;u.ngy=gy;u.repathCd=0.35;}
+    if(dd<240&&losClear(u.x,u.y,gx,gy,u.team)){u.path=[{x:gx,y:gy}];u.pi=0;u.ngx=gx;u.ngy=gy;}
+    else if(G.pathBudget>0&&(u.repathCd<=0||!u.path)){G.pathBudget--;u.path=findPath(u.x,u.y,gx,gy,u.team)||[];u.pi=0;u.ngx=gx;u.ngy=gy;u.repathCd=0.35;if(FP_SEALED)fortSealed(u,gx,gy);}
     else if(!u.path){u.moving=false;return false;}
   }
   const p=u.path;
@@ -449,7 +457,7 @@ function navigate(u,gx,gy,dt,stopDist,cap){
 function separate(){
   for(const u of G.units){
     if(u.dead||u.hidden)continue;
-    if(!u.flying&&(G.tick+u.id)%15===0&&!canStand(u.x,u.y))popOut(u);
+    if(!u.flying&&(G.tick+u.id)%15===0&&!canStand(u.x,u.y,u.team))popOut(u);
     forNear(u.x,u.y,36,v=>{
       if(v.id<=u.id||v.hidden||v.flying!==u.flying)return;
       const dx=v.x-u.x,dy=v.y-u.y,rr=u.r+v.r-1,d2=dx*dx+dy*dy;if(d2>=rr*rr)return;
@@ -488,7 +496,7 @@ function acquire(u,range){
     let s=dd;if(e.def.worker)s+=40;else if(e.def.noWeapon)s+=90;if(e.def.hero)s-=15;if(s<bs){bs=s;best=e;}});
   if(d.ground&&u.team<2||d.ground&&u.team===2){
     for(const b of G.buildings){
-      if(b.team===u.team||b.dead)continue;const dd=rectDist(u.x,u.y,b);if(dd>range||!seen(u.team,b))continue;
+      if(b.team===u.team||b.dead||b.def.rock)continue;const dd=rectDist(u.x,u.y,b);if(dd>range||!seen(u.team,b))continue;
       const s=dd+(b.def.dmg?0:140);if(s<bs){bs=s;best=b;}}}
   return best;
 }
@@ -541,6 +549,7 @@ function giveXP(team,x,y,amt){
 }
 function kill(e,by){
   if(e.dead)return;e.dead=true;e.hp=0;
+  if(e.cargo||e.inside)cargoHostDied(e,by);   // 32_cargo.js: a Bunker ejects its passengers, a Dropship's cargo dies with it
   if(e.kind==='unit'){
     releaseRes(e);if(e.garr)leaveGarrison(e);
     if(e.ag)agDied(e);if(e.lastAtk&&e.lastAtk.ag&&e.team!==e.lastAtk.team)agKill(e.lastAtk,e);
@@ -565,7 +574,7 @@ function kill(e,by){
     for(const id of e.garr){const u=G.units.find(z=>z.id===id);if(u){u.garr=0;u.hidden=false;popOut(u);u.saved=null;goIdle(u);}}
     for(const u of G.units)if(u.hidden&&u.inRes&&u.inRes.siphon===e){releaseRes(u);goIdle(u);}
     if(e.queue.length){const T=G.teams[e.team];for(const q of e.queue)if(q.k==='hero')T.hero.reviving=false;}
-    if(!G.buildings.some(b=>!b.dead&&b.team===e.team&&b!==e)&&!(G.camp&&campNoDefaultEnd(e.team))){endGame(e.team===0?'defeat':'victory');}
+    if(e.team<2&&!e.def.noWin&&!G.buildings.some(b=>!b.dead&&b.team===e.team&&b!==e&&!b.def.noWin)&&!(G.camp&&campNoDefaultEnd(e.team))){endGame(e.team===0?'defeat':'victory');}   // walls, gates, mines and neutral rocks do not keep a side alive
   }
 }
 function projHit(p){

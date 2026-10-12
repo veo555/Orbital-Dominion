@@ -72,7 +72,7 @@ function aiSame(u,o){const p=u.order;if(p.t!==o.t)return false;
   if(o.t==='move'||o.t==='attackmove')return hyp(p.x-o.x,p.y-o.y)<48;
   if(o.t==='gather')return p.res===o.res;return false;}
 function aiOrder(ai,units,o){ // one command to one selection (a human: select + right-click)
-  const L=[];for(const u of units)if(!u.dead&&!u.garr&&!u.sieged&&u.siegeT<=0&&!aiSame(u,o))L.push(u);
+  const L=[];for(const u of units)if(!u.dead&&!u.garr&&!u.inside&&!u.sieged&&u.siegeT<=0&&!aiSame(u,o))L.push(u);
   if(!L.length)return true;if(!aiAct(ai))return false;
   for(const u of L)setOrder(u,Object.assign({},o));return true;
 }
@@ -181,7 +181,7 @@ function aiAttackTarget(ai,R){ // best known enemy structure: value / (1 + known
   const M=ai.mem,st=ai.stage||R.hubs[0]||R.B[0];let best=null,bs=-1e9;
   for(const id in M.b){const r=M.b[id];let thr=0;
     for(const id2 in M.b){const q=M.b[id2];if((q.type==='turret'||q.type==='hub')&&q.done&&hyp(q.x-r.x,q.y-r.y)<260)thr+=q.type==='turret'?1:0.5;}
-    const val=r.type==='hub'?3:(prodList({type:r.type,team:ai.enemy,def:BDEF[r.type]}).length?1.6:r.type==='turret'?0.6:1);
+    const val=r.type==='hub'?3:(prodList({type:r.type,team:ai.enemy,def:BDEF[r.type]}).length?1.6:r.type==='turret'?0.6:BDEF[r.type].noWin?0.3:1);   // walls / gates rank low: armies do not wander to a remote segment
     const s=val/(1+thr)-hyp(r.x-st.x,r.y-st.y)/2500;if(s>bs){bs=s;best={x:r.x,y:r.y,id:+id};}}
   if(best)return best;
   // nothing remembered: go where the belief says structures most likely are
@@ -373,7 +373,7 @@ function aiBuild2(ai,type,R){
   else spot=aiFindSpot2(ai,type,R);
   if(!spot)return false;
   const cx=(spot.tx+d.w/2)*TILE,cy=(spot.ty+d.h/2)*TILE;let w=null,bd=1e9;
-  for(const u of R.workers){if(u.order.t==='build'||u.order.t==='repair'||u.garr||u.id===ai.scout.id)continue;
+  for(const u of R.workers){if(u.order.t==='build'||u.order.t==='repair'||u.garr||u.inside||u.id===ai.scout.id)continue;
     const dd=hyp(u.x-cx,u.y-cy)+(u.carry>0?150:0)+(u.order.t==='gather'&&u.order.st==='work'?60:0);if(dd<bd){bd=dd;w=u;}}
   if(!w||!aiAct(ai))return false;
   const ok=orderBuild(w,type,spot.tx,spot.ty);if(ok&&type==='hub')ai.st.expand++;return ok;
@@ -659,7 +659,7 @@ function aiMarch(ai,units,goal){
 }
 function aiArmy(ai,R){
   const now=G.time,team=ai.team;
-  const all=R.army.filter(u=>u.id!==ai.scout.id&&!u.garr);
+  const all=R.army.filter(u=>u.id!==ai.scout.id&&!u.garr&&!u.inside);
   const harIds=ai.har.ids,crewIds=ai.creep?ai.creep.ids:[];
   const har=all.filter(u=>harIds.includes(u.id)),crew=all.filter(u=>crewIds.includes(u.id));
   const rest=all.filter(u=>!harIds.includes(u.id)&&!crewIds.includes(u.id));
@@ -769,4 +769,5 @@ function aiThinkT2(ai){
   if(ai.k%2===0){aiBelief(ai,R);aiStrategy(ai,R);}else{ai.tag='mac';aiMacro(ai,R);}
   if(ai.k%4===3){ai.tag='wrk';aiWorkers(ai,R);ai.tag='sct';aiScout(ai,R);}
   ai.tag='arm';aiArmy(ai,R);
+  ai.tag='def';aiFortify(ai,R);   // 43_ai_fortify.js: bunkers, repair batteries, a ramp wall (parameters AI_FORT)
 }
