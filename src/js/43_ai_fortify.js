@@ -8,7 +8,8 @@
                        AI_FORT.wallBy, wall the top of the main ramp once: a Gate in the middle, Wall segments on the rest
    Enemy walls need nothing here: every unit follows the breach rule (31_defense.js).
    ========================================================================= */
-const AI_FORT={off:false,
+const AI_FORT={off:false,offTeams:{},   // off: the whole layer; offTeams[t]: one side only (tests/sim/fortify_ab.js)
+ 
   defTiers:{normal:1,hard:1,master:1},wallTiers:{hard:1,master:1},
   every:4,                      // run on every 4th think (about every 1.8 s)
   thrPh:1.5,thrVal:150,         // pressure at a Hub: pheromone >= thrPh (~150 value deposited) or perceived enemy value within 650 px >= thrVal
@@ -17,7 +18,7 @@ const AI_FORT={off:false,
   loadR:14*TILE,calm:30,        // infantry within loadR of a Bunker loads under pressure; unload when the Hub's perceived threat < calm
   rushSeenBy:240,wallBy:360,wallMax:8};
 function aiFortify(ai,R){
-  if(AI_FORT.off||ai.kind!=='t2'||!R.hubs.length)return;
+  if(AI_FORT.off||AI_FORT.offTeams[ai.team]||ai.kind!=='t2'||!R.hubs.length)return;
   const dT=AI_FORT.defTiers[ai.tier],wT=AI_FORT.wallTiers[ai.tier];if(!dT&&!wT)return;
   if(ai.k%AI_FORT.every!==1)return;
   const team=ai.team,T=G.teams[team],now=G.time,F=ai.fort||(ai.fort={wall:0,rushT:-1,built:{bunker:0,battery:0}});

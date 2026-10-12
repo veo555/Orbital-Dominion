@@ -256,7 +256,7 @@ check('save+determinism',[`const SAVE_SKIP={terrainCv:1,mmBg:1,tInfo:1};`,`const
   return a;});
 
 /* 14. the AI uses the defence layer (counts in 10-minute AI-vs-AI games) */
-check('AI uses defence',[`if(AI_FORT.off||ai.kind!=='t2'||!R.hubs.length)return;`,`return;`],(xf)=>{
+check('AI uses defence',[`if(AI_FORT.off||AI_FORT.offTeams[ai.team]||ai.kind!=='t2'||!R.hubs.length)return;`,`return;`],(xf)=>{
   const tot={bunker:0,battery:0,wall:0,gate:0,gatev:0};let loads=0;
   for(const[seed,f0,f1]of[[11,'meridian','obsidian'],[12,'aurora','obsidian'],[13,'obsidian','meridian'],[14,'meridian','aurora']]){
     const S=load(undefined,xf);pin(S,seed);S.newGame({seed,faction:f0,enemy:f1,aiBoth:true,diff:'hard'});

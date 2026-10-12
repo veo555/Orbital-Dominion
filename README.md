@@ -12,6 +12,9 @@ offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) f
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
 
+## v6-G1 FORTIFY (Oct 2026): walls, gates, bunkers, detection, map features
+Haulers get a **Defence** page (D): Walls drawn as a line (drag, or two taps on touch; built segment by segment), team-aware **Gates** (auto / open / closed), **Bunkers** (4 infantry, +1 tile range, salvage), **Cannon Tower** (ground), **Anti-Air Battery** (air), **Sensor Tower** (radar blips), **Repair Battery**, cloaked **Proximity Mines**; Hubs gain a **Scanner Sweep** and a one-way **Fortress** upgrade; the Airfield builds a **Dropship** (8-slot transport). Walled-in targets are breached (no unit freezes), you cannot wall yourself in, skirmish maps can get neutral rock formations and a rich crystal field, the skirmish AI builds Bunkers / Repair Batteries under pressure and (Hard/Master) walls its ramp against rushes. Campaign missions lock all of it and are unchanged. Design, numbers and test evidence: `docs/DESIGN_FORTIFY.md`; tests `tests/sim/fortify.js` (`--mutants`), `tests/e2e/e2e_fortify.py`.
+
 ## 000. What changed in 5.0 (12 Oct 2026): 3D-style sprites, console HUD, no speech, lean + robust file
 
 | Area | What is in the build | Evidence (Chromium headless / Node; nothing heard, no real phone) | Not verified / honest limits |

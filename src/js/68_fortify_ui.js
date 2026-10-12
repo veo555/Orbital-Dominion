@@ -39,7 +39,7 @@ function fortCmdBuilding(c,mk,b,T){
   if(b.type==='hub'){
     const why=fortScanWhy(0);
     mk(5,{icon:'g:scan',name:'Scanner Sweep',cost:{c:0,e:0,mana:FORT.scan.energy},tip:'Reveal an area ('+Math.round(FORT.scan.r/TILE)+' tiles) for '+FORT.scan.t+' s, cloaked units and mines included. Costs '+FORT.scan.energy+' Hub energy (Hubs regain '+FORT.hubEnergyRate+'/s). Click the map or the minimap.',
-      ok:!why,why,badge:Math.floor(b.energy===undefined?FORT.hubEnergy0:b.energy),run:()=>beginTarget('scan')});
+      ok:!why,why,run:()=>beginTarget('scan')});
     if(!b.fort){const w=fortressWhy(b),F=FORT.fortress;
       mk(6,{icon:'g:fortress',name:'Fortress Upgrade',cost:F.cost,time:F.time,tip:'Permanent: +50% HP, +'+F.armor+' armor and a heavy splash cannon ('+F.dmg+' dmg, range '+F.range+', ground). Cannot be undone. Requires Era II and an Armory.',ok:!w,why:w,run:()=>queueFortress(b)});}}
   if(b.def.gate){const m=b.gmode||'auto';

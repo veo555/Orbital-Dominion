@@ -46,19 +46,24 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | File | Role | Headless-safe? |
 |---|---|---|
 | `00_core.js` | Constants, seeded RNG (`mulberry32`), noise, settings, **all data tables**: `FACTIONS`, `ERAS`, `UDEF` (units), `BDEF` (buildings), `TECH`, `SKILLS`, `TAX`, `CAMP_TYPES`, `DIFF`, swarm tables (`PAY`, `CADS`, `ROLES`, `GEAR`, `FREE_TYPES`, `CLIENTS`) | yes |
+| `05_content_defense.js` | v6-G1 data: Wall, Gate (`gate`/`gatev`), Bunker, Cannon Tower, Anti-Air Battery, Sensor Tower, Repair Battery, Proximity Mine, neutral Rocks, the Dropship, the `infantry` tag, the Defence build page, tuning `FORT`, campaign lock list `FORT_NEW` (`docs/DESIGN_FORTIFY.md`) | yes |
 | `10_map.js` | Seeded map generation (`genMap`): 3 height levels, ramps, resource sites, corridors, neutral camps; `mapConnected` guard | yes |
 | `20_sim.js` | Game state `G` (`mkG`, `newGame`), entities, A* `findPath` (budgeted per tick), vision/fog logic, production queues, `setOrder`/`orderBuild`, combat core (`acquire`, `fire`, `damageEnt`, `kill`), XP | yes |
 | `25_agents.js` | **Per-unit agents**: `mkAgent`, `agEnroll`, `agDirect`, brain (`agBrain` ~3 Hz per agent), reactions (`agReact`: flee, defend, stim, focus-fire via `heroKillTime`), role runners `RUN[role]` (mine, build, repair, trade, scout, guard, patrol, hunt, assault, escort, medic, free), wallets/gear/XP, `swarmStep` | yes |
 | `26_economy.js` | **Labour market**: wage index W(t), freelancer listings, hiring/firing/notice, payroll, job board, escrow, clients, `colonyClock` | yes |
 | `27_overseer.js` | **The master**: blackboard (`bbUpdate`, `bbHunt`, `bbAssault`, `bbIntel`, `bbDefense`), domain controllers (`ovSupply/Eco/Tech/Buildings/Production/Defense/War/Recon/Trade/Alloc/Labor/Jobs`), propose/approve mechanism (`ovAct`), presets, **rule-based natural-language parser** (`ovCommand`) | yes |
 | `30_systems.js` | Per-tick systems: unit/building update, skills (`castSkill`), gather/build/repair/trade steps, economy (tax/morale/market), `step()`, `endGame` | yes |
+| `31_defense.js` | v6-G1 sim: team views of the blocked grid (`G.bt`/`G.compT`, gates open for their owner), breach rule (`fortSealed`, `fortBreachSearch`), self-seal rule, wall lines (`fortPlaceLine`), mines, Repair Battery, Fortress, Scanner Sweep, `isDetectedBy`, Sensor radar, rocks + rich field (`fortMapFeatures`, only with `newGame({mapFx:true})`) | yes |
+| `32_cargo.js` | v6-G1 generic cargo (Bunker, Dropship): `host.cargo` ids / `unit.inside`, load / unload / pickup orders, fire from inside, host-death rules | yes |
 | `40_ai.js` | The **legacy v3 opponent** (`makeAIV3`, `aiThinkV3`, `aiBuild`, `findSpot`, expansions, hero spells): wave AI that reads hidden state; drives **campaign missions** (balanced against it) and is the league anchor | yes |
 | `41_ai_lib.js` | **T2 opponent maths** (pure functions): Bayesian occupancy update, hazard prior, mass-conserving diffusion, pheromone step, Lanchester ODE + closed-form combat predictor, Ideal Free Distribution, value-function evaluation, boids / arc / potential-field geometry (`docs/AI_DESIGN.md`) | yes |
 | `41_ai_params.js` | **Generated** by `tools/league/export_params.js`: theta per difficulty tier, faction-style priors, value-function weights, combat link constants | yes |
 | `42_ai_agent.js` | **T2 opponent** (`makeAI`/`aiThink` dispatch, `makeAIT2`, `aiThinkT2`): fog-honest perception + memory, belief grid, strategy postures with V(s), macro priority list, IFD workers, tactics (engage/retreat, focus, kite, concave, formation), APM token bucket | yes |
+| `43_ai_fortify.js` | v6-G1 skirmish AI use of defence (`aiFortify`, parameters `AI_FORT`): Bunker / Repair Battery at a pressured Hub, ramp wall on Hard/Master vs a rush | yes |
 | `43_vocab.js`, `44_story_*.js`, `45_campaign.js`, `46_save.js` | Story vocabulary, story data (characters, missions, radio, `STORY.dispatch` text dispatches), the headless campaign runtime (conditions/actions/events, blocking `dispatch` hold/resume) and match save/resume | yes (data/headless, loaded by the Node harness) |
 | `50_art.js`, `51_art_b.js`, `52_terrain.js` | Procedural unit/building/neutral art, glyphs/icons, terrain + decals | no (canvas) |
 | `53_terrain_hd.js` | Sharp 2×/3× terrain tiles near the camera, replayed battle decals (§9) | no |
+| `58_recipes_fortify.js`, `68_fortify_ui.js`, `81_sfx_fortify.js` | v6-G1 3D recipes (structures, Dropship, weapon heads); the defence UI (Defence page, wall-line / gate placement on mouse and touch, load / unload / scan targeting, overlays, info, help); the defence voices | no |
 | `60_render.js` | Camera, fog, `render()`, minimap, ghost placement, night lighting; **layout classes and measured HUD geometry** (`applyLayoutClasses`, `measureHud`) | no |
 | `62_quality.js` | Graphics tiers (`battery/balanced/high/ultra`) and the adaptive scaler | no |
 | `63_fx.js` | Vignette + grade, additive glows, parallax dust | no |
