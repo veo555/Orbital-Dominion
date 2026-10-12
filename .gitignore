@@ -16,3 +16,4 @@ __pycache__/
 tools/voicepack/lines.json
 tools/voicepack/plan.json
 tools/voicepack/voice_ids.json
+dist/orbital_dominion_pwa.zip
