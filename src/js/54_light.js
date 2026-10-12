@@ -101,14 +101,17 @@ function shadowOf(sp,w,h){   // blurred ground footprint of a sprite (sp.fp, or 
 /* a building shadow, drawn with the origin at the building centre (before the sprite). Stacked copies along the sun vector fake the long soft tail;
    the tail length follows the building's height. */
 function drawBuildingShadow(sp,w,h,b){
-  const sh=shadowOf(sp,w,h),P=sh.P,L=(8+(sp.hz||h*.4)*.9)*LT.sl,n=Q.shd>=3?3:Q.shd>=2?2:1,a=LT.sa*.95;
-  for(let i=0;i<n;i++){const f=n>1?(i+1)/n:.6,o=L*f;ctx.globalAlpha=a*(1-i*.18);ctx.drawImage(sh.cv,sh.x0-P+LT.sx*o,sh.y0-P+LT.sy*o,sh.w+2*P,sh.h+2*P);}
+  /* grounded: the first copy sits EXACTLY on the footprint (contact darkening, so the object visibly rests on the floor); further copies slide along the sun vector to form the cast tail */
+  const sh=shadowOf(sp,w,h),P=sh.P,L=Math.min(8+(sp.hz||h*.4)*.75,(sp.h||h)*.9)*LT.sl,n=Q.shd>=3?4:Q.shd>=2?3:2,a=LT.sa;
+  ctx.save();ctx.scale(1.09,1.07);ctx.globalAlpha=Math.min(1,a*1.25);ctx.drawImage(sh.cv,sh.x0-P,sh.y0-P+2,sh.w+2*P,sh.h+2*P);ctx.restore();   // contact ring: a slightly inflated dark footprint peeks out around the base
+  for(let i=1;i<n;i++){const o=L*(i/(n-1));ctx.globalAlpha=Math.min(1,a*(.8-i*.12));ctx.drawImage(sh.cv,sh.x0-P+LT.sx*o,sh.y0-P+LT.sy*o,sh.w+2*P,sh.h+2*P);}
   ctx.globalAlpha=1;
 }
-/* a unit shadow: the footprint of the baked facing, pushed along the sun vector (flyers: further, lighter) */
+/* a unit shadow: contact copy under the feet + a shorter cast copy along the sun vector (flyers: further and lighter, so only they hover) */
 function drawUnitShadow(sp,u,d){
-  const sh=shadowOf(sp,sp.w,sp.h),P=sh.P,k=(u.flying?24:(sp.hz||10)*.55+d.r*.3)*LT.sl;
-  ctx.globalAlpha=LT.sa*(u.flying?.55:.85)*(ctx.globalAlpha||1);ctx.drawImage(sh.cv,sh.x0-P+LT.sx*k,sh.y0-P+LT.sy*k+(u.flying?4:0),sh.w+2*P,sh.h+2*P);ctx.globalAlpha=1;
+  const sh=shadowOf(sp,sp.w,sp.h),P=sh.P,k=(u.flying?24:(sp.hz||10)*.28+d.r*.15)*LT.sl,a0=ctx.globalAlpha||1;
+  if(!u.flying){ctx.globalAlpha=Math.min(1,LT.sa*1.1)*a0;ctx.drawImage(sh.cv,sh.x0-P,sh.y0-P,sh.w+2*P,sh.h+2*P);}
+  ctx.globalAlpha=LT.sa*(u.flying?.55:.7)*a0;ctx.drawImage(sh.cv,sh.x0-P+LT.sx*k,sh.y0-P+LT.sy*k+(u.flying?4:0),sh.w+2*P,sh.h+2*P);ctx.globalAlpha=a0;
 }
 
 /* ------------------------------ particle pool -------------------------------- */
