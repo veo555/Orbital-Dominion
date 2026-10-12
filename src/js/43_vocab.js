@@ -47,6 +47,9 @@ const MOTIFS=['idris','kaz','lyra','villain','worker','colony','array','hope'];
 /* sfx(name,x,y,who): `who` = entity / {type,faction}. Events that depend on the unit take the unit's own voice (type × faction). */
 const UNIT_TYPES=['hauler','rifleman','raptor','rocketeer','mender','howitzer','juggernaut','skiff','titan','freighter','bulwark','reaver','specter','crawler','spitter','brute','hero_idris','hero_kaz','hero_lyra'];
 const BUILDING_TYPES=['hub','generator','depot','siphon','habitat','garrison','armory','forum','exchange','foundry','airfield','turret'];
+/* v6-G1 FORTIFY voices (81_sfx_fortify.js): listed separately so the calibrated v5 matrices (tests/audio/*_gate.py) stay as they were */
+const FORT_BUILDING_TYPES=['wall','gate','gatev','bunker','cannon','flak','sensor','battery','mine'];
+const FORT_UNIT_TYPES=['dropship'];
 const SFX_FACTIONS=['meridian','obsidian','aurora','wild'];   // 'wild' = creeps / neutral
 const SFX_UNIT_EVENTS=['select','ack','fire','melee','die','ready','hit'];          // per unit type; `fire` falls back to `melee` for melee units
 const SFX_BUILDING_EVENTS=['place','done','die','fire'];                                // per building type (`fire`: hub and turret only)

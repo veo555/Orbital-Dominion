@@ -53,7 +53,7 @@ def vocab(name):
     return re.findall(r"'([^']+)'", re.sub(r'//[^\n]*', '', m.group(1)))
 
 
-UNITS, BUILDINGS, FACS = vocab('UNIT_TYPES'), vocab('BUILDING_TYPES'), vocab('SFX_FACTIONS')
+UNITS, BUILDINGS, FACS = vocab('UNIT_TYPES') + vocab('FORT_UNIT_TYPES'), vocab('BUILDING_TYPES') + vocab('FORT_BUILDING_TYPES'), vocab('SFX_FACTIONS')
 
 
 def group_of(vid):

@@ -25,8 +25,8 @@ const ST={root:null,card:null,entry:null,fac:'meridian',playing:null,timer:0,tic
 const isOpen=()=>!!ST.root&&!ST.root.classList.contains('hidden');
 const mk=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
 const cap=s=>String(s).charAt(0).toUpperCase()+String(s).slice(1);
-const UT=()=>typeof UNIT_TYPES!=='undefined'?UNIT_TYPES:[];
-const BT=()=>typeof BUILDING_TYPES!=='undefined'?BUILDING_TYPES:[];
+const UT=()=>typeof UNIT_TYPES!=='undefined'?UNIT_TYPES.concat(typeof FORT_UNIT_TYPES!=='undefined'?FORT_UNIT_TYPES:[]):[];
+const BT=()=>typeof BUILDING_TYPES!=='undefined'?BUILDING_TYPES.concat(typeof FORT_BUILDING_TYPES!=='undefined'?FORT_BUILDING_TYPES:[]):[];
 const EVO=()=>[].concat(typeof SFX_UNIT_EVENTS!=='undefined'?SFX_UNIT_EVENTS:[],typeof SFX_BUILDING_EVENTS!=='undefined'?SFX_BUILDING_EVENTS:[],['amb','deliver','mine']);
 const MOODL=()=>typeof MOODS!=='undefined'?MOODS:['calm','tension','battle','dread','victory'];
 function vi(){try{return(typeof audioVoices==='function'&&audioVoices({info:true}))||[];}catch(e){return[];}}
