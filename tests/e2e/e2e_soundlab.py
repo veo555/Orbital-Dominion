@@ -77,7 +77,7 @@ def probe(html):
         if len(ms) != 1: missing.append(f'{n} ({len(ms)} declarations)'); continue
         e = ms[0].end(); html = html[:e] + "window.__WL.push({f:'%s',a:Array.prototype.slice.call(arguments)});" % n + html[e:]
     for n in AUDIO_WRAPPERS:
-        ms = list(re.finditer(r'function\s+' + n + r'\s*\(([^)]*)\)\s*\{return AUDIO\.' + n, html))
+        ms = list(re.finditer(r'function\s+' + n + r'\s*\(([^)]*)\)\s*\{(?:try\{)?return AUDIO\.' + n, html))
         if len(ms) != 1: missing.append(f'{n} wrapper ({len(ms)})'); continue
         e = html.index('{', ms[0].start()) + 1; html = html[:e] + "window.__WL.push({f:'%s',a:Array.prototype.slice.call(arguments)});" % n + html[e:]
     i = html.rindex('\nboot();'); html = html[:i] + '\nwindow.__EV=(s)=>eval(s);' + html[i:]   # eval hook: the test reaches closure-private functions (closure-private functions are not exported)

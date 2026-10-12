@@ -31,6 +31,10 @@ node tests/audio/selftest.js
 python3 tests/audio/units_gate.py
 python3 tests/e2e/e2e_audio_mix.py
 python3 tests/e2e/e2e_pwa.py
+python3 tests/e2e/e2e_pwa_stale.py
+python3 tests/e2e/e2e_robust_core.py
+python3 tests/e2e/e2e_robust_audio.py
+python3 tests/e2e/e2e_robust_storage.py
 python3 tests/e2e/e2e_support.py
 (cd server/stripe-worker && node --test test/worker.test.mjs)
 echo "ALL GATES PASSED"
