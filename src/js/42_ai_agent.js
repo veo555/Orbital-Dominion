@@ -43,7 +43,7 @@ function makeAIT2(team,P,opt){
   T.mult=opt.handicap||P.handicap||1;                                   // income handicap: 1.0 on every tier (the v3 'hard' +25 % cheat is gone)
   const style=FACTIONS[T.faction].style,u=aiThetaFor(tier,style,opt.theta);
   const ai={kind:'t2',team,enemy:1-team,tier:tierName,cfg:tier,style,thu:u,th:thetaDecode(u),
-    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false,wave:1,first:0},   // wave / first: campaign aimod hooks (waveMult, firstWave); neutral in skirmishnext:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
+    P:{iv:tier.think,hero:tier.hero!==false,air:tier.air!==false,wave:1,first:0},next:1+0.1*team,k:0,rs:(G.seed*2654435761+team*97+7)>>>0,
     apm:{rate:tier.apm/60,burst:Math.max(3,tier.apm/60*5),tok:3,t:0,n:0,denied:0},delay:tier.delay,
     mem:{u:{},b:{},camps:{},armySeenT:-99,heroLvl:0,heroT:-99,eraSeen:1},
     bel:{s:new Float32Array(BN),a:new Float64Array(BN),t:0},ph:{vis:new Float32Array(BN),dem:new Float32Array(BN),def:new Float32Array(BN)},
