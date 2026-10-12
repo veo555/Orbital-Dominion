@@ -184,7 +184,7 @@ function voiceFeatures(ch,sr,lv){
 }
 
 /* ---------------------------------------------------------------- 4. per-voice checks (§6.1-§6.3) */
-const CLASS_DB={ui:-26,fire:-22,impact:-18,boom:-14,voice:-20,alert:-17,cine:-18,music:-20,amb:-30};
+const CLASS_DB={ui:-26,fire:-22,impact:-18,boom:-14,alert:-17,music:-20,amb:-30};
 /* declared duration bounds by id pattern (the craft rules the content agents were given: fire <= 0.35 s, select/ack <= 0.6 s, booms <= 2.5 s) */
 function voiceBudget(id,cls){
   const seg=id.split('.'),ev=seg.length>=3?seg[1]:'';let max=Infinity,why='';
@@ -230,12 +230,11 @@ function znorm(vecs,floors){
 }
 const zproj=(v,zn)=>v.map((x,i)=>(x-zn.mean[i])/zn.sd[i]);
 function dist(a,b){let s=0;for(let i=0;i<a.length;i++){const d=a[i]-b[i];s+=d*d;}return Math.sqrt(s);}
-/* split a voice id into {type,event,faction}; skills are skill.<id>, globals global.<name> / ui.<name>, cinematic cine.<name> */
+/* split a voice id into {type,event,faction}; skills are skill.<id>, globals global.<name> / ui.<name> */
 function parseId(id,voc){
   const s=id.split('.');
   if(s[0]==='skill')return{kind:'skill',name:s.slice(1).join('.')};
   if(s[0]==='ui'||s[0]==='global')return{kind:'global',name:s.slice(1).join('.')};
-  if(s[0]==='cine')return{kind:'cine',name:s.slice(1).join('.')};
   if(s.length===3&&voc.factions.indexOf(s[2])>=0){
     if(voc.units.indexOf(s[0])>=0)return{kind:'unit',type:s[0],event:s[1],faction:s[2]};
     if(voc.buildings.indexOf(s[0])>=0)return{kind:'building',type:s[0],event:s[1],faction:s[2]};
@@ -244,7 +243,7 @@ function parseId(id,voc){
 }
 /* the groups whose members must be pairwise distinct:
    (a) every pair of unit types with the same event and faction   (b) the faction variants of one unit/building and event
-   (c) the nine skills                                            (d) the UI/global voices of one class (a name is served by ui.<name>, else global.<name>), and the cinematic voices
+   (c) the nine skills                                            (d) the UI/global voices of one class (a name is served by ui.<name>, else global.<name>)
    opt.cls: id -> class (groups (d) by class) */
 function distinctGroups(ids,voc,opt){
   const groups=[],cls=(opt&&opt.cls)||{},P=ids.map(id=>[id,parseId(id,voc)]);
@@ -257,7 +256,6 @@ function distinctGroups(ids,voc,opt){
   const served={};for(const[id,p]of P)if(p.kind==='global'&&(id.indexOf('ui.')===0||!served[p.name]))served[p.name]=id;
   const gc={};for(const nm in served){const cl=cls[served[nm]]||'';(gc[cl]=gc[cl]||[]).push(served[nm]);}
   for(const cl in gc)if(gc[cl].length>1)groups.push({rule:'d',key:'ui/global '+cl,ids:gc[cl]});
-  const ci=P.filter(([,p])=>p.kind==='cine').map(([id])=>id);if(ci.length>1)groups.push({rule:'d',key:'cinematic',ids:ci});
   return groups;
 }
 /* pairs closer than tau; Z maps id -> z-vector */

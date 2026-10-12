@@ -2,6 +2,8 @@
    Offline-first: everything the game needs is precached on install, so a returning player can start a match with no
    network at all. A new build installs in the background and WAITS: the page shows "A new version is ready" and only
    when the player taps it do we skipWaiting + reload, so an update never swaps code under a running match.
+   v5: the page also looks for a worker that is already waiting when it opens (75_platform.js registerSW), asks for a newer build whenever the app returns to the
+   foreground, and a missing cache + no network answers with a small explanatory page instead of the browser's error page.
    Cross-origin requests (the optional payment backend, Stripe) are never intercepted or cached. */
 const CACHE = 'od-__BUILD_ID__';
 const PRECACHE = __PRECACHE__;
@@ -22,7 +24,11 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;                      // never touch cross-origin traffic
   if (req.mode === 'navigate') {                                        // app shell: cache first, network as a fallback
-    e.respondWith(caches.match('index.html').then(hit => hit || fetch(req)));
+    e.respondWith(caches.match('index.html').then(hit => hit || fetch(req)).catch(() => new Response(
+      '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Orbital Dominion</title>' +
+      '<body style="font:16px system-ui;background:#050913;color:#dfe8f5;padding:32px"><h1>Orbital Dominion is offline</h1>' +
+      '<p>The saved copy of the game is missing and there is no connection. Reconnect once and reload: the game repairs itself and works offline again.</p></body>',
+      { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
     return;
   }
   e.respondWith(

@@ -76,6 +76,12 @@ function registerSW(){
       if(w.state==='installed'&&navigator.serviceWorker.controller)updateBanner(()=>{w.postMessage('skip');});
     });
     watch(reg.installing);reg.addEventListener('updatefound',()=>watch(reg.installing));
+    /* v5: a worker that finished installing while this page was closed is already WAITING and fires no statechange: without this the player would stay on the old
+       build until every tab is closed.  And a long-lived installed app asks for a newer build whenever it comes back to the foreground and every 30 minutes. */
+    if(reg.waiting&&navigator.serviceWorker.controller){const w=reg.waiting;updateBanner(()=>{w.postMessage('skip');});}
+    const check=()=>{try{reg.update().catch(()=>{});}catch(e){}};
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)check();});
+    setInterval(check,30*60*1000);
   }).catch(()=>{});
   let reloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading)return;reloading=true;if(!matchActive())location.reload();});

@@ -91,8 +91,8 @@ function syncMenu(){
   setAccent(FACTIONS[SET.faction].col);
   if(typeof campSyncMenu==='function')campSyncMenu();
   if(typeof resumeSync==='function')resumeSync();
-  $('setMusic').value=SET.music*100;$('setSfx').value=SET.sfx*100;$('setVoice').value=SET.voiceVol*100;
-  for(const k of['edge','voice','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).checked=!!SET[k];
+  $('setMusic').value=SET.music*100;$('setSfx').value=SET.sfx*100;
+  for(const k of['edge','hints','shake','swarm','swarmHints','cb','rm','haptics','wake','fps'])$('set_'+k).checked=!!SET[k];
   $('set_quality').value=SET.quality;
 }
 let overlayStack=[];

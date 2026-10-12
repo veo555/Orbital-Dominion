@@ -50,7 +50,7 @@
   </div>
 </div>
 <div id="tip" class="hidden"></div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <div id="menu" class="overlay">
   <div class="mcard">
@@ -114,9 +114,7 @@
     <h2 class="ttl">Settings</h2>
     <label class="set">Music <input type="range" id="setMusic" min="0" max="100"></label>
     <label class="set">Sound effects <input type="range" id="setSfx" min="0" max="100"></label>
-    <label class="set">Voice <input type="range" id="setVoice" min="0" max="100"></label>
     <label class="chk"><input type="checkbox" id="set_edge"> Scroll when the mouse touches the screen edge</label>
-    <label class="chk"><input type="checkbox" id="set_voice"> Announcer voice (speech synthesis)</label>
     <label class="chk"><input type="checkbox" id="set_hints"> Show objectives</label>
     <label class="chk"><input type="checkbox" id="set_shake"> Screen shake</label>
     <label class="chk"><input type="checkbox" id="set_swarm"> Start missions with the Swarm AI switched on</label>
@@ -130,7 +128,7 @@
     <label class="chk"><input type="checkbox" id="set_haptics"> Vibration feedback (phones)</label>
     <label class="chk"><input type="checkbox" id="set_wake"> Keep the screen awake during a match</label>
     <label class="chk"><input type="checkbox" id="set_fps"> Show frame-rate statistics</label>
-    <div class="row"><button class="btn" id="bSoundLab" type="button">Sound lab</button><span class="dim small">Every voice, music cue and character</span></div>
+    <div class="row"><button class="btn" id="bSoundLab" type="button">Sound lab</button><span class="dim small">Every sound effect and music cue</span></div>
     <div class="row end"><button class="btn big" id="bSetX">Done</button></div>
   </div>
 </div>

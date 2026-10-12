@@ -1,7 +1,7 @@
 # Audio — engine, sound design matrix, music, voices and the objective test gates
 
 Owners (WF2): `80_audio.js` (engine + synth kit + SFX dispatcher), `81_sfx_lib.js` (voice specs), `82_music.js` (sequencer, adaptive mixer), `83_music_data.js` (themes, cues, leitmotifs),
-`84_voice.js` (speech: TTS profiles + synthesized blip voices), `85_sound_lab.js` (audition UI). Vocabulary: `src/js/43_vocab.js`. No audio files, no network: everything is synthesized with WebAudio.
+`85_sound_lab.js` (audition UI). Vocabulary: `src/js/43_vocab.js`. No audio files, no network: everything is synthesized with WebAudio.
 
 **Honesty rule.** A sound cannot be judged by ear in this environment. Quality is therefore defined by *measurable* properties (§6: level, spectrum, envelope, distinctness, tempo, key, loop continuity, determinism)
 plus a human-audition surface (the Sound Lab, §7). Docs and the final report must say that subjective taste is untested.
@@ -21,7 +21,6 @@ sfx(name,x,y,who)                 // name ∈ SFX_GLOBAL ∪ unit events ∪ 'sk
 sfxUnit(type,ev,x,y,faction)      // direct: ev ∈ SFX_UNIT_EVENTS
 sfxBuilding(type,ev,x,y,faction)  // ev ∈ SFX_BUILDING_EVENTS
 cineSfx(name)                     // CINE_SFX, non-positional
-speak(charId,text,{style,onEnd})  // 84_voice; returns {dur}
 speakStop()
 musicPlay(cue,opts)  musicStop(fade)  musicScene({faction,era,intensity,night,mood})  musicStinger(cue)  musicDuck(amount,ms)  musicMood(m)
 audioRender(spec,seconds,sampleRate) -> Promise<{sampleRate,channels:[Float32Array]}>   // offline; spec = {sfx:'rifleman.fire.obsidian'} | {cue:'intro',section?} | {motif:'idris'}
@@ -62,8 +61,8 @@ Loudness classes (RMS target at unit gain, §6): `ui` −26 dBFS, `fire` −22, 
 * **Cue data format** (83_music_data.js): `{id,tempo,beats:4,key:'D',mode:'dorian',loop,len,sections:[{name,bars,chords:[…],stems:{pad:'…',bass:'…',arp:'…',lead:'…',drums:'…'},motif?,mix:{…}}]}` with patterns as compact strings (`'x..x..x.'`, scale-degree arrays) — readable and diffable.
 * Music stays under speech: `musicDuck()`; stings play over (never stop) the running cue.
 
-## 5. Voices (84_voice.js)
-`speak(charId,text,{style})`: (1) if `SET.voice` and `speechSynthesis` has voices — pick a voice by character profile (`ttsPitch/ttsRate`, preferred language/gender hints from the character’s `voice`), apply style (`radio` narrower band via a short filter-less rate/pitch tweak, `whisper` lower volume, `shout` higher); (2) always render a **synthesized speech-like blip stream** (one blip per syllable of the text, pitch contour from punctuation, timbre/formant from `voice`, duration from the cadence) on the `voice` bus — audible even when TTS is absent — so each character *sounds* distinct with zero downloads; (3) return an estimated duration so cinematics can pace lines. The announcer (`say`) keeps its existing behaviour and rate limits. Unit/hero **barks** (`STORY.barks`) are spoken the same way, at low volume.
+## 5. Voices (removed in v5)
+Speech (`speak`, `bark`, `say`, character voice profiles, the voice-pack loader) no longer exists; see the v5 note in docs/AUDIO_V4.md.
 
 ## 6. Objective gates (tests/e2e/e2e_audio.py + tests/audio/*.js — all offline renders in Chromium)
 For **every** voice id in `audioVoices()` (rendered at 44.1 kHz, ≤ 6 s):

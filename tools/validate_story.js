@@ -21,7 +21,7 @@ const HEX=/^#[0-9a-fA-F]{6}$/;
 const MAXT=V.MW-1;
 
 /* ------------------------------------------------------------- structure */
-for(const k of['meta','world','characters','acts','missions','dispatch','radio','barks'])if(STORY[k]===undefined)E('STORY.'+k,'missing');
+for(const k of['meta','world','characters','acts','missions','dispatch','radio'])if(STORY[k]===undefined)E('STORY.'+k,'missing');
 const chars=STORY.characters||{},disp=STORY.dispatch||{},radio=STORY.radio||{};
 const charIds=Object.keys(chars);
 
@@ -35,13 +35,6 @@ function checkChar(id,c){
   if(!['hero','villain','lieutenant','ally','mentor','civilian','narrator','rival'].includes(c.role))E(p,'bad role '+c.role);
   if(c.hero&&!V.UDEF[c.hero])E(p,'hero unit "'+c.hero+'" does not exist');
   if(!V.MOTIFS.includes(c.motif))E(p,'motif must be one of '+V.MOTIFS);
-  const v=c.voice||{};
-  if(!inRange(v.pitch,V.VOICE_KEYS.pitch[0],V.VOICE_KEYS.pitch[1]))E(p,'voice.pitch out of range');
-  if(!inRange(v.rate,V.VOICE_KEYS.rate[0],V.VOICE_KEYS.rate[1]))E(p,'voice.rate out of range');
-  if(!V.VOICE_KEYS.timbre.includes(v.timbre))E(p,'voice.timbre must be one of '+V.VOICE_KEYS.timbre);
-  if(!inRange(v.formant,0,1))E(p,'voice.formant out of range');
-  if(!inRange(v.ttsPitch,V.VOICE_KEYS.ttsPitch[0],V.VOICE_KEYS.ttsPitch[1]))E(p,'voice.ttsPitch out of range');
-  if(!inRange(v.ttsRate,V.VOICE_KEYS.ttsRate[0],V.VOICE_KEYS.ttsRate[1]))E(p,'voice.ttsRate out of range');
   const l=c.look||{};
   if(c.role!=='narrator'){
     if(!HEX.test(l.skin||''))E(p,'look.skin must be #rrggbb');
@@ -238,7 +231,6 @@ for(const id of dispIds)if(disp[id].kind==='defeat'&&!missions.some(m=>m.defeat=
 for(const id of charIds)if(chars[id].role!=='narrator'){
   const used=dispIds.some(c=>(disp[c].lines||[]).some(l=>l.who===id))||Object.values(radio).some(r=>r.who===id);
   if(!used)W('characters.'+id,'never appears in a dispatch or radio line');}
-for(const c of Object.keys(STORY.barks||{}))if(!chars[c])E('barks.'+c,'unknown character');
 
 
 const stats={charIds,dispIds,disp,missions,good,evil,radio};

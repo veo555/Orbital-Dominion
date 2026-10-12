@@ -15,11 +15,16 @@ SETUP = """(o)=>{const R=__RTS;R.SET.faction=o.f;R.SET.enemy=o.e;R.startGame();c
    if(a)R.issueGroup([a],{t:'attackmove',x:mx+90,y:my});if(b)R.issueGroup([b],{t:'attackmove',x:mx-90,y:my});}
   R.G.vis[0].fill(2);R.centerOn(mx,my);}
  else R.centerOn(hub.x+60,hub.y);
+ if(o.base){const T=['garrison','armory','forum','exchange','foundry','airfield','generator','depot','habitat','turret'],P=[[-8,-9],[-3,-9],[3,-9],[9,-9],[-8,6],[-3,6],[4,6],[7,6],[10,6],[12,0]];
+  T.forEach((t,i)=>{try{R.addBuilding(t,0,hub.tx+P[i][0],hub.ty+P[i][1],true)}catch(e){}});R.G.vis[0].fill(2);R.centerOn(hub.x+40,hub.y);}
  if(o.night)G.time=241;
  R.cam.z=R.cam.tz=o.z;R.clampCam();}"""
 SCEN = [('early', {}), ('fight', dict(fight=True, pre=100)),
         ('night', dict(fight=True, pre=240, night=True, f='aurora', e='meridian')),
         ('obs', dict(f='obsidian', e='aurora', pre=120, z=1.3)),
+        ('base', dict(base=True, pre=60, z=1.0, f='meridian', e='obsidian')),
+        ('base2', dict(base=True, pre=60, z=1.0, f='obsidian', e='aurora')),
+        ('base3', dict(base=True, pre=60, z=1.0, f='aurora', e='meridian')),
         ('zoom', dict(fight=True, pre=100, z=1.7, f='aurora', e='obsidian'))]
 
 

@@ -6,7 +6,7 @@
      ODM.classTable(opt)             every registered voice, grouped by loudness class -> per-class summary (mean/min/max of each metric) + the outliers
      ODM.cueTable(ids, seconds, o)   music cues -> programme LUFS / LRA / crest / centroid / peak / DC / dead air, + intensity and night sweeps
      ODM.scenarios(chain)            the mix scenarios of the gate rendered through master chain 'v3' or 'v4':
-                                       calm / battle / burst500 / voiceOver (speech ducking) -> LUFS, true peak, clipping, music level under speech
+                                       calm / battle / burst500 / alertOver (music ducking under an alert) -> LUFS, true peak, clipping, music level under an alert
    ========================================================================= */
 (function(){
 'use strict';
@@ -69,14 +69,12 @@ async function pool(){
   const info=AUD().voices({info:true}),pick=(cls,re,n)=>{const a=info.filter(v=>v.cls===cls&&(!re||re.test(v.id))).map(v=>v.id).sort();const r=[];const step=Math.max(1,Math.floor(a.length/n));for(let i=0;i<a.length&&r.length<n;i+=step)r.push(a[i]);return r;};
   const P={fire:pick('fire',/\.fire\./,24),impact:pick('impact',null,12),boom:pick('boom',null,16),ui:pick('ui',null,6),alert:pick('alert',null,3)};
   for(const k in P){P[k]=await Promise.all(P[k].map(async id=>({id,ch:(await AUD().render({sfx:id,seed:1},0,SR)).channels})));}
-  P.speech=[];
-  for(const[c,t,s]of[['idris','Marshal, the Lantern has answered. Hold the Stair until dawn.','radio'],['kaz','The light came down on us, Marshal. We are thanked for it.','radio'],['lyra','Count me, Marshal. I have never been good at being afraid quietly.','normal']])
-    P.speech.push({id:c,ch:(await AUD().render({speech:c,text:t,style:s},0,SR)).channels});
   return POOL=P;
 }
 const musicCache={};
 async function music(id,sec,int){const k=id+'|'+sec+'|'+int;return musicCache[k]||(musicCache[k]=(await AUD().render({cue:id,intensity:int,era:2,night:0,seed:0},sec,SR)).channels);}
-function voiceDuckEvents(t,dur){return AUD().voiceDucks(t,dur);}
+/* the engine's own rule for an alert-class sound (CLS.alert.duck 0.35, ms = dur+0.4 s): the music bus dips under it */
+function alertDuckEvents(t,dur){return[{bus:'music',t,amount:0.35,ms:(dur+0.4)*1000}];}
 
 ODM.scenarios=async function(chain,o){
   o=o||{};const P=await pool(),R=rng(7),res={},T=o.seconds||14;
@@ -95,14 +93,14 @@ ODM.scenarios=async function(chain,o){
   // burst: 500 sfx calls inside 3 s (the CLAUDE.md dense-battle worst case; the live engine would merge/cap most of them - here every one sounds)
   {const tr=[await mus(0.9)];for(let i=0;i<500;i++){const r=R(),cls=r<0.62?'fire':r<0.82?'impact':r<0.97?'boom':'alert';tr.push(ev(cls,4+R()*3,0.4+R()*0.6,(R()*2-1)*0.8));}
     const m=await mix(tr);res.burst500=sc(ODM.measure(m.channels,SR),{clipped:clips(m.channels),calls:tr.length-1});}
-  // voice over a battle: music ducks under the line; compare the line's loudness with the background in the same window
-  {const sp=P.speech[0],sd=sp.ch[0].length/SR,t0=4,bg=[await mus(0.9)];for(let t=1;t<T-2;t+=1/10)bg.push(ev('fire',t+R()*0.03,0.5+R()*0.5,(R()*2-1)*0.7));for(let t=2;t<T-2;t+=1.5+R())bg.push(ev('boom',t,0.9,(R()*2-1)*0.6));
-    const duck=voiceDuckEvents(t0,sd),withV=await mix(bg.concat([{channels:sp.ch,at:t0,bus:'voice',gain:1}]),duck),bgOnly=await mix(bg,duck),vOnly=await mix([{channels:sp.ch,at:t0,bus:'voice',gain:1}],[]);
-    const w=ch=>ch.map(c=>c.subarray(Math.round(t0*SR),Math.round((t0+sd)*SR))),pre=ch=>ch.map(c=>c.subarray(Math.round(2*SR),Math.round(3.9*SR)));
-    const lv=ch=>ODL.loudness(ch,SR,{tp:false}).lufsI,lvS=ch=>ODL.loudness(ch,SR,{tp:false}).lufsM;
+  // an alert over a battle: music ducks under the sound (sfx-driven ducking); compare the alert's loudness with the background in the same window
+  {const sp=P.alert[0],sd=sp.ch[0].length/SR,t0=4,bg=[await mus(0.9)];for(let t=1;t<T-2;t+=1/10)bg.push(ev('fire',t+R()*0.03,0.5+R()*0.5,(R()*2-1)*0.7));for(let t=2;t<T-2;t+=1.5+R())bg.push(ev('boom',t,0.9,(R()*2-1)*0.6));
+    const duck=alertDuckEvents(t0,sd),fg={channels:sp.ch,at:t0,bus:'ui',gain:1},withV=await mix(bg.concat([fg]),duck),bgOnly=await mix(bg,duck),vOnly=await mix([fg],[]);
+    const w=ch=>ch.map(c=>c.subarray(Math.round(t0*SR),Math.round((t0+sd)*SR)));
+    const lv=ch=>ODL.loudness(ch,SR,{tp:false}).lufsI;
     const mDuck=await mix([bg[0]],duck),mFree=await mix([bg[0]],[]);
     const vL=lv(w(vOnly.channels)),bgL=lv(w(bgOnly.channels)),bgPre=lv(w(mFree.channels)),mDuckL=lv(w(mDuck.channels));
-    res.voiceOver=sc(ODM.measure(withV.channels,SR),{speechLufs:vL,bgUnderSpeech:bgL,bgBeforeSpeech:bgPre,snr:vL-bgL,snrMusic:vL-mDuckL,duckDb:mDuckL-bgPre,speechDur:sd,clipped:clips(withV.channels)});}
+    res.alertOver=sc(ODM.measure(withV.channels,SR),{alertLufs:vL,bgUnderAlert:bgL,bgBeforeAlert:bgPre,snr:vL-bgL,snrMusic:vL-mDuckL,duckDb:mDuckL-bgPre,alertDur:sd,clipped:clips(withV.channels)});}
   return res;
 };
 

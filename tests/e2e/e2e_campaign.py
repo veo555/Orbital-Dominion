@@ -36,7 +36,7 @@ r = subprocess.run(['node', '-e', "process.stdout.write(JSON.stringify(require(p
 if r.returncode: sys.exit('node could not load the story fixture:\n' + r.stderr)
 FIX = json.loads(r.stdout)
 NDISP = len(FIX['dispatch']); KEY = 'orbital_dominion_v4_campaign'
-MERGE = "(d)=>{Object.assign(__RTS.STORY,{meta:d.meta,world:d.world,characters:d.characters,acts:d.acts,missions:d.missions,dispatch:d.dispatch,radio:d.radio,barks:d.barks});__RTS.campSyncMenu();return __RTS.STORY.missions.length;}"
+MERGE = "(d)=>{Object.assign(__RTS.STORY,{meta:d.meta,world:d.world,characters:d.characters,acts:d.acts,missions:d.missions,dispatch:d.dispatch,radio:d.radio});__RTS.campSyncMenu();return __RTS.STORY.missions.length;}"
 
 def open_page(b, w=1366, h=768, dpr=1, mobile=False, ctx=None, fresh=True):
     if ctx is None:

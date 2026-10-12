@@ -32,7 +32,7 @@ ap.add_argument('--fac', default='', help='only voices of these factions (comma 
 ap.add_argument('--shots', default='', help='comma list of voice ids: write spectrogram PNGs only (to --shots-dir) and exit'); ap.add_argument('--shots-dir', default=str(OUT / 'spectro'))
 ARGS = ap.parse_args()
 SR = 44100
-CLASS_DB = {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'voice': -20, 'alert': -17, 'cine': -18, 'music': -20, 'amb': -30}
+CLASS_DB = {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'alert': -17, 'music': -20, 'amb': -30}
 FACTIONS = ['meridian', 'obsidian', 'aurora']
 EVENTS = ['select', 'ack', 'fire', 'melee', 'die', 'ready', 'hit', 'mine', 'deliver']
 

@@ -22,8 +22,23 @@ const fmtTime=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0'
 
 /* ------------------------------ settings ----------------------------- */
 const SETKEY='orbital_dominion_v4_settings';
-const SET={music:0.45,sfx:0.8,voiceVol:0.9,edge:true,voice:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',theme:'',cb:false,rm:false,haptics:true,wake:true,fps:false};
-try{const s=JSON.parse(localStorage.getItem(SETKEY)||'null');if(s)Object.assign(SET,s);}catch(e){}
+const SET={music:0.45,sfx:0.8,edge:true,hints:true,shake:true,faction:'meridian',enemy:'random',diff:'normal',swarm:true,swarmHints:true,quality:'auto',theme:'',cb:false,rm:false,haptics:true,wake:true,fps:false};
+/* Settings are validated on load: only known keys of the right type and range are taken, so a corrupt, hand-edited or old-version value (the v4 'voice' / 'voiceVol' keys,
+   a string where a number belongs, NaN, an unknown quality name) falls back to the default instead of reaching the game. */
+const SET_ENUM={faction:['meridian','obsidian','aurora'],enemy:['random','meridian','obsidian','aurora'],diff:['easy','normal','hard','master'],
+  quality:['auto','battery','balanced','high','ultra'],theme:['','gold','magenta','ice']};
+function settingsSanitize(s){
+  const out={};if(!s||typeof s!=='object'||Array.isArray(s))return out;
+  for(const k in SET){
+    if(!Object.prototype.hasOwnProperty.call(s,k))continue;const v=s[k],d=SET[k];
+    if(typeof v!==typeof d)continue;
+    if(typeof v==='number'){if(!isFinite(v))continue;out[k]=Math.max(0,Math.min(1,v));continue;}
+    if(SET_ENUM[k]&&SET_ENUM[k].indexOf(v)<0)continue;
+    out[k]=v;
+  }
+  return out;
+}
+try{Object.assign(SET,settingsSanitize(JSON.parse(localStorage.getItem(SETKEY)||'null')));}catch(e){}
 function saveSettings(){try{localStorage.setItem(SETKEY,JSON.stringify(SET));}catch(e){}}
 
 /* ------------------------------ factions ----------------------------- */

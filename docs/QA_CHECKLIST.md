@@ -79,7 +79,7 @@ Also test: one device with **system font size at maximum**, one with **dark mode
 - [ ] Sound starts only after a user gesture, reliably on first tap (iOS + Android)
 - [ ] Music/SFX sliders and mute work; mute persists
 - [ ] iOS silent switch behaviour is the intended one; headphone plug/unplug; Bluetooth route change
-- [ ] Voice lines (`speechSynthesis`): present/absent gracefully; optional; never blocks the game
+- [ ] No spoken audio anywhere (v5): radio and dispatches are silent text; music and sfx play, mute works
 - [ ] No clipping/crackle at max SFX density (big fights); no audio after pause/background
 
 ## 10. Layout

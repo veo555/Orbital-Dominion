@@ -8,6 +8,12 @@
    Contract (tests/sim/save.js): snapshot -> restore -> N more ticks gives the same state hash as N more ticks without the round trip.
    ========================================================================= */
 const SAVE_V=1;
+function saveBuild(){return typeof BUILD!=='undefined'&&BUILD&&typeof BUILD.id==='string'?BUILD.id:'';}   // the build id (a hash of all the game's code); '' in the headless sim harness
+/* structural sanity of a decoded snapshot: the arrays the game indexes, finite clocks, and a player hub (startGame() centres the camera on it) */
+function saveSane(g){
+  return Array.isArray(g.units)&&Array.isArray(g.buildings)&&Array.isArray(g.teams)&&g.teams.length>=2&&typeof g.time==='number'&&isFinite(g.time)&&typeof g.tick==='number'&&isFinite(g.tick)&&
+    g.buildings.some(b=>b&&b.team===0&&b.type==='hub'&&isFinite(b.x)&&isFinite(b.y))&&g.teams.every(t=>t&&isFinite(t.c)&&isFinite(t.e)&&typeof t.faction==='string');
+}
 const SAVE_SKIP={terrainCv:1,mmBg:1,tInfo:1};
 let SAVE_STAT=null;                                                    // Map object -> JSON path of the static table it lives in (built once)
 function saveRoots(){return{UDEF,BDEF,FACTIONS,DIFF,SKILLS,TECH,TAX,CAMP_TYPES,CADI,ROLES,GEAR,ERAS,TAGNAME,NEUTRAL_COL,JOB_NAMES,PAY};}
@@ -49,11 +55,11 @@ function gameSnapshot(){
   }
   const props=G.sw&&G.sw.props;if(G.sw)G.sw.props=[];
   let root;try{root=enc(G);}finally{if(G.sw)G.sw.props=props;}
-  return JSON.stringify({v:SAVE_V,root,nodes});
+  return JSON.stringify({v:SAVE_V,b:saveBuild(),root,nodes});
 }
 function gameRestore(text){
   let S;try{S=JSON.parse(text);}catch(e){return null;}
-  if(!S||S.v!==SAVE_V||!Array.isArray(S.nodes)||!S.root)return null;
+  if(!S||typeof S!=='object'||S.v!==SAVE_V||S.b!==saveBuild()||!Array.isArray(S.nodes)||!S.root)return null;   // v5: a snapshot written by another BUILD of the game is refused, not guessed at
   const N=S.nodes,objs=new Array(N.length);
   function dec(x){
     if(x===null||typeof x!=='object')return x;
@@ -73,7 +79,7 @@ function gameRestore(text){
       else if(n.set)for(const e of n.set)o.add(dec(e));
       else if(n.map)for(const[k,v]of n.map)o.set(dec(k),dec(v));
       else if(n.o)for(const k of Object.keys(n.o))o[k]=dec(n.o[k]);}
-    const g=dec(S.root);if(!g||typeof g!=='object'||g.units===undefined||g.buildings===undefined)return null;
+    const g=dec(S.root);if(!g||typeof g!=='object'||!saveSane(g))return null;
     for(const k of Object.keys(SAVE_SKIP))g[k]=null;
     G=g;return G;
   }catch(e){return null;}

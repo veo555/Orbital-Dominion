@@ -3,8 +3,12 @@
 #   build -> design tokens -> simulation smoke -> desktop browser -> touch/phone -> app lifecycle -> PWA -> payments (client) -> payments (Worker)
 set -e
 cd "$(dirname "$0")/.."
-python3 build.py
+python3 build.py                      # minified (OD_MIN=0 python3 build.py for a readable one)
+node tests/minify/minify_test.js
+node tests/sim/minify_determinism.js
 python3 tools/design_check.py > /dev/null && echo "design requirements met (tools/design_check.py)"
+node tests/story/validate_selftest.js
+node tools/validate_story.js
 node tests/sim/smoke.js
 node tests/sim/save.js
 node tests/sim/ai_lib.js
@@ -23,10 +27,14 @@ python3 tests/e2e/e2e_audio_engine.py
 python3 tests/e2e/e2e_audio_wiring.py
 python3 tests/e2e/e2e_soundlab.py
 node tests/audio/bs1770_test.js
+node tests/audio/selftest.js
+python3 tests/audio/units_gate.py
 python3 tests/e2e/e2e_audio_mix.py
-python3 tests/audio/voicepack_pipeline.py
-python3 tests/e2e/e2e_audio_voicepack.py
 python3 tests/e2e/e2e_pwa.py
+python3 tests/e2e/e2e_pwa_stale.py
+python3 tests/e2e/e2e_robust_core.py
+python3 tests/e2e/e2e_robust_audio.py
+python3 tests/e2e/e2e_robust_storage.py
 python3 tests/e2e/e2e_support.py
 (cd server/stripe-worker && node --test test/worker.test.mjs)
 echo "ALL GATES PASSED"

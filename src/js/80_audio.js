@@ -1,20 +1,20 @@
 /* =========================================================================
    AUDIO ENGINE — context abstraction (live + offline), bus graph, synth kit, voice DSL, registry, dispatcher,
-   polyphony governance (the announcer say() and the character voices live in 84_voice.js). Contract: docs/AUDIO_SPEC.md §1–2 and §8 (engine reference).
+   polyphony governance (v5: no speech of any kind; music and sound effects only). Contract: docs/AUDIO_SPEC.md §1–2 and §8 (engine reference).
    Everything private lives inside AUDIO (a closure) so this file cannot collide with other modules' names.
-   Public globals: AC muted busSfx busMusic musicFx AUD KIT audioInit applyVolumes toggleMute sfx sfxUnit sfxBuilding cineSfx
+   Public globals: AC muted busSfx busMusic musicFx AUD KIT audioInit applyVolumes toggleMute sfx sfxUnit sfxBuilding
                    registerVoice registerRenderer audioVoices audioRender audioStats audioPlay audioDuck audioBus audioA audioDelay
                    audioOffline audioAnalyse audioHash audioClasses audioOnReady audioLegacyScore audioMeter tone noiseBurst
    No sim state is read except G.teams[].faction (faction of an entity) and cam/VW/VH (positional pan). Never Math.random/Date in a voice.
    ========================================================================= */
 let AC=null,muted=false,busSfx=null,busMusic=null,musicFx=null;   // AC: the live AudioContext (75_platform reads it); the bus* aliases mirror the new buses
 const AUD={cap:40,capMusic:24,peakNodes:0,lastError:'',
-  counters:{calls:0,played:0,merged:0,poly:0,capped:0,culled:0,muted:0,noctx:0,suspended:0,skipped:0,nosound:0,errors:0,renders:0,says:0}};   // test hooks; filled in below
+  counters:{calls:0,played:0,merged:0,poly:0,capped:0,culled:0,muted:0,noctx:0,suspended:0,skipped:0,nosound:0,errors:0,renders:0}};   // test hooks; filled in below
 const KIT={};   // synth kit (osc/noise/fm/pluck/formant layers, envelopes, filters, sends); filled in below
 const AUDIO=(function(){
 'use strict';
 const C=AUD.counters;
-const BUSES=['sfx','ui','voice','amb','cine','music'],BIX={sfx:0,ui:1,voice:2,amb:3,cine:4,music:5};
+const BUSES=['sfx','ui','amb','music'],BIX={sfx:0,ui:1,amb:2,music:3},BM=3;   // BM: index of the music bus
 /* rooms: IR length, RT, damping, pre-delay, and the RETURN gain calibrated (measured, see tests/e2e/e2e_audio_engine.py) so that send 1.0 returns wet energy ~ dry energy for every room */
 /* plate/hall/air are the content rooms; open/canyon/cave are the ROOM PRESETS of the distance send (audioRoom(name)): open = a field (short, dark, 20 ms pre-delay), canyon = hard walls (long pre-delay slap), cave = long and dull.
    `ret` of the three newer rooms is the measured return that makes send 1.0 return wet energy = dry energy (tests/e2e/e2e_audio_mix.py, 'room calibration'). */
@@ -24,12 +24,12 @@ const DLYRET=1.57;   // delay send 1.0: echo train energy ~ -3 dB re dry
 /* loudness classes: target RMS dBFS (active window, unit gain), priority, bus, default cooldown (ms), polyphony per voice id */
 const CLS={
   ui:{db:-26,prio:1,bus:'ui',gap:30,poly:3},fire:{db:-22,prio:2,bus:'sfx',gap:45,poly:5},impact:{db:-18,prio:3,bus:'sfx',gap:60,poly:4},
-  boom:{db:-14,prio:4,bus:'sfx',gap:90,poly:3,range:1.5},voice:{db:-20,prio:7,bus:'voice',gap:250,poly:2,duck:0.45},
-  alert:{db:-17,prio:7,bus:'ui',gap:400,poly:2,duck:0.35},cine:{db:-18,prio:6,bus:'cine',gap:0,poly:6},music:{db:-20,prio:0,bus:'music',gap:0,poly:0},
+  boom:{db:-14,prio:4,bus:'sfx',gap:90,poly:3,range:1.5},
+  alert:{db:-17,prio:7,bus:'ui',gap:400,poly:2,duck:0.35},music:{db:-20,prio:0,bus:'music',gap:0,poly:0},
   amb:{db:-30,prio:0,bus:'amb',gap:1000,poly:1}};
-const PRIO={amb:0,ui:1,fire:2,impact:3,boom:4,hero:5,cine:6,voice:7,alert:7,music:0};
+const PRIO={amb:0,ui:1,fire:2,impact:3,boom:4,hero:5,alert:7,music:0};
 const LIMF=[0.35,0.9,0.6,0.7,0.8,0.9,1,1];   // admission limit as a fraction of AUD.cap, indexed by priority (ui keeps headroom on purpose: button feedback must survive a big fight)
-const VARY={ui:{pitch:0.01},fire:{pitch:0.05,filter:0.12,gain:0.08},impact:{pitch:0.05,filter:0.10,gain:0.06},boom:{pitch:0.04,filter:0.10},voice:{pitch:0.02},alert:{},cine:{pitch:0.02},amb:{},music:{}};
+const VARY={ui:{pitch:0.01},fire:{pitch:0.05,filter:0.12,gain:0.08},impact:{pitch:0.05,filter:0.10,gain:0.06},boom:{pitch:0.04,filter:0.10},alert:{},amb:{},music:{}};
 const FACP={meridian:1,obsidian:0.84,aurora:1.22,wild:0.72};   // pitch bias of GENERIC fallback voices per faction (content voices replace this with real timbres)
 const VOICES=new Map(),RENDERERS={},READY=[];
 let DER=Object.create(null),GEN=Object.create(null),FG=Object.create(null),legacyOn=true;
@@ -441,19 +441,19 @@ function buildGraph(){
   S.anchor={n:1,v:null,out:null,m:true};   // keeps the live per-bus A handles' instance alive forever (music schedules notes over time)
   for(let i=0;i<BUSES.length;i++){
     const inn=x.createGain(),dk=x.createGain();inn.connect(dk);dk.connect(mixIn);S.buses.push({name:BUSES[i],inn,dk,lo:1,end:0,from:1,t0:0});
-    const A=mkA();A.ctx=x;A.dest=inn;A.out=inn;A.cache=S.cache;A.bus=i;A.inst=i===5?S.anchor:{n:1,v:null,out:null,m:false};S.A.push(A);
+    const A=mkA();A.ctx=x;A.dest=inn;A.out=inn;A.cache=S.cache;A.bus=i;A.inst=i===BM?S.anchor:{n:1,v:null,out:null,m:false};S.A.push(A);
   }
-  busSfx=S.buses[0].inn;busMusic=S.buses[5].inn;
-  getDly(S.A[5]);musicFx=S.cache.dly[5].inG;
+  busSfx=S.buses[0].inn;busMusic=S.buses[BM].inn;
+  getDly(S.A[BM]);musicFx=S.cache.dly[BM].inG;
 }
 function applyVolumes(){
   if(!AC||!S.buses.length)return;
-  const t=AC.currentTime,vol=[SET.sfx,SET.sfx,(SET.voiceVol===undefined?0.9:SET.voiceVol)*VBOOST,SET.sfx,SET.sfx,SET.music];
+  const t=AC.currentTime,vol=[SET.sfx,SET.sfx,SET.sfx,SET.music];
   for(let i=0;i<S.buses.length;i++){const g=S.buses[i].inn.gain;if(S.fresh)g.value=vol[i];else{g.cancelScheduledValues(t);g.setTargetAtTime(vol[i],t,0.02);}}
   const m=S.master.gain;if(S.fresh)m.value=muted?0:1;else{m.cancelScheduledValues(t);m.setTargetAtTime(muted?0:1,t,0.012);}
   S.fresh=false;
 }
-/* DUCKING (the sidechain of this engine: voices, alerts and the announcer tell the music bus to dip). A bus keeps one ramp state {from,t0,lo,end}; overlapping ducks combine
+/* DUCKING (the sidechain of this engine: alerts and big sounds tell the music bus to dip). A bus keeps one ramp state {from,t0,lo,end}; overlapping ducks combine
    (deepest wins, the later end wins). The same functions schedule the live gain and the offline mixdown, so what the tests measure is what plays. */
 const DK={att:0.04,rel:0.9};
 function duckAt(b,t){
@@ -468,11 +468,6 @@ function duckPlan(b,t,amount,ms){
   b.from=from;b.t0=t;b.lo=lo;b.end=end;
 }
 function duckSchedule(g,b){g.cancelScheduledValues(b.t0);g.setValueAtTime(b.from,b.t0);g.linearRampToValueAtTime(b.lo,b.t0+DK.att);g.setValueAtTime(b.lo,b.end);g.linearRampToValueAtTime(1,b.end+DK.rel);}
-/* a spoken line / radio call: the music dips deeply, the battle sounds (sfx, ambience) a little, so the words stay on top. Alerts and UI are never ducked. */
-const VOICE_DUCKS=[['music',0.7],['sfx',0.4],['amb',0.4]];
-const VBOOST=1.8;   // the voice bus sits +5 dB over its class calibration: speech must stay on top of a dense fight (docs/AUDIO_V4.md, speech-to-background ratio)
-function voiceDucks(t,dur){const ms=(dur+0.5)*1000;return VOICE_DUCKS.map(d=>({bus:d[0],t,amount:d[1],ms}));}
-function audioDuckVoice(ms){for(const d of VOICE_DUCKS)audioDuck(d[0],d[1],ms);}
 function audioDuck(bus,amount,ms){
   if(!AC||!S.buses.length)return;const b=S.buses[BIX[bus]];if(!b)return;
   duckPlan(b,AC.currentTime,amount,ms);duckSchedule(b.dk.gain,b);
@@ -482,7 +477,7 @@ function audioDuck(bus,amount,ms){
 function audioMixdown(tracks,seconds,sr,opt){
   opt=opt||{};sr=sr||44100;
   const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;if(!OC)return Promise.reject(new Error('OfflineAudioContext unavailable'));
-  const x=new OC(2,Math.max(1,Math.ceil(seconds*sr)),sr),mixIn=x.createGain(),ch=masterChain(x,mixIn,opt.chain||'v4'),vol=Object.assign({sfx:0.8,ui:0.8,voice:0.9*VBOOST,amb:0.8,cine:0.8,music:0.45},opt.vol||{});
+  const x=new OC(2,Math.max(1,Math.ceil(seconds*sr)),sr),mixIn=x.createGain(),ch=masterChain(x,mixIn,opt.chain||'v4'),vol=Object.assign({sfx:0.8,ui:0.8,amb:0.8,music:0.45},opt.vol||{});
   ch.out.connect(x.destination);
   const buses={};for(const nm of BUSES){const inn=x.createGain(),dk=x.createGain();inn.gain.value=vol[nm];inn.connect(dk);dk.connect(mixIn);buses[nm]={inn,dk,st:{lo:1,end:0,from:1,t0:0}};}
   const keep=[];
@@ -499,7 +494,8 @@ function audioInit(){
   if(!AC){
     const Ctor=window.AudioContext||window.webkitAudioContext;if(!Ctor)return;
     try{AC=new Ctor({latencyHint:'interactive'});}catch(e){try{AC=new Ctor();}catch(e2){AC=null;return;}}
-    S.fresh=true;buildGraph();applyVolumes();
+    S.fresh=true;
+    try{buildGraph();applyVolumes();}catch(e){AUD.lastError='graph: '+(e&&e.message||e);C.errors++;try{AC.close();}catch(_){}AC=null;S.buses=[];S.A=[];return;}   // a context that cannot build its graph is no context: sound off, game on
     try{const b=AC.createBuffer(1,1,22050),s=AC.createBufferSource();s.buffer=b;s.connect(AC.destination);s.start(0);}catch(e){}   // iOS unlock
     if(legacyOn)legacyStart();
     for(const f of READY){try{f(AC);}catch(e){}}
@@ -508,8 +504,6 @@ function audioInit(){
 }
 function toggleMute(){
   muted=!muted;applyVolumes();
-  if(muted){if(typeof speakStop==='function')try{speakStop();}catch(e){}   // 84_voice.js: ends the line being spoken (its onEnd still fires) and cancels speechSynthesis
-    if(typeof speechSynthesis!=='undefined')try{speechSynthesis.cancel();}catch(e){}}
   return muted;
 }
 function audioOnReady(fn){READY.push(fn);if(AC){try{fn(AC);}catch(e){}}}
@@ -576,7 +570,7 @@ function run(A,v,t,p){
 function launch(v,vol,pan,pm,fa,far){
   const A=takeA(),p=A.p,inst=instGet(v);
   try{
-    A.ctx=AC;A.off=false;A.sp=null;A.dest=S.buses[v.bus].inn;A.bus=v.bus;A.cache=S.cache;A.inst=inst;A.v=v;A.dur=v.dur;inst.m=v.bus===5;
+    A.ctx=AC;A.off=false;A.sp=null;A.dest=S.buses[v.bus].inn;A.bus=v.bus;A.cache=S.cache;A.inst=inst;A.v=v;A.dur=v.dur;inst.m=v.bus===BM;
     A.s=(v.h^Math.imul(++v.n,0x9E3779B1))|0;
     p.vol=vol;p.pan=pan;p.faction=fa||v.fac||'meridian';p.pitch=pm;p.fmul=1;p.variant=0;p.seed=v.n;
     prep(A,v,p,v.n);
@@ -598,7 +592,7 @@ function play(v,x,y){
   if(v.gap>0&&now-v.last<v.gap){v.pend++;C.merged++;return'merge';}
   if(v.poly>0&&v.live>=v.poly){C.poly++;return'poly';}
   sweepNodes(now);
-  if(v.bus===5){if(S.nodesM+v.est>AUD.capMusic){C.capped++;return'cap';}}
+  if(v.bus===BM){if(S.nodesM+v.est>AUD.capMusic){C.capped++;return'cap';}}
   else if(S.nodes+v.est>AUD.cap*LIMF[v.prio]){C.capped++;return'cap';}
   const n=now-v.last<600?v.pend:0;v.pend=0;v.last=now;
   let pm=W.fa&&v.fallback?(FACP[W.fa]||1):1;
@@ -627,16 +621,6 @@ function direct(type,ev,x,y,faction,bld){
 }
 function sfxUnit(type,ev,x,y,faction){return direct(type,ev,x,y,faction,false);}
 function sfxBuilding(type,ev,x,y,faction){return direct(type,ev,x,y,faction,true);}
-function cineSfx(name){
-  C.calls++;W.ty=null;W.fa=null;W.kind=null;W.der=false;
-  const v=VOICES.get('cine.'+name)||null;
-  if(!v)return emit(name,null);
-  if(!AC||muted)return emit(name,v);
-  if(AC.state!=='running')return emit(name,v);
-  if(v.mute){logEv(name,v,undefined,undefined,'bad');return false;}
-  if(AUD.cap&&S.nodes+v.est>AUD.cap*LIMF[v.prio]){C.capped++;logEv(name,v,undefined,undefined,'cap');return false;}
-  launch(v,1,0,1,null);C.played++;logEv(name,v,undefined,undefined,'play');return true;
-}
 /* direct playback for the Sound Lab / tests: id (voice id or legacy name) or a voice def; opts {vol,pan,pitch,faction,force} ; bypasses culling, cooldown and polyphony */
 function audioPlay(what,opt){
   if(!AC||muted||AC.state!=='running')return false;
@@ -709,8 +693,6 @@ function audioHash(ch,exact){
   return(h>>>0).toString(16).padStart(8,'0');
 }
 
-/* ------------------------------------------------------------------ announcer: moved to 84_voice.js (say(), speak(), bark(), speakStop(); same rate limits, SET.voice switch and music ducking) */
-
 /* ------------------------------------------------------------------ legacy helpers + fallback score (steps aside as soon as a music module registers a 'cue' renderer) */
 function tone(f,d,type,v,slide,delay,pan){
   if(!AC||muted||!S.buses.length)return;const t=AC.currentTime+(delay||0),o=AC.createOscillator(),g=AC.createGain();let out=g;
@@ -735,7 +717,7 @@ function lgNote(f,t,d,type,v,lpf){
 }
 function lgDrum(kind,t,v){
   if(kind==='kick'){const o=AC.createOscillator(),g=AC.createGain();o.frequency.setValueAtTime(130,t);o.frequency.exponentialRampToValueAtTime(40,t+0.18);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);o.connect(g);g.connect(LG.out);o.start(t);o.stop(t+0.25);o.onended=()=>{try{g.disconnect();}catch(e){}};}
-  else{const s=AC.createBufferSource(),fl=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf(S.A[5],'white');fl.type='highpass';fl.frequency.value=kind==='hat'?7000:1800;
+  else{const s=AC.createBufferSource(),fl=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf(S.A[BM],'white');fl.type='highpass';fl.frequency.value=kind==='hat'?7000:1800;
     g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+(kind==='hat'?0.05:0.14));s.connect(fl);fl.connect(g);g.connect(LG.out);s.start(t,LGR()*2,0.2);s.onended=()=>{try{g.disconnect();}catch(e){}};}
 }
 function lgTick(){
@@ -755,18 +737,17 @@ function lgTick(){
 }
 function legacyStart(){
   if(LG.timer||!AC)return;
-  LG.out=AC.createGain();LG.out.gain.value=1.1;LG.out.connect(S.buses[5].inn);audioDelay('music',0.42,0.38);
-  LG.next=AC.currentTime+0.2;LG.timer=setInterval(lgTick,140);
+  LG.out=AC.createGain();LG.out.gain.value=1.1;LG.out.connect(S.buses[BM].inn);audioDelay('music',0.42,0.38);
+  LG.next=AC.currentTime+0.2;LG.timer=setInterval(()=>{try{lgTick();}catch(e){audioFault(e);}},140);
 }
 function audioLegacyScore(on){legacyOn=!!on;if(on&&AC)legacyStart();}
 
-/* ------------------------------------------------------------------ generic fallback voices (ported from the original implementation + the new SFX_GLOBAL / CINE_SFX names)
-   Ids: global.<name> and cine.<name>. Content voices registered later (81_sfx_lib.js) take precedence automatically. TRIM = per-voice gain correction measured with audioAnalyse so that every
+/* ------------------------------------------------------------------ generic fallback voices (ported from the original implementation + the SFX_GLOBAL names)
+   Ids: global.<name>. Content voices registered later (81_sfx_lib.js) take precedence automatically. TRIM = per-voice gain correction measured with audioAnalyse so that every
    generic voice lands inside its class loudness window (tests/e2e/e2e_audio_engine.py asserts it). */
 (function(){
 const O=(type,f,o)=>Object.assign({k:'osc',type,f},o),Nz=(color,o)=>Object.assign({k:'noise',color},o),FM=(f,ratio,idx,o)=>Object.assign({k:'fm',f,ratio,idx},o);
 const lp=(f0,f1,t,q)=>({type:'lp',f0,f1:f1||undefined,t:t||undefined,q:q||undefined}),hp=(f0,f1,t)=>({type:'hp',f0,f1:f1||undefined,t:t||undefined}),bp=(f0,f1,t,q)=>({type:'bp',f0,f1:f1||undefined,t:t||undefined,q:q||undefined});
-const GR=mulberry32(0x61175),gl=[];for(let i=0;i<8;i++)gl.push(O('square',220+Math.floor(GR()*1700),{delay:i*0.055,dur:0.045,env:{d:0.04},gain:0.4,filter:lp(3500)}));
 const G0={
   click:{cls:'ui',dur:0.07,layers:[O('square',900,{pitch:{from:1000,to:760,t:0.04},env:{d:0.04},gain:0.5,filter:lp(3200)}),Nz('white',{dur:0.015,env:{d:0.012},gain:0.3,filter:hp(4000)})]},
   tab:{cls:'ui',dur:0.1,layers:[O('triangle',700,{dur:0.05,env:{d:0.045}}),O('triangle',1050,{delay:0.03,dur:0.06,env:{d:0.055}})]},
@@ -806,70 +787,44 @@ const G0={
   boom:{cls:'boom',dur:0.55,gap:60,layers:[Nz('white',{dur:0.5,env:{d:0.48},filter:lp(1800,300,0.4),gain:1}),O('sine',80,{pitch:{from:95,to:40,t:0.3},env:{d:0.32},gain:1.2}),Nz('brown',{delay:0.02,dur:0.5,env:{a:0.01,d:0.45},filter:lp(400),gain:0.8})]},
   boomBig:{cls:'boom',dur:1.3,gap:120,layers:[Nz('white',{dur:1.1,env:{a:0.008,d:1.0},filter:lp(1400,180,1.0),gain:0.7}),O('sine',58,{pitch:{from:75,to:28,t:0.7},dur:0.9,env:{a:0.01,d:0.85},gain:1}),Nz('brown',{delay:0.05,dur:1.2,env:{a:0.05,d:1.1},gain:1.0,filter:lp(200)}),O('sine',44,{delay:0.1,dur:1.1,env:{a:0.05,d:1.0},gain:0.5,send:{rev:0.15,room:'hall'}})]}
 };
-const CI={
-  whoosh:{dur:0.95,layers:[Nz('pink',{dur:0.9,env:{a:0.35,d:0.5},filter:bp(300,4000,0.8,1.5)}),Nz('white',{dur:0.9,env:{a:0.4,d:0.45},filter:hp(2000,6000,0.8),gain:0.3})]},
-  impact:{dur:0.65,layers:[O('sine',70,{pitch:{from:90,to:32,t:0.5},env:{d:0.5}}),Nz('white',{dur:0.3,env:{d:0.3},filter:lp(2500,300,0.28),gain:0.8}),Nz('white',{dur:0.02,env:{d:0.015},filter:hp(1500),gain:0.6})]},
-  boom:{dur:1.7,layers:[Nz('brown',{dur:1.6,env:{a:0.01,d:1.5},filter:lp(900,90,1.5),gain:1.4}),O('sine',50,{pitch:{from:70,to:25,t:1.0},dur:1.2,env:{d:1.2},gain:1.2}),Nz('white',{dur:0.1,env:{d:0.1},gain:0.6,filter:lp(3000),send:{rev:0.2,room:'hall'}})]},
-  explosion:{dur:2.1,layers:[Nz('white',{dur:1.8,env:{a:0.004,d:1.7},filter:lp(5000,200,1.6)}),O('sine',60,{pitch:{from:90,to:28,t:0.9},dur:1.2,env:{d:1.2},gain:1.2}),Nz('white',{delay:0.15,dur:1.2,env:{a:0.01,d:1.1},filter:hp(3000),gain:0.25}),Nz('brown',{delay:0.05,dur:1.8,env:{a:0.05,d:1.7},gain:0.8,filter:lp(250),send:{rev:0.25,room:'hall'}})]},
-  alarm:{dur:1.2,layers:[0,1,2,3].map(i=>O('square',i%2?480:620,{delay:i*0.28,dur:0.26,env:{a:0.01,d:0.24},filter:lp(2000),gain:0.6}))},
-  comms:{dur:0.5,layers:[O('sine',1500,{dur:0.08,env:{d:0.07}}),O('sine',1900,{delay:0.1,dur:0.1,env:{d:0.09}}),Nz('white',{delay:0.22,dur:0.25,env:{a:0.01,d:0.22},filter:bp(2400,0,0,1.2),gain:0.4})]},
-  door:{dur:0.85,layers:[Nz('white',{dur:0.6,env:{a:0.03,s:0.6,d:0.1,r:0.25},filter:bp(1400,600,0.6,1.2),gain:1}),O('sine',90,{delay:0.05,pitch:{from:90,to:50,t:0.2},dur:0.25,env:{a:0.01,d:0.25},gain:0.16}),Nz('white',{delay:0.55,dur:0.1,env:{d:0.1},filter:lp(1200),gain:0.5})]},
-  engine:{dur:3,layers:[O('sawtooth',55,{dur:3,env:{a:0.5,s:0.8,d:1,r:0.6},filter:lp(300,600,2.5,1.5),vib:{f:7,cents:12}}),O('sawtooth',82,{detune:8,dur:3,env:{a:0.5,s:0.8,d:1,r:0.6},filter:lp(350),gain:0.4}),Nz('brown',{dur:3,env:{a:0.6,s:0.6,d:1,r:0.6},filter:lp(400),gain:0.8})]},
-  laser:{dur:0.38,layers:[O('sawtooth',2400,{pitch:{from:2600,to:260,t:0.25},dur:0.3,env:{d:0.3},filter:lp(6000,1500,0.25),gain:0.7}),Nz('white',{dur:0.1,env:{d:0.1},filter:hp(5000),gain:0.3})]},
-  rumble:{dur:3.2,layers:[Nz('brown',{dur:3,env:{a:0.7,s:0.8,d:1.2,r:0.8},filter:lp(220),gain:1.5}),O('sine',38,{dur:3,env:{a:0.8,s:0.8,d:1,r:0.8},gain:0.8})]},
-  glitch:{dur:0.5,layers:gl},
-  heartbeat:{dur:1.4,layers:[0,0.9].map(b=>[O('sine',60,{delay:b,pitch:{from:75,to:40,t:0.2},dur:0.3,env:{a:0.012,d:0.28}}),O('sine',55,{delay:b+0.22,pitch:{from:70,to:36,t:0.2},dur:0.3,env:{a:0.012,d:0.28},gain:0.8})]).reduce((a,b)=>a.concat(b),[])},
-  chime:{dur:2.4,layers:[FM(1320,3.5,{from:1.5,to:0.05},{dur:2.2,env:{a:0.003,d:2.1},send:{rev:0.3,room:'air'}}),O('sine',2640,{gain:0.15,dur:1.5,env:{d:1.4}}),O('sine',1980,{gain:0.12,dur:1.2,env:{d:1.1}})]},
-  thunder:{dur:2.8,layers:[Nz('brown',{dur:2.6,env:{a:0.15,d:2.4},filter:lp(700,80,2.4),gain:1.6}),Nz('white',{dur:0.25,env:{d:0.25},filter:bp(1800,0,0,0.8),gain:0.8}),Nz('brown',{delay:0.5,dur:2.0,env:{a:0.3,d:1.7},filter:lp(150),gain:1.2,send:{rev:0.2,room:'hall'}})]},
-  stinger:{dur:1.7,layers:[O('sawtooth',233,{unison:{n:2,spread:14},dur:1.5,env:{a:0.02,d:1.4},filter:lp(500,2500,0.3),gain:0.7}),O('sawtooth',247,{unison:{n:2,spread:14},dur:1.5,env:{a:0.02,d:1.4},filter:lp(500,2500,0.3),gain:0.6}),O('sine',58,{pitch:{from:70,to:40,t:1},dur:1.2,env:{d:1.2}}),Nz('white',{dur:0.15,env:{d:0.15},filter:lp(2000),gain:0.5,send:{rev:0.2,room:'hall'}})]},
-  crowd:{dur:3.2,layers:[Nz('pink',{dur:3,env:{a:0.6,s:0.7,d:1,r:0.8},filter:bp(700,0,0,0.6),trem:{f:3.1,depth:0.4}}),{k:'formant',src:'sawtooth',f:130,vowel:'a',to:'o',dur:3,env:{a:0.5,s:0.5,d:1,r:0.8},gain:0.25,vib:{f:5,cents:30}},{k:'formant',src:'sawtooth',f:165,vowel:'e',to:'a',dur:3,env:{a:0.6,s:0.5,d:1,r:0.8},gain:0.2,vib:{f:4.6,cents:25}}]},
-  wind:{dur:3.2,layers:[Nz('pink',{dur:3,env:{a:1,s:0.7,d:1,r:1},filter:bp(500,1100,3,1.2)}),Nz('white',{dur:3,env:{a:1.2,s:0.5,d:1,r:1},filter:bp(2500,1500,3,2),gain:0.25})]},
-  powerup:{dur:0.85,layers:[O('sawtooth',200,{pitch:{from:200,to:1600,t:0.6},dur:0.7,env:{a:0.05,d:0.65},filter:lp(800,6000,0.6),gain:0.6}),FM(400,2,{from:0.5,to:3},{pitch:{from:400,to:3200,t:0.6},delay:0.1,dur:0.7,env:{a:0.05,d:0.6},gain:0.4})]},
-  powerdown:{dur:1,layers:[O('sawtooth',1200,{pitch:{from:1200,to:80,t:0.85},dur:0.9,env:{a:0.01,d:0.88},filter:lp(5000,300,0.85),gain:0.6}),FM(600,2,{from:3,to:0.3},{pitch:{from:600,to:60,t:0.85},dur:0.9,env:{a:0.01,d:0.88},gain:0.4})]},
-  click:{dur:0.06,layers:[O('square',1400,{pitch:{from:1500,to:900,t:0.03},env:{d:0.03},gain:0.5}),Nz('white',{dur:0.012,env:{d:0.008},filter:hp(3000),gain:0.4})]},
-  warp:{dur:1.8,layers:[Nz('white',{dur:1.6,env:{a:0.5,d:1.0},filter:bp(200,8000,1.2,2),gain:0.9}),O('sine',100,{pitch:{from:100,to:1400,t:1.2},dur:1.5,env:{a:0.4,d:1.0},gain:0.5}),O('sawtooth',50,{pitch:{from:50,to:700,t:1.2},dur:1.5,env:{a:0.4,d:1.0},gain:0.3,filter:lp(1500),send:{rev:0.3,room:'air'}})]},
-  siren:{dur:2.5,layers:[O('sine',700,{pitch:{pts:[[0,500],[0.6,1000],[1.2,500],[1.8,1000],[2.4,500]]},dur:2.4,env:{a:0.05,s:0.9,d:0.2,r:0.2},filter:lp(3000),gain:0.7}),O('square',350,{pitch:{pts:[[0,250],[0.6,500],[1.2,250],[1.8,500],[2.4,250]]},dur:2.4,env:{a:0.05,s:0.9,d:0.2,r:0.2},filter:lp(1500),gain:0.2})]},
-  static:{dur:0.65,layers:[0,1,2].map(i=>Nz('white',{delay:i*0.2,dur:0.17,env:{a:0.004,s:0.9,d:0.01,r:0.01},filter:bp(3000,0,0,0.7)}))},
-  gong:{dur:2.6,layers:[{k:'pluck',mode:'modal',f:110,ratios:[1,1.5,2,2.74,3.8,5.1],t60:2.2,tilt:0.55,damp:0.6,dur:2.5,env:{d:2.4},send:{rev:0.3,room:'hall'}},Nz('white',{dur:0.06,env:{d:0.05},filter:bp(900,0,0,1),gain:0.2}),O('sine',55,{dur:2,env:{a:0.03,d:1.9},gain:0.3})]}
-};
-const TRIM={'cine.alarm':0.9986,'cine.boom':0.3992,'cine.chime':0.5437,'cine.click':0.8531,'cine.comms':0.956,'cine.crowd':1.5331,'cine.door':2.8651,'cine.engine':0.2841,'cine.explosion':0.4822,'cine.glitch':1.6566,'cine.gong':0.5403,'cine.heartbeat':0.7923,'cine.impact':0.5289,'cine.laser':1.3041,'cine.powerdown':0.9984,'cine.powerup':0.8835,'cine.rumble':0.2565,'cine.siren':0.2763,'cine.static':1.0547,'cine.stinger':0.5054,'cine.thunder':0.6773,'cine.warp':1.1015,'cine.whoosh':2.0978,'cine.wind':1.8767,'global.acid':0.2956,'global.ack':0.2881,'global.alert':0.6082,'global.alertBase':0.4913,'global.bolt':0.3993,'global.boom':0.7008,'global.boomBig':0.883,'global.cancel':0.2106,'global.click':0.3788,'global.cloak':0.9758,'global.coin':0.267,'global.deliver':0.2172,'global.done':0.7384,'global.era':0.6988,'global.err':0.1385,'global.heal':0.8739,'global.hero':0.6309,'global.heroFall':0.8609,'global.heroRevive':0.5784,'global.level':0.5062,'global.lose':1.2714,'global.melee':1.0984,'global.mine':0.3226,'global.place':0.4759,'global.research':0.2808,'global.rocket':0.8638,'global.select':0.2261,'global.shell':0.5201,'global.shoot':0.267,'global.siege':0.5601,'global.stim':0.7065,'global.supply':0.2209,'global.tab':0.262,'global.toast':0.2398,'global.trade':0.4476,'global.train':0.266,'global.win':0.8831};
+const TRIM={'global.acid':0.2956,'global.ack':0.2881,'global.alert':0.6082,'global.alertBase':0.4913,'global.bolt':0.3993,'global.boom':0.7008,'global.boomBig':0.883,'global.cancel':0.2106,'global.click':0.3788,'global.cloak':0.9758,'global.coin':0.267,'global.deliver':0.2172,'global.done':0.7384,'global.era':0.6988,'global.err':0.1385,'global.heal':0.8739,'global.hero':0.6309,'global.heroFall':0.8609,'global.heroRevive':0.5784,'global.level':0.5062,'global.lose':1.2714,'global.melee':1.0984,'global.mine':0.3226,'global.place':0.4759,'global.research':0.2808,'global.rocket':0.8638,'global.select':0.2261,'global.shell':0.5201,'global.shoot':0.267,'global.siege':0.5601,'global.stim':0.7065,'global.supply':0.2209,'global.tab':0.262,'global.toast':0.2398,'global.trade':0.4476,'global.train':0.266,'global.win':0.8831};
 for(const id in G0){const d=G0[id];registerVoice('global.'+id,d,{fallback:true,gain:(d.gain||1)*(TRIM['global.'+id]||1)});}
-for(const id in CI){const d=CI[id];registerVoice('cine.'+id,d,{cls:'cine',fallback:true,gain:TRIM['cine.'+id]||1});}
 })();
 
-return{init:audioInit,applyVolumes,toggleMute,sfx,sfxUnit,sfxBuilding,cineSfx,registerVoice,registerRenderer,audioVoices,audioRender,audioStats,audioPlay,audioDuck,audioBus,audioA,audioDelay,
-  audioOffline:renderOffline,audioMixdown,audioRoom,voiceDucks,audioDuckVoice,logReset,audioAnalyse,audioHash,audioClasses,audioOnReady,audioLegacyScore,audioMeter,tone,noiseBurst,mkVoice,VOICES,RENDERERS,resolve,calcPos,CLS,PRIO,hz,S};
+return{init:audioInit,applyVolumes,toggleMute,sfx,sfxUnit,sfxBuilding,registerVoice,registerRenderer,audioVoices,audioRender,audioStats,audioPlay,audioDuck,audioBus,audioA,audioDelay,
+  audioOffline:renderOffline,audioMixdown,audioRoom,logReset,audioAnalyse,audioHash,audioClasses,audioOnReady,audioLegacyScore,audioMeter,tone,noiseBurst,mkVoice,VOICES,RENDERERS,resolve,calcPos,CLS,PRIO,hz,S};
 })();
-function audioInit(){AUDIO.init();}
-function applyVolumes(){AUDIO.applyVolumes();}
-function toggleMute(){return AUDIO.toggleMute();}
-function sfx(name,x,y,who){return AUDIO.sfx(name,x,y,who);}
-function sfxUnit(type,ev,x,y,faction){return AUDIO.sfxUnit(type,ev,x,y,faction);}
-function sfxBuilding(type,ev,x,y,faction){return AUDIO.sfxBuilding(type,ev,x,y,faction);}
-function cineSfx(name){return AUDIO.cineSfx(name);}
+/* v5 robustness: audio can never break gameplay.  Every entry point the game calls (the sim calls sfx() from inside step()) catches whatever the Web Audio graph throws,
+   counts it (AUD.counters.errors, AUD.lastError) and returns a harmless value.  tests/e2e/e2e_robust_audio.py injects a missing / throwing AudioContext and throwing nodes. */
+function audioFault(e){try{AUD.lastError=String(e&&e.message||e);AUD.counters.errors++;}catch(_){}return false;}
+function audioInit(){try{AUDIO.init();}catch(e){audioFault(e);}}
+function applyVolumes(){try{AUDIO.applyVolumes();}catch(e){audioFault(e);}}
+function toggleMute(){try{return AUDIO.toggleMute();}catch(e){audioFault(e);return muted;}}
+function sfx(name,x,y,who){try{return AUDIO.sfx(name,x,y,who);}catch(e){return audioFault(e);}}
+function sfxUnit(type,ev,x,y,faction){try{return AUDIO.sfxUnit(type,ev,x,y,faction);}catch(e){return audioFault(e);}}
+function sfxBuilding(type,ev,x,y,faction){try{return AUDIO.sfxBuilding(type,ev,x,y,faction);}catch(e){return audioFault(e);}}
 function registerVoice(id,def,meta){return AUDIO.registerVoice(id,def,meta);}
 function registerRenderer(kind,fn){AUDIO.registerRenderer(kind,fn);}
 function audioVoices(opt){return AUDIO.audioVoices(opt);}
 function audioRender(spec,seconds,sr){return AUDIO.audioRender(spec,seconds,sr);}
 function audioStats(){return AUDIO.audioStats();}
-function audioPlay(what,opt){return AUDIO.audioPlay(what,opt);}
-function audioDuck(bus,amount,ms){AUDIO.audioDuck(bus,amount,ms);}
+function audioPlay(what,opt){try{return AUDIO.audioPlay(what,opt);}catch(e){return audioFault(e);}}
+function audioDuck(bus,amount,ms){try{AUDIO.audioDuck(bus,amount,ms);}catch(e){audioFault(e);}}
 function audioBus(name){return AUDIO.audioBus(name);}
 function audioA(name){return AUDIO.audioA(name);}
 function audioDelay(bus,time,fb){AUDIO.audioDelay(bus,time,fb);}
 function audioOffline(seconds,sr,build,opt){return AUDIO.audioOffline(seconds,sr,build,opt);}
 function audioMixdown(tracks,seconds,sr,opt){return AUDIO.audioMixdown(tracks,seconds,sr,opt);}
 function audioRoom(name){return AUDIO.audioRoom(name);}
-function audioDuckVoice(ms){AUDIO.audioDuckVoice(ms);}
 function audioAnalyse(ch,sr){return AUDIO.audioAnalyse(ch,sr);}
 function audioHash(ch,exact){return AUDIO.audioHash(ch,exact);}
 function audioClasses(){return AUDIO.audioClasses();}
 function audioOnReady(fn){AUDIO.audioOnReady(fn);}
 function audioLegacyScore(on){AUDIO.audioLegacyScore(on);}
-function audioMeter(){return AUDIO.audioMeter();}
-function tone(f,d,type,v,slide,delay,pan){AUDIO.tone(f,d,type,v,slide,delay,pan);}
-function noiseBurst(d,v,f0,pan,type){AUDIO.noiseBurst(d,v,f0,pan,type);}
+function audioMeter(){try{return AUDIO.audioMeter();}catch(e){audioFault(e);return{peak:0,rms:0};}}
+function tone(f,d,type,v,slide,delay,pan){try{AUDIO.tone(f,d,type,v,slide,delay,pan);}catch(e){audioFault(e);}}
+function noiseBurst(d,v,f0,pan,type){try{AUDIO.noiseBurst(d,v,f0,pan,type);}catch(e){audioFault(e);}}
 Object.defineProperty(AUD,'ctx',{get(){return AC;}});
-Object.assign(AUD,{sfx,sfxUnit,sfxBuilding,cineSfx,init:audioInit,mute:toggleMute,stats:audioStats,registerVoice,registerRenderer,voices:audioVoices,render:audioRender,play:audioPlay,duck:audioDuck,analyse:audioAnalyse,hash:audioHash,
-  offline:audioOffline,mixdown:audioMixdown,room:audioRoom,voiceDucks:AUDIO.voiceDucks,duckVoice:audioDuckVoice,classes:audioClasses,KIT,resolve:AUDIO.resolve,calcPos:AUDIO.calcPos,meter:audioMeter,say,tone,noiseBurst,audioA,bus:audioBus,delay:audioDelay,onReady:audioOnReady,legacyScore:audioLegacyScore,
+Object.assign(AUD,{sfx,sfxUnit,sfxBuilding,init:audioInit,mute:toggleMute,stats:audioStats,registerVoice,registerRenderer,voices:audioVoices,render:audioRender,play:audioPlay,duck:audioDuck,analyse:audioAnalyse,hash:audioHash,
+  offline:audioOffline,mixdown:audioMixdown,room:audioRoom,classes:audioClasses,KIT,resolve:AUDIO.resolve,calcPos:AUDIO.calcPos,meter:audioMeter,tone,noiseBurst,audioA,bus:audioBus,delay:audioDelay,onReady:audioOnReady,legacyScore:audioLegacyScore,
   reset(all){const c=AUD.counters;for(const k in c)c[k]=0;AUDIO.logReset();AUD.peakNodes=AUDIO.S.nodes;AUD.lastError='';if(all)for(const v of AUDIO.VOICES.values()){v.last=-1e9;v.pend=0;v.n=0;v.bad=0;v.mute=false;}}});

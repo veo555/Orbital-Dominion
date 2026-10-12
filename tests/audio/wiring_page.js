@@ -1,9 +1,9 @@
 /* =========================================================================
    tests/audio/wiring_page.js — the in-page half of tests/e2e/e2e_audio_wiring.py.
    Runs inside an INSTRUMENTED copy of the build (the Python half patches the copy, never the source):
-     window.__WL   every call of musicPlay / musicStop / musicScene / musicStinger / musicDuck / musicMood / speak / speakStop:  {f, a:[args], t}
+     window.__WL   every call of musicPlay / musicStop / musicScene / musicStinger / musicDuck / musicMood / :  {f, a:[args], t}
      window.__EV   (s)=>eval(s): reads any name inside the game's closure (kill, castSkill, setOrder, campDo, ...)
-     __RTS.AUD.log every call of sfx / sfxUnit / sfxBuilding / cineSfx (engine ring buffer): {name, voice, who, faction, x, y, r}
+     __RTS.AUD.log every call of sfx / sfxUnit / sfxBuilding (engine ring buffer): {name, voice, who, faction, x, y, r}
    Each scenario drives the REAL game code (the match loop, the command functions, the campaign runtime, the dispatch card), then reports what reached the audio functions.
    Scenarios never assert; they return plain observations and the Python half judges them (so the same observations can be judged on a deliberately mis-wired build).
    ========================================================================= */
@@ -158,7 +158,7 @@ OW.title=async function(){
   clear();try{R.toMenu();}catch(e){}await sleep(900);
   return{calls:wl('musicPlay','musicScene','musicStinger').map(e=>({f:e.f,cue:e.a[0]&&(e.a[0].cue||e.a[0])}))};
 };
-/* ------------------------------------------------------------------ campaign: a mission's mood / radio actions reach music and speech */
+/* ------------------------------------------------------------------ campaign: a mission's mood / radio actions reach the music; the radio line shows silently */
 OW.campaign=async function(fx){
   const o={};
   Object.assign(R.STORY.characters,fx.characters||{});Object.assign(R.STORY.radio||(R.STORY.radio={}),fx.radio||{});
@@ -170,7 +170,8 @@ OW.campaign=async function(fx){
   await sleep(500);o.mood=wl('musicMood','musicScene','musicPlay').map(e=>({f:e.f,a:e.a}));
   clear();
   try{EV('campDo')(['radio',rid]);}catch(e){o.radioError=String(e);}
-  await sleep(700);o.radio=wl('speak').map(e=>({who:e.a[0],text:e.a[1],opts:e.a[2]}));o.radioExpect={who:rl&&rl.who,text:rl&&rl.text,style:rl&&rl.style};
+  await sleep(700);{const el=document.getElementById('campRadio');o.radio=el&&!el.classList.contains('hidden')?[{who:el.dataset.who,text:document.getElementById('crTxt').textContent}]:[];}
+  o.speechApi=[typeof R.speak!=='undefined',typeof R.AUD.say!=='undefined'];o.radioExpect={who:rl&&rl.who,text:rl&&rl.text,style:rl&&rl.style};
   // a strike's warning goes through sfx
   clear();try{EV('campDo')(['strike',20,20,3,10,2,'alert']);}catch(e){o.strikeError=String(e);}o.strike=sfxLog().map(l=>l.name);
   return o;

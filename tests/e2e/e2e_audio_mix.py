@@ -6,8 +6,8 @@
 
 What is enforced (all numbers come from tests/audio/bs1770.js, an ITU-R BS.1770-4 meter verified against ffmpeg's ebur128 by tests/audio/bs1770_test.js):
   voices  every voice, rendered raw: finite, DC < 0.01, class-mean active level within 3 dB of the class target, per-voice true peak <= -0.2 dBTP (raw voices; the master chain handles the rest)
-  scen    through the shipped master chain 'v4': calm / battle / burst500 (500 calls in 3 s) / voiceOver:  true peak <= -1.0 dBTP, no sample >= 0.999, finite;
-          battle LUFS-I within -30..-14; burst500 at most +6 LU over battle (dense fights do not explode); speech sits >= 6 LU over the ducked background; the music bus is ducked >= 4 dB under speech
+  scen    through the shipped master chain 'v4': calm / battle / burst500 (500 calls in 3 s) / alertOver:  true peak <= -1.0 dBTP, no sample >= 0.999, finite;
+          battle LUFS-I within -30..-14; burst500 at most +6 LU over battle (dense fights do not explode); an alert sits >= -8 LU of the ducked background; the music bus is ducked >= 3 dB under an alert
   duck    the live duck envelope (attack 40 ms, hold, 900 ms release) measured in an offline mixdown: before 1.0, during 0.5, after 1.0
   mutate  a chain without the limiter / without the soft clip (v3) FAILS the true-peak gate on burst500 (the gate can fail); a mixdown without ducks FAILS the duck gate.
 Not tested: how it sounds, a phone's loudspeaker, latency."""
@@ -22,7 +22,7 @@ ap.add_argument('--report', default=''); ap.add_argument('--cues', default=''); 
 ap.add_argument('--chains', default='v4'); ap.add_argument('--chain-json', default='', help='explore: a custom master preset {comp:{..},trim,lim:{..},clip:{..}} measured as chain "x"'); ap.add_argument('--cue-seconds', type=float, default=12)
 ARGS = ap.parse_args()
 fails = []; T0 = time.time(); REPORT = {}
-CLASS_DB = {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'voice': -20, 'alert': -17, 'cine': -18, 'music': -20, 'amb': -30}
+CLASS_DB = {'ui': -26, 'fire': -22, 'impact': -18, 'boom': -14, 'alert': -17, 'music': -20, 'amb': -30}
 
 
 def ok(c, m):
@@ -107,10 +107,10 @@ with sync_playwright() as p:
             ok(s['tpDb'] <= -1.0, 'v4 %s: true peak %s dBTP <= -1.0' % (k, f(s['tpDb'], 2)))
         ok(-30 <= S['battle']['lufsI'] <= -14, 'v4 battle programme loudness %s LUFS in -30..-14' % f(S['battle']['lufsI']))
         ok(S['burst500']['lufsS'] - S['battle']['lufsS'] <= 6.0, 'v4 burst500 short-term loudness %s LU over battle (<= 6)' % f(S['burst500']['lufsS'] - S['battle']['lufsS']))
-        v = S['voiceOver']
-        ok(v['snr'] >= 3.0, 'speech %s LUFS sits %s LU over a dense-fight background (10 shots/s + booms, ducked) %s LUFS (>= 3)' % (f(v['speechLufs']), f(v['snr']), f(v['bgUnderSpeech'])))
-        ok(v['snrMusic'] >= 9.0, 'speech sits %s LU over the ducked music alone (>= 9)' % f(v['snrMusic']))
-        ok(v['duckDb'] <= -8.0, 'music is ducked %s dB under speech (<= -8)' % f(v['duckDb']))
+        v = S['alertOver']
+        ok(v['snr'] >= -8.0, 'an alert (%s LUFS) is not buried by a dense-fight background (10 shots/s + booms, music ducked) %s LUFS: %s LU over it (>= -8)' % (f(v['alertLufs']), f(v['bgUnderAlert']), f(v['snr'])))
+        ok(v['snrMusic'] >= 3.0, 'the alert sits %s LU over the ducked music alone (>= 3)' % f(v['snrMusic']))
+        ok(v['duckDb'] <= -3.0, 'music is ducked %s dB under an alert (<= -3; CLS.alert.duck 0.35 = -3.7 dB)' % f(v['duckDb']))
         if 'v3' in SC:
             ok(SC['v3']['burst500']['tpDb'] > -1.0 or SC['v3']['burst500']['clipped'] > 0, 'MUTATION: the v3 chain (no limiter, 0.97 ceiling) FAILS the v4 true-peak/clipping gate on burst500 (TP %s dBTP, %d clipped)' % (f(SC['v3']['burst500']['tpDb'], 2), SC['v3']['burst500']['clipped']))
 

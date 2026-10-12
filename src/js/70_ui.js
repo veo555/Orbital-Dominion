@@ -14,17 +14,16 @@ function onStepEnd(){
   if(ui.pings.length&&G.time-ui.pings[0].t>ui.pings[0].dur)ui.pings.shift();
   if(G.time-ui.lastInc>=1){ui.lastInc=G.time;const T=G.teams[0];ui.inc.push({t:G.time,c:T.minedC+T.taxEarn+T.tradeEarn,e:T.minedE});if(ui.inc.length>40)ui.inc.shift();}
 }
-function onGameOver(res){platMatchStop();if(typeof resumeClear==='function')resumeClear();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});say(res==='victory'?'Victory':'Defeat');}
+function onGameOver(res){platMatchStop();if(typeof resumeClear==='function')resumeClear();ui.endAt=performance.now()+2300;ui.endRes=res;sfx(res==='victory'?'win':'lose',undefined,undefined,{faction:G.teams[0].faction});}
 function incomeRates(){
   const a=ui.inc;if(a.length<3)return{c:0,e:0};const f=a[0],l=a[a.length-1],dt=Math.max(1,l.t-f.t);
   return{c:(l.c-f.c)/dt*60,e:(l.e-f.e)/dt*60};
 }
-/* toast + speech */
+/* toast */
 const toastEl=()=>$('toast');
 function toast(t,cls){
   const host=toastEl();if(!host||ui.demo)return;const el=document.createElement('div');el.className='tmsg'+(cls?' '+cls:'');el.textContent=t;host.appendChild(el);
   while(host.children.length>4)host.removeChild(host.firstChild);setTimeout(()=>{if(el.remove)el.remove();},3600);
-  if(cls==='bad'){if(/Not enough crystals/.test(t))say('Not enough crystals');else if(/Not enough ether/.test(t))say('Not enough ether');else if(/Generators/.test(t))say('Supply blocked');else if(/Requires/.test(t)&&/Era/.test(t))say('New era required');}
 }
 
 /* ----------------------------- selection -------------------------------- */
