@@ -3,6 +3,10 @@
 Purpose: so the next engineer knows exactly what was verified, how, and what was **not**. "Perfect" is not a state a
 game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship".
 
+## 00. v6.0 (16 Oct 2026): merged FORTIFY + ARSENAL
+
+Full `bash tests/run_all.sh` on the merged tree: ALL GATES PASSED (includes sim smoke, fortify 100+ checks with mutants, arsenal 116 checks, e2e fortify/arsenal, touch, platform, PWA, audio). Two merge-induced test expectations were corrected (campaign Airfield list now includes a locked Dropship; fortify tests run with the arsenal off to keep v5 units). Not verified: balance of the new units beyond the duel simulator and `fortify_ab.js`; any real device; sound heard by a person; grounding judged by screenshots only.
+
 ## 0. Added in 4.0 (read first; the sections below describe 3.x and are kept for history)
 
 * **Never run by a human**: the new opponent AI (bot-vs-bot Elo only), the new audio chain (offline measurements only), the new lighting/shadows (Chromium software raster only), the Material 3 layer (Chromium emulation only), the dispatch cards.

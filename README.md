@@ -1,4 +1,4 @@
-# Orbital Dominion v5 — project handoff package
+# Orbital Dominion v6 — project handoff package
 
 A real-time strategy game (three factions, three eras, fog of war, heroes, a Caesar-style colony economy, a
 Patrizier-style market) with a **swarm-agent layer**: every unit can be an autonomous agent with a role, a wallet and
@@ -11,6 +11,14 @@ offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) f
 
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
+
+## 0000a. What changed in 6.0 (Oct 2026): grounded sprites, FORTIFY, ARSENAL
+
+* **Grounding fix** (`54_light.js`): every unit, building and crystal now has a contact shadow at its base, and the cast shadow starts at the base instead of 0.6 shadow-lengths away, which is what made 5.0 look as if everything floated. Checked by screenshots (desktop/phone), not by a numeric test.
+* **FORTIFY** (below, `docs/DESIGN_FORTIFY.md`): wall lines, gates, bunkers, towers, mines, detection, dropships, map rocks.
+* **ARSENAL** (below, `docs/DESIGN_ARSENAL.md`): 11 units, abilities, tech tiers, damage types.
+* Both tracks are **locked in campaign missions** (campaign behaves as 5.0) and available in skirmish. The two tracks share one detection helper (`detectorsCover` in `33_abilities.js`; `isDetectedBy` in `31_defense.js` wraps it).
+* Evidence: full `bash tests/run_all.sh` on the merged tree (see `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` §v6). Honest limits: no balance A/B of the new units over >=24 seeds beyond what `fortify_ab.js` / the duel simulator report; nothing run on a real phone.
 
 ## v6-G1 FORTIFY (Oct 2026): walls, gates, bunkers, detection, map features
 Haulers get a **Defence** page (D): Walls drawn as a line (drag, or two taps on touch; built segment by segment), team-aware **Gates** (auto / open / closed), **Bunkers** (4 infantry, +1 tile range, salvage), **Cannon Tower** (ground), **Anti-Air Battery** (air), **Sensor Tower** (radar blips), **Repair Battery**, cloaked **Proximity Mines**; Hubs gain a **Scanner Sweep** and a one-way **Fortress** upgrade; the Airfield builds a **Dropship** (8-slot transport). Walled-in targets are breached (no unit freezes), you cannot wall yourself in, skirmish maps can get neutral rock formations and a rich crystal field, the skirmish AI builds Bunkers / Repair Batteries under pressure and (Hard/Master) walls its ramp against rushes. Campaign missions lock all of it and are unchanged. Design, numbers and test evidence: `docs/DESIGN_FORTIFY.md`; tests `tests/sim/fortify.js` (`--mutants`), `tests/e2e/e2e_fortify.py`.

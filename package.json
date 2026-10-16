@@ -1,6 +1,6 @@
 {
   "name": "orbital-dominion",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "private": true,
   "description": "Orbital Dominion v4 - single-file HTML5 real-time strategy game with a swarm-agent economy. Source tree, build, tests.",
   "scripts": {
