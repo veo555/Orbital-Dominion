@@ -62,17 +62,19 @@ function argmaxIdx(a,score){let b=-1,bs=-1e18;for(let i=0;i<a.length;i++){const 
    stack fields: {type,n,hp,armor,parm,tags,fly,air,ground,dmg,bon,cd,range,speed,splash,heal,static}                         */
 function cmbStackOf(type,n,o){
   o=o||{};const d=UDEF[type]||BDEF[type],wl=o.wl||0,al=o.al||0,isB=!UDEF[type];
-  let hp=o.hp!==undefined?o.hp:(d.hp*(isB&&o.meridian?1.2:1)),dmg=d.dmg||0,cd=d.cd||1,range=d.range||0,splash=d.splash||0,bon=d.bon||{};
-  if(o.sieged&&d.siege){dmg=d.siege.dmg;cd=d.siege.cd;range=d.siege.range;splash=d.siege.splash;bon=d.siege.bon||bon;}
+  let hp=o.hp!==undefined?o.hp:(d.hp*(isB&&o.meridian?1.2:1)),dmg=d.dmg||0,cd=d.cd||1,range=d.range||0,splash=d.splash||0,bon=d.bon||{},dt=d.dt||null;
+  if(o.sieged&&d.siege){dmg=d.siege.dmg;cd=d.siege.cd;range=d.siege.range;splash=d.siege.splash;bon=d.siege.bon||bon;dt=d.siege.dt||dt;}
   if(d.hero){const L=o.lvl||1;hp=o.hp!==undefined?o.hp:Math.round(d.hp*(1+0.14*(L-1)));dmg*=1+0.10*(L-1);}
   if(isB&&type==='hub')dmg+=3*(o.garr||0);
   return{type,n,hp:Math.max(1,hp),armor:(d.armor||0)+(isB?0:al)+(d.hero?Math.floor(((o.lvl||1)-1)/2):0),parm:d.projArmor||0,tags:d.tags||{},fly:!!d.flying,
-    air:!!d.air,ground:d.ground!==false,dmg:dmg*(1+0.15*wl),bon,cd,range,speed:d.speed||0,splash,ranged:!!(d.proj),heal:d.heal?14:0,static:isB,noW:!dmg,cloak:!!d.cloak,detect:!!d.detect,ls:d.lifesteal||0};
+    air:!!d.air,ground:d.ground!==false,dmg:dmg*(1+0.15*wl),bon,cd,range,speed:d.speed||0,splash,ranged:!!(d.proj),heal:d.heal?14:0,static:isB,noW:!dmg,cloak:!!d.cloak,detect:!!d.detect,ls:d.lifesteal||0,dt,pen:d.pen||0,aas:!!d.aaSplash,
+    cls:isB?'struct':d.tags.massive?'massive':d.flying?'air':d.tags.armored?'armored':'light'};   // v6: damage type, armor penetration, armor class (06_content_units.js)
 }
 function cmbDmg(s,t){ // damage per shot of stack s against one unit of stack t (dmgVs in 20_sim.js)
   if(s.noW)return 0;if(t.fly?!s.air:!s.ground)return 0;
   let a=s.dmg;for(const k in s.bon)if(t.tags[k])a+=s.bon[k];
-  return Math.max(1,a-t.armor-(s.ranged?t.parm:0));
+  if(s.dt&&s.dt!=='kin')a*=DMGX[s.dt][t.cls];
+  return Math.max(1,a-Math.max(0,t.armor+(s.ranged?t.parm:0)-(s.pen||0)));
 }
 /* Heterogeneous Lanchester square-law ODE ("aimed fire"): each stack s of side X splits its fire over the enemy stacks it can hit,
    in proportion to their remaining numbers; target stack t loses  dH_t/dt = - sum_s n_s(t) * cmbDmg(s,t)/cd_s * share_{s,t} * splashMul.
@@ -97,13 +99,13 @@ function cmbSimulate(A,B,opts){
   const healPool=[0,0];for(const x of a)if(x.s.heal)healPool[0]+=300*x.s.n;for(const x of b)if(x.s.heal)healPool[1]+=300*x.s.n;
   let t=0;const dA=new Float64Array(a.length),dB=new Float64Array(b.length);
   const fire=(X,Y,M,dY,dX)=>{
-    let ng=0;for(const y of Y)if(y.H>0&&!y.s.fly&&!y.s.static)ng+=y.H/y.s.hp;   // ground units that a splash can catch
+    let ng=0,na=0;for(const y of Y)if(y.H>0&&!y.s.static){if(y.s.fly)na+=y.H/y.s.hp;else ng+=y.H/y.s.hp;}   // ground units that a shell can catch / aircraft that a flak burst can catch
     for(let i=0;i<X.length;i++){const x=X[i];if(x.H<=0||t<x.t0)continue;const row=M[i],nx=x.H/x.s.hp;
       let wsum=0;for(let j=0;j<Y.length;j++)if(row[j]>0&&Y[j].H>0)wsum+=Y[j].H/Y[j].s.hp;
       if(wsum<=0)continue;const k=nx*dt/wsum;
       for(let j=0;j<Y.length;j++){const y=Y[j];if(row[j]<=0||y.H<=0)continue;const ny=y.H/y.s.hp;
         // splash: a blob of units ~24 px apart puts about pi R^2 / 576 units in the blast; half of that is in the front of the blob
-        const spl=x.s.splash&&!y.s.fly&&!y.s.static?Math.max(1,Math.min(ng,1+0.5*Math.PI*x.s.splash*x.s.splash/576)):1;
+        const spl=x.s.splash&&!y.s.static&&!!y.s.fly===!!x.s.aas?Math.max(1,Math.min(x.s.aas?na:ng,1+0.5*Math.PI*x.s.splash*x.s.splash/576)):1;
         const dd=k*ny*row[j]*spl;dY[j]+=dd;if(x.s.ls)dX[i]-=x.s.ls*Math.min(dd,y.H);}}};   // lifesteal heals the attacker
   const heal=(X,dX,k)=>{if(healPool[k]<=0)return;let rate=0;for(const x of X)if(x.s.heal&&x.H>0)rate+=x.s.heal*(x.H/x.s.hp)*dt;if(rate<=0)return;
     let need=0;for(let i=0;i<X.length;i++)if(X[i].s.tags.bio&&X[i].H>0)need+=dX[i];if(need<=0)return;const h=Math.min(rate,need,healPool[k]);healPool[k]-=h;

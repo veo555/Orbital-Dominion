@@ -55,6 +55,8 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `30_systems.js` | Per-tick systems: unit/building update, skills (`castSkill`), gather/build/repair/trade steps, economy (tax/morale/market), `step()`, `endGame` | yes |
 | `31_defense.js` | v6-G1 sim: team views of the blocked grid (`G.bt`/`G.compT`, gates open for their owner), breach rule (`fortSealed`, `fortBreachSearch`), self-seal rule, wall lines (`fortPlaceLine`), mines, Repair Battery, Fortress, Scanner Sweep, `isDetectedBy`, Sensor radar, rocks + rich field (`fortMapFeatures`, only with `newGame({mapFx:true})`) | yes |
 | `32_cargo.js` | v6-G1 generic cargo (Bunker, Dropship): `host.cargo` ids / `unit.inside`, load / unload / pickup orders, fire from inside, host-death rules | yes |
+| `06_content_units.js` | **v6 ARSENAL data**: 11 new units, Lab + Siege Works, tier lines (`TECH`), damage-type matrix `DMGX`, armor classes; extends `UDEF/BDEF/TECH/BUILD_PAGES` (entries carry `arsenal:true`) | yes (data) |
+| `33_abilities.js` | **v6 ARSENAL rules**: generic unit abilities (`ABIL`, `abUse`, `abilTick`, autocast, orders `abil`), shields + structure barrier, Pulse Scan / Lance / Barrage zones, `detectorsCover`, per-team arsenal switch (`arsOff`: campaign lock and the "v5 AI snapshot"), faction availability (`arsenalProd`) — `docs/DESIGN_ARSENAL.md` | yes |
 | `40_ai.js` | The **legacy v3 opponent** (`makeAIV3`, `aiThinkV3`, `aiBuild`, `findSpot`, expansions, hero spells): wave AI that reads hidden state; drives **campaign missions** (balanced against it) and is the league anchor | yes |
 | `41_ai_lib.js` | **T2 opponent maths** (pure functions): Bayesian occupancy update, hazard prior, mass-conserving diffusion, pheromone step, Lanchester ODE + closed-form combat predictor, Ideal Free Distribution, value-function evaluation, boids / arc / potential-field geometry (`docs/AI_DESIGN.md`) | yes |
 | `41_ai_params.js` | **Generated** by `tools/league/export_params.js`: theta per difficulty tier, faction-style priors, value-function weights, combat link constants | yes |
@@ -72,6 +74,7 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `70_ui.js` | Selection, control groups, orders, command card (`buildCommands`, `runCmd`), toasts | no |
 | `71_hud.js` | HUD/panels (`hudUpdate`, info card, objectives, economy panel, tooltips) | no |
 | `72_menus.js` | Menus, help text (`HELP_HTML`), end screen + chart | no |
+| `72_arsenal_ui.js`, `72_arsenal_help.js`, `58_recipes_arsenal.js`, `81_sfx_arsenal.js` | v6 ARSENAL presentation: ability buttons + autocast switch + target mode + info-card lines + glyphs + shield/zone/shot drawing; the generated How-to-play sections; the mesh recipes of the new units/structures; 13 `skill.*` voices (TRIM calibrated by `tests/audio/arsenal_gate.py`) | no |
 | `73_swarm_ui.js` | Swarm panel: tabs `ov` (Overseer), `ro` (Roster), `mk` (Market), `lg` (Ledger); command box; role assignment; world overlays (agent badges) | no |
 | `74_touch.js` | Pointer-Events touch layer: gestures, minimap, long-press help, touch dock, placement bar (`docs/TOUCH_SPEC.md`) | no |
 | `75_platform.js` | Lifecycle (auto-pause, wake-lock, Back), fullscreen, install helpers, service-worker registration | no |

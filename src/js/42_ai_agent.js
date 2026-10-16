@@ -19,8 +19,10 @@ const THETA_SPEC=[ // name, lo, hi  (theta is searched in the unit cube; decode 
   ['harass',0,1],['scout',0,1],['turret',0,1],['creep',0,1],['vW',0,2],['bank',0,1],['trade',0,1],['tech',0,1],['prior',0.6,1.4]];
 const THETA_N=THETA_SPEC.length;
 const AI_CLS={rifleman:'light',specter:'light',raptor:'melee',reaver:'melee',rocketeer:'anti',juggernaut:'heavy',bulwark:'heavy',titan:'heavy',howitzer:'art',skiff:'air',mender:'sup'};
-const AI_CLASSES=['light','melee','anti','heavy','art','air','sup'];
-const AI_CKEY={light:'cLight',melee:'cMelee',anti:'cAnti',heavy:'cHeavy',art:'cArt',air:'cAir',sup:'cSup'};
+for(const k in UDEF)if(UDEF[k].aiCls&&!AI_CLS[k])AI_CLS[k]=UDEF[k].aiCls;   // v6: the new units carry their class in UDEF (06_content_units.js)
+/* v6 classes without a theta weight of their own (the league's 29-number vector is frozen): aa / cast / det / cap borrow a theta key and are then set by observation rules in aiUnitPick */
+const AI_CLASSES=['light','melee','anti','heavy','art','air','sup','aa','cast','det','cap'];
+const AI_CKEY={light:'cLight',melee:'cMelee',anti:'cAnti',heavy:'cHeavy',art:'cArt',air:'cAir',sup:'cSup',aa:'cAnti',cast:'cSup',det:'cSup',cap:'cHeavy'};
 const AI_RT=[{},{}];                       // per-team transient caches (object lists), rebuilt at the start of every think
 const AI_INV=new Uint8Array(BN),AI_TMP=new Float64Array(BN),AI_TMP2=new Float64Array(BN);
 function reflect01(z){z=((z%2)+2)%2;return z>1?2-z:z;}
@@ -196,7 +198,7 @@ function aiDH(S,E){const det=S.some(s=>s.detect);let dps=0,hp=0,v=0;
   return v>0?[dps/v,hp/v]:[0.187,1.1];}
 /* one side of an abstract state from that team's TRUE state. The AI calls it only for its own team; tools/league/calib_model.js also
    calls it for the opponent (privileged, offline calibration of the model - never inside the AI) */
-const AI_FAST={raptor:1,reaver:1,skiff:1};
+const AI_FAST={raptor:1,reaver:1,skiff:1,jackal:1,phantom:1,interceptor:1};
 function aiPlanSide(s,o,team,th){
   const T=G.teams[team];let hubT=0,prodT=0,eraT=0,upT=0,St=0,tur=0,H=0,sip=0,P=0,W=0,A=0,F=0;
   for(const b of G.buildings){if(b.dead||b.team!==team)continue;St+=aiVal(b.type);
@@ -316,7 +318,7 @@ function aiHarassPlan(ai,R){
   if(H.ids.length&&(now-H.t>75)){H.ids=[];H.tgt=null;}
   const planH=ai.pl&&ai.pl.a===PA_HARASS;                              // the planner may order a raid regardless of theta's harass rule
   if(H.ids.length||ai.mil==='defend'||(planH?now-H.t<30:th.harass<0.3||now<200||now-H.t<60+120*(1-th.harass)))return;
-  const fast=R.army.filter(u=>(u.type==='raptor'||u.type==='reaver'||u.type==='skiff')&&u.hp>u.maxhp*0.8);
+  const fast=R.army.filter(u=>(u.type==='raptor'||u.type==='reaver'||u.type==='skiff'||u.type==='jackal'||u.type==='phantom')&&u.hp>u.maxhp*0.8);
   if(fast.length<(planH?3:4))return;
   let best=null,bs=-1e9;for(const id in ai.mem.b){const r=ai.mem.b[id];if(r.type!=='hub')continue;let thr=0;for(const id2 in ai.mem.b){const q=ai.mem.b[id2];if(q.type==='turret'&&hyp(q.x-r.x,q.y-r.y)<300)thr++;}
     const s=-thr*2-hyp(r.x-G.sites[ai.enemy].cx*TILE,r.y-G.sites[ai.enemy].cy*TILE)/-1500;if(s>bs){bs=s;best=r;}}
@@ -382,11 +384,11 @@ function aiBuild2(ai,type,R){
    off = sum_t share_t * dps(s->t) * cost_t / hp_t   (enemy value destroyed per second by one unit of type s)
    def = sum_t share_t * dps(t->s) / hp_s            (fraction of one s lost per second per enemy unit)
    eff = off / (def * cost_s)                                                                                       */
-function aiCounterEff(recs,list,team){
+function aiCounterEff(recs,list,team,byId){
   const es=aiStacksOf(recs,team);let N=0;for(const t of es)N+=t.n;const eff={};
-  for(const id of list){const c=AI_CLS[id];if(!c)continue;const s=cmbStackOf(id,1,{});let off=0,def=0;
+  for(const id of list){const c=AI_CLS[id];if(!c||UDEF[id].arsenal&&UDEF[id].noWeapon)continue;const s=cmbStackOf(id,1,{});let off=0,def=0;
     for(const t of es){const sh=t.n/N;off+=sh*cmbDmg(s,t)/s.cd*t.cost/t.hp;def+=sh*cmbDmg(t,s)/t.cd/s.hp;}
-    const e=off/(Math.max(0.004,def)*aiVal(id));eff[c]=Math.max(eff[c]||0,e);}
+    const e=off/(Math.max(0.004,def)*aiVal(id));eff[c]=Math.max(eff[c]||0,e);if(byId)byId[id]=e;}
   return eff;
 }
 function aiUnitPick(ai,R,b,spend){
@@ -398,14 +400,25 @@ function aiUnitPick(ai,R,b,spend){
   for(const x of R.prod)for(const q of x.queue)if(q.k==='u'){const c=AI_CLS[q.id];if(c){have[c]+=UDEF[q.id].supply;tot.v+=UDEF[q.id].supply;}}
   const W={};let wsum=0;
   for(const c of AI_CLASSES){W[c]=Math.max(0.02,th[AI_CKEY[c]]);}
-  if(recs.length&&th.counter>0){const eff=aiCounterEff(recs,list,team);let me=0,n=0;for(const c in eff){me+=eff[c];n++;}
+  const effId={};
+  if(recs.length&&th.counter>0){const eff=aiCounterEff(recs,list,team,effId);let me=0,n=0;for(const c in eff){me+=eff[c];n++;}
     if(n){me/=n;for(const c in eff)W[c]*=Math.pow(Math.max(0.05,eff[c]/me),th.counter);}}
   const menders=R.army.filter(u=>u.type==='mender').length,armySup=tot.v;
   if(menders>=Math.max(1,armySup/9))W.sup=0.001;
+  /* v6 observation rules (fog-honest: only what aiEnemyRecs remembers): AA when enemy air was seen, a detector when enemy cloakers were seen, one caster per ~8 supply of army, a capital ship when rich */
+  {let air=0,cl=0,all=0;for(const r of recs){const d=UDEF[r.type];if(!d||d.worker||d.trade)continue;const v=aiVal(r.type);all+=v;if(d.flying)air+=v;if(d.cloak||d.abil&&d.abil.indexOf('cloak')>=0)cl+=v;}
+   const T=G.teams[team];let oth=0;for(const c of['light','melee','anti','heavy','art','air','sup'])oth+=W[c];
+   W.aa=oth*(0.03+Math.min(0.9,all>0?1.1*air/all:0));                                       // enemy air seen: AA share follows the enemy's air share
+   W.det=cl>0&&have.det<2&&menders<1?0.14*oth:0.003*oth;                                    // enemy cloakers seen and no detector of ours: a Watcher first
+   W.cast=armySup>=14&&have.cast/Math.max(1,tot.v)<0.1?0.11*oth:0.003*oth;                  // ~one caster per 10 supply of army
+   W.cap=T.era>=3&&T.c>=650&&T.e>=420&&have.cap<1+(T.c>1800?1:0)*2?0.2*oth:0.003*oth;}      // a capital ship when rich
   for(const c of AI_CLASSES)wsum+=W[c];
+  const effMeanC={};{const cn={};for(const id of list){const c=AI_CLS[id];if(c&&effId[id]){effMeanC[c]=(effMeanC[c]||0)+effId[id];cn[c]=(cn[c]||0)+1;}}for(const c in effMeanC)effMeanC[c]/=cn[c];}
   let best=null,bs=-1e9;
   for(const id of list){const c=AI_CLS[id];if(!c)continue;if(!reqUnit(team,id).ok)continue;const cc=uCost(team,id);if(cc.c>spend.c||cc.e>spend.e)continue;
-    const want=W[c]/wsum,share=tot.v?have[c]/tot.v:0;const s=want-share+airand(ai)*0.02;if(s>bs){bs=s;best=id;}}
+    const want=W[c]/wsum,share=tot.v?have[c]/tot.v:0;let s=want-share+airand(ai)*0.02;
+    if(effId[id]&&UDEF[id].arsenal)s+=0.03*Math.max(-1,Math.min(1,Math.log(effId[id]/(effMeanC[c]||effId[id]))));   // v6: within a class (anti: Rocketeer / Lancer) the better counter to what was seen wins the tie
+    if(s>bs){bs=s;best=id;}}
   return best;
 }
 function aiMacro(ai,R){
@@ -461,6 +474,7 @@ function aiMacro(ai,R){
   const geys=G.res.filter(r=>!r.dead&&r.type==='geyser'&&R.hubs.some(h=>hyp(h.x-r.x,h.y-r.y)<520)).length;
   const sipWant=Math.min(geys,Math.max(1,Math.round((T.era>=2?2:1.5)*nb*(0.7+0.5*(th.cAnti+th.cHeavy+th.cAir+th.cArt)/2)))+(T.e<120&&T.c>500?1:0));
   const etherShort=T.c>1200&&T.e<200;                                  // floating crystals: the Exchange turns them into ether
+  const ars=arsenalOn(team),labNeed=ars&&(T.faction!=='obsidian'||th.tech>0.6);   // v6: Meridian / Aurora want their caster early; Obsidian only when it techs
   const seq=[
     ['garrison',cnt('garrison')<1&&(workers.length>=8||now>50),1],
     ['siphon',cnt('garrison')>=1&&cnt('siphon')<1,1],
@@ -470,6 +484,8 @@ function aiMacro(ai,R){
     ['siphon',cnt('siphon')<sipWant&&doneN('garrison')>0,0],
     ['foundry',T.era>=2&&doneN('armory')>0&&cnt('foundry')<(th.cHeavy+th.cArt>0.6||now>620?Math.min(2,1+(T.c>1500?1:0)):0),1],
     ['airfield',ai.P.air&&T.era>=2&&doneN('armory')>0&&cnt('airfield')<(th.cAir>0.35?1+(T.c>1500?1:0):0),1],
+    ['lab',ars&&T.era>=2&&doneN('armory')>0&&cnt('lab')<1&&(now>th.era2+150||T.era>=3||labNeed)&&!threatened,0],                    // v6: casters, Barrier Field, Dreadnought
+    ['siegeworks',ars&&T.faction==='meridian'&&T.era>=2&&doneN('foundry')>0&&cnt('siegeworks')<(th.cArt>0.3||th.cHeavy>0.5?1:0)&&now>420&&!threatened,0],
     ['exchange',T.era>=2&&cnt('exchange')<1&&(th.trade>0.45||etherShort||now>720&&T.c>1200),0],
     ['depot',cnt('depot')<1&&(hubs.length>=2||th.tech>0.6)&&now>200,0],
     ['turret',doneN('garrison')>0&&cnt('turret')<Math.round(th.turret*2.6*nb)+(PA===PA_DEFEND?nb:0)&&now>150,PA===PA_DEFEND?1:0],
@@ -487,7 +503,12 @@ function aiMacro(ai,R){
     if(b.type==='armory'){const ids=T.wl<=T.al?['weapons','armor','stims']:['armor','weapons','stims'];
       for(const id of ids){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(id==='stims'&&!R.army.some(u=>u.def.stim))continue;
         if(canSpend({c:L.c+(PA===PA_TECH?0:Math.round(250*(1-th.tech))),e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}
-    else if(b.type==='depot'){for(const id of['mining','cargo','compress']){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(canSpend({c:L.c+100,e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}}
+    else if(b.type==='depot'){for(const id of['mining','cargo','compress']){const L=techNext(T,id);if(!L||T.era<L.era)continue;if(canSpend({c:L.c+100,e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}
+    else if(b.type==='lab'||b.type==='siegeworks'||b.type==='foundry'){   // v6 lines: only what this army can use
+      const own=u=>R.army.some(x=>x.def.abil&&x.def.abil.indexOf(u)>=0);
+      const ids=b.type==='lab'?['barrier',own('cloak')?'cloakcell':'',R.army.some(x=>x.def.energy&&!x.def.heal)?'reactor':'']:['optics'];
+      for(const id of ids){if(!id||!TECH[id]||TECH[id].arsenal&&!ars)continue;if(id==='optics'&&!own('siege'))continue;const L=techNext(T,id);if(!L||T.era<L.era)continue;
+        if(canSpend({c:L.c+Math.round(250*(1-th.tech)),e:L.e})&&aiAct(ai)&&queueResearch(b,id))break;}}}
   // 7. trade: freighters and the market
   const ex=B.find(b=>b.type==='exchange'&&b.done);
   if(ex){const fr=R.U.filter(u=>u.def.trade),frQ=ex.queue.filter(q=>q.id==='freighter').length,wantF=Math.round(th.trade*5);
@@ -552,7 +573,7 @@ function aiScout(ai,R){
   const period=35+170*(1-th.scout);
   if(!u){
     if(now<60+70*(1-th.scout)||now-S.last<period||ai.mil==='defend')return;
-    const cands=R.army.filter(x=>(x.type==='raptor'||x.type==='skiff'||x.type==='reaver'||x.type==='rifleman')&&!ai.har.ids.includes(x.id)&&x.hp>x.maxhp*0.7);
+    const cands=R.army.filter(x=>(x.type==='raptor'||x.type==='skiff'||x.type==='reaver'||x.type==='rifleman'||x.type==='jackal'||x.type==='interceptor')&&!ai.har.ids.includes(x.id)&&x.hp>x.maxhp*0.7);
     cands.sort((a,b)=>b.def.speed-a.def.speed);
     u=cands[0]||(now<420&&R.workers.length>9?R.workers.find(w=>w.order.t==='gather'&&w.carry===0):null);
     if(!u)return;S.id=u.id;S.t=now;S.tgt=-1;}
@@ -598,7 +619,10 @@ function aiKite(ai,R,mine,enemies,home){ // stutter step: ranged units step back
   if(aiOrder(ai,K,{t:'move',x:c.x+dir.x*75,y:c.y+dir.y*75})){ai.st.kite++;return 1;}return 0;
 }
 function aiSiege(ai,R,army){
-  for(const u of army){if(u.type!=='howitzer')continue;
+  for(const u of army){
+    if(u.def.siege&&u.type!=='howitzer'){   // v6 siege units (Sunderer): the shared deploy / fold rule of the ability table (minimum range aware)
+      if(u.siegeT>0||u.garr)continue;const w=ABIL.siege.want(u);if((w===true&&!u.sieged||w===false&&u.sieged)&&aiAct(ai))toggleSiege(u);continue;}
+    if(u.type!=='howitzer')continue;
     let nd=1e9;for(const e of R.en){if(e.flying)continue;const d=hyp(e.x-u.x,e.y-u.y);if(d<nd)nd=d;}
     for(const b of R.enB){const d=rectDist(u.x,u.y,b);if(d<nd)nd=d;}
     if(!u.sieged&&nd>195&&nd<=335&&u.siegeT<=0&&(u.order.t==='idle'||!u.target)){if(aiAct(ai))toggleSiege(u);}
@@ -659,11 +683,14 @@ function aiMarch(ai,units,goal){
 }
 function aiArmy(ai,R){
   const now=G.time,team=ai.team;
-  const all=R.army.filter(u=>u.id!==ai.scout.id&&!u.garr&&!u.inside);
+  const all0=R.army.filter(u=>u.id!==ai.scout.id&&!u.garr&&!u.inside);
+  const all=all0.filter(u=>u.def.aiCls!=='det'),dets=all0.filter(u=>u.def.aiCls==='det');   // v6: detector flyers follow the army instead of marching in front of it
+
   const harIds=ai.har.ids,crewIds=ai.creep?ai.creep.ids:[];
   const har=all.filter(u=>harIds.includes(u.id)),crew=all.filter(u=>crewIds.includes(u.id));
   const rest=all.filter(u=>!harIds.includes(u.id)&&!crewIds.includes(u.id));
   const home=ai.stage||(R.hubs[0]?{x:R.hubs[0].x,y:R.hubs[0].y}:{x:R.B[0].x,y:R.B[0].y});
+  aiAbilities(ai,all);
   aiSiege(ai,R,all);
   if(R.hero)aiHeroCast2(ai,R.hero,R);
   if(ai.mil==='attack'&&ai.tgt){
@@ -687,7 +714,14 @@ function aiArmy(ai,R){
     const thr=R.en.filter(e=>!e.def.worker&&hyp(e.x-h.x,e.y-h.y)<420);
     if(thr.length>=4&&aiLocalP(ai,rest.filter(u=>hyp(u.x-h.x,u.y-h.y)<600),thr,[],[h])<0.3){if(aiAct(ai))callToArms(team,h);}}
   aiCrew(ai,R,har,crew,home);
+  if(dets.length){const g=rest.filter(u=>!u.def.noWeapon&&u.def.speed<=130),c=g.length?centroid(g):home,far=dets.filter(u=>hyp(u.x-c.x,u.y-c.y)>110);if(far.length)aiOrder(ai,far,{t:'move',x:c.x-30,y:c.y});}
   if(ai.mil==='hold'&&ai.k%4===1)aiCreepPlan(ai,R,rest);
+}
+/* Hard / Master micro for the unit abilities (33_abilities.js): the deterministic rules live in ABIL[id].want and run as autocast; the AI only flips the switch, once per unit
+   (Easy / Normal keep the spawn defaults: only the cloak toggle is on). Siege is handled by aiSiege (APM-charged). */
+function aiAbilities(ai,army){
+  if(ai.tier!=='hard'&&ai.tier!=='master')return;
+  for(const u of army){if(!u.ab||u.aiAuto)continue;u.aiAuto=1;for(const id in u.ab)if(ABIL[id].autoOK&&id!=='siege')u.ab[id].auto=true;}
 }
 function aiCrew(ai,R,har,crew,home){
   const H=ai.har;

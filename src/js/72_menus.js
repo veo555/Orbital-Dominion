@@ -58,7 +58,7 @@ const HELP_HTML=`
 <h3>The swarm economy</h3><p>Agents carry <b>wallets</b>: they earn a 5% commission on what they deliver and a bounty on kills, pay a fee at the field clinic when wounded, and buy <b>gear</b> (Mk I–III) and skill levels out of their own pocket. Wounded agents head for the Hub on their own; Haulers run for cover when armed enemies close in; nearby agents answer alarms. Wages, commissions and fees appear in the Ledger tab.</p>
 <h3>Marketplace: hiring and jobs</h3><p>The <b>Market</b> tab has two halves. <b>Freelancers</b> offer to join you: pick a role and a billing cadence — <b>Minute</b>, <b>Hour</b>, <b>Day</b>, <b>Month</b> or <b>per Task</b>. Short cadences cost a flexibility premium and are <b>floating</b> (re-priced every period at the spot wage index W(t), which wanders as a mean-reverting random process with occasional shocks, and rises when you hire many); long cadences are discounted and <b>locked</b> at signing — a hedge. You pay in advance; if the treasury cannot cover two periods in a row the freelancer quits. You can give notice (they work out the period) or dismiss them at once. The <b>Job board</b> works the other way round: neutral clients (Helios, Kestrel, Vantage, Bastion) post tasks — couriers, camp clearing, mining quotas, guard and relay retainers — and your agents take them for pay. Task contracts are held in escrow and refunded if the job fails; retainers pay at the end of each period in proportion to time on station, and a client can terminate a short retainer.</p>
 <p><small><b>Calendar abstraction:</b> one colony <i>minute</i> is 10 s of game time, an <i>hour</i> 60 s, a <i>day</i> 360 s (one full day/night cycle) and a <i>month</i> 2160 s — so every cadence is playable inside one match. The wage and fee numbers are tuned for game balance, not taken from real labour markets.</small></p>
-<h3>Factions</h3><p><b>Meridian</b>: structures +20% HP, repairs cost half, Bulwark shield-walker. <b>Obsidian</b>: units train 8% faster, cheaper Raptors, life-stealing Reaver. <b>Aurora</b>: +30% trade profit, Haulers carry +1 per trip, Exchange 40% cheaper, permanently cloaked Specter.</p>`;
+<h3>Factions</h3><p><b>Meridian</b>: structures +20% HP, repairs cost half, Bulwark shield-walker. <b>Obsidian</b>: units train 8% faster, cheaper Raptors, life-stealing Reaver. <b>Aurora</b>: +30% trade profit, Haulers carry +1 per trip, Exchange 40% cheaper, cloaking Specter (a toggle with an energy cost in skirmish; permanent in campaign missions).</p>`;
 
 function hexRgb(h){h=h.replace('#','');return parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16);}
 /* the UI accent follows the player's faction colour (or the colour-blind-safe "you" blue) */
@@ -81,7 +81,7 @@ function buildMenus(){
   fr.innerHTML=h;
   $('enemyRow').innerHTML=['random'].concat(FACTION_IDS).map(id=>'<button class="btn" data-e="'+id+'">'+(id==='random'?'Random':FACTIONS[id].name.split(' ')[0])+'</button>').join('');
   $('diffRow').innerHTML=['easy','normal','hard','master'].map(d=>'<button class="btn" data-d="'+d+'"><b>'+DIFF_NAMES[d]+'</b><span>'+DIFF_DESC[d]+'</span></button>').join('');
-  $('helpBody').innerHTML=HELP_HTML+FORT_HELP_HTML;
+  $('helpBody').innerHTML=HELP_HTML+FORT_HELP_HTML+arsenalHelpHTML();
   syncMenu();
 }
 function syncMenu(){

@@ -235,12 +235,11 @@ function buildCommands(){
     if(hasWorker){
       mk(3,{icon:'g:repair',name:'Repair',tip:'Repair a damaged structure or mechanical unit. Costs '+(T.faction==='meridian'?'half of ':'')+'a share of its price. Right-click a damaged ally also repairs.',ok:true,run:()=>beginTarget('repair')});
       mk(8,{icon:'g:build',name:'Build Structure',tip:'Basic structures: Hub, Generator, Siphon, Depot, Garrison, Armory, Habitat, Turret.',ok:true,run:()=>{ui.menu='build';ui.cmdDirty=true;sfx('tab');}});
-      mk(9,{icon:'g:build2',name:'Advanced Structures',tip:'Era II structures: Forum, Exchange, Foundry, Airfield.',ok:T.era>=2||true,run:()=>{ui.menu='build2';ui.cmdDirty=true;sfx('tab');}});
+      mk(9,{icon:'g:build2',name:'Advanced Structures',tip:'Era II structures: Forum, Exchange, Foundry, Airfield, Research Lab, Siege Works.',ok:T.era>=2||true,run:()=>{ui.menu='build2';ui.cmdDirty=true;sfx('tab');}});
       const hub=G.buildings.find(b=>b.team===0&&b.type==='hub'&&b.done&&!b.dead);
       if(hub)mk(10,{icon:'g:call',name:hub.garr.length?'Release Haulers':'Call to Arms',tip:'Up to 15 Haulers shelter inside the Hub and add +3 damage each to its cannon. Press again to release them.',ok:true,run:()=>callToArms(0,hub)});
     }
-    if(act.def.stim)mk(3,{icon:'g:stim',name:'Overdrive',tip:'Stim: +50% speed and fire rate for 8s at 12 HP. Requires Combat Stims.',ok:T.stims>0,why:'Research Combat Stims at the Armory',run:()=>{for(const u of units)if(u.def.stim)useStim(u);sfx('stim');}});
-    if(act.def.siege)mk(5,{icon:'g:siege',name:units.some(u=>u.sieged)?'Unsiege':'Siege Mode',tip:'Siege Mode (S): range 350, splash and heavy structure damage, but immobile. Ground targets only.',ok:true,run:()=>{const on=units.some(u=>u.sieged);for(const u of units)if(u.def.siege)toggleSiege(u,on?true:false);}});
+    if(act.def.abil&&!d.hero)abilityButtons(units,act,mk);   // 72_arsenal_ui.js: Overdrive, Siege Mode, Cloak, Pounce, EMP, Snipe... + the autocast switch (slot 6)
     if(act.def.trade)mk(3,{icon:'g:trade',name:'Trade Route',tip:'Pick a Trading Post. The Freighter shuttles between it and your Exchange. Profit grows with distance and with the post\'s demand.',ok:hasDone(0,'exchange'),why:'Requires an Exchange',run:()=>beginTarget('trade')});
     if(d.hero){
       const H=T.hero,sp=skillPoints(0);
@@ -271,7 +270,7 @@ function buildCommands(){
     mk(i++,{icon:'u:'+hid+':'+T.faction,name:(H.deaths>0?'Revive ':'Train ')+hd.name,cost:hc,time:H.deaths>0?30+5*H.level:hd.time,tip:hd.desc+' Levels up by fighting; gains skills and auras.',ok,def:hd,supply:'3 supply',
       why:hLock||(H.alive?'Hero is in play':H.reviving?'Hero is being trained':!afford(T,hc)?(T.c<hc.c?'Not enough crystals':'Not enough ether'):'Build more Generators'),run:()=>queueHero(b)});
     if(T.era<3){const E=ERAS[T.era+1],eLock=G.camp?campLocked(0,'era',T.era+1):null,ok2=!eLock&&afford(T,E.cost)&&(T.era===1?hasDone(0,'garrison'):hasDone(0,'armory'))&&!G.buildings.some(x=>!x.dead&&x.team===0&&x.queue.some(q=>q.k==='era'));
-      mk(i++,{icon:'g:era',name:'Advance to Era '+E.rom+': '+E.name,cost:E.cost,time:E.time,tip:'Unlocks '+(T.era===1?'Rocketeers, Menders, Howitzers, Juggernauts, Skiffs, the Forum, Exchange, Foundry, Airfield and unique units.':'Titans, level 3 upgrades and +5 morale per era.')+' Needs '+(T.era===1?'a Garrison.':'an Armory.'),ok:ok2,
+      mk(i++,{icon:'g:era',name:'Advance to Era '+E.rom+': '+E.name,cost:E.cost,time:E.time,tip:'Unlocks '+(T.era===1?'Rocketeers, Menders, Howitzers, Juggernauts, Skiffs, Lancers, Flak Troopers, Interceptors, Watchers, the Forum, Exchange, Foundry, Airfield, Research Lab, Siege Works and unique units.':'Titans, Dreadnoughts, level 3 upgrades and +5 morale per era.')+' Needs '+(T.era===1?'a Garrison.':'an Armory.'),ok:ok2,
         why:eLock||(G.buildings.some(x=>!x.dead&&x.team===0&&x.queue.some(q=>q.k==='era'))?'Already advancing':!hasDone(0,T.era===1?'garrison':'armory')?'Requires '+(T.era===1?'Garrison':'Armory'):T.c<E.cost.c?'Not enough crystals':'Not enough ether'),run:()=>queueEra(b)});}
     mk(i++,{icon:'g:call',name:b.garr.length?'Release Haulers':'Call to Arms',tip:'Up to 15 Haulers shelter inside the Hub; each adds +3 damage to the Hub cannon. Press again to release them.',ok:true,badge:b.garr.length||'',run:()=>callToArms(0,b)});
   }

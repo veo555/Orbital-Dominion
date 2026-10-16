@@ -18,6 +18,7 @@ function updateUnit(u,dt){
   if(u.siegeT>0)u.siegeT-=dt;if(u.provoked>0)u.provoked-=dt;
   for(let i=0;i<3;i++)if(u.cds[i]>0)u.cds[i]-=dt;
   recalcBuffs(u,dt);u.moving=false;
+  if(d.abil)abilTick(u,dt);   // 33_abilities.js: cooldowns, energy, toggles, autocast
   if(d.hero){u.mana=Math.min(heroMaxMana(u),u.mana+(1.1+0.12*G.teams[u.team].hero.level)*dt);if(u.hp<u.maxhp&&G.time-u.lastHit>6)u.hp=Math.min(u.maxhp,u.hp+u.maxhp*0.006*dt);}
   if(d.heal)menderStep(u,dt);
   if(u.stunned>0)return;
@@ -60,6 +61,7 @@ function updateUnit(u,dt){
     case'trade':tradeStep(u,dt);break;
     case'garrison':garrisonStep(u,dt);break;
     case'cast':castStep(u,dt);break;
+    case'abil':abilStep(u,dt);break;
   }
 }
 function creepStep(u,dt){
@@ -226,8 +228,8 @@ function toggleSiege(u,forceOff){
   if(!u.sieged&&forceOff!==true&&u.siegeT<=0){u.sieged=true;u.siegeT=1.6;u.path=null;u.order={t:'idle'};u.home={x:u.x,y:u.y};if(u.team===0)sfx('siege',undefined,undefined,u);}
 }
 function useStim(u){
-  const T=G.teams[u.team];if(!T.stims||!u.def.stim)return false;if(hasBuff(u,'stim')||u.hp<=14)return false;
-  u.hp-=12;addBuff(u,'stim',1,8);u.flash=0.15;return true;
+  const T=G.teams[u.team];if(!T.stims||!u.def.stim)return false;if(hasBuff(u,'stim')||u.hp<=STIMHP[Math.min(3,T.stims)]+2)return false;
+  u.hp-=STIMHP[Math.min(3,T.stims)];addBuff(u,'stim',1,STIMDUR[Math.min(3,T.stims)]);u.flash=0.15;return true;   // tiers I..III: 8s/12hp, 11s/12hp, 14s/6hp
 }
 function skillOf(u,i){return SKILLS[u.type]&&SKILLS[u.type][i];}
 function castRange(u,i){const s=skillOf(u,i);return s?s.range:0;}
@@ -300,6 +302,7 @@ function buildDetectors(){
   for(const u of G.units)if(!u.dead&&u.team<2&&u.def.detect&&!u.hidden)G.det[u.team].push({x:u.x,y:u.y,r:u.def.detect});
   for(const b of G.buildings)if(!b.dead&&b.done&&b.def.detect)G.det[b.team].push({x:b.x,y:b.y,r:b.def.detect});
   if(G.scans&&G.scans.length)fortDetectors();   // Scanner Sweeps detect (31_defense.js)
+  arsenalDetectors();   // 33_abilities.js: Pulse Scan zones
 }
 function updateBuilding(b,dt){
   const d=b.def,T=G.teams[b.team];
@@ -323,7 +326,7 @@ function updateBuilding(b,dt){
     if(q.t>=q.total){
       b.queue.shift();
       if(q.k==='u'){const nu=spawnUnit(b,q.id);if(b.team===0&&!G.ais[0])sfx('done',undefined,undefined,nu);}
-      else if(q.k==='r'){const R=TECH[q.id];T[R.key]++;if(b.team===0&&!G.ais[0]){toast(R.name+' researched','good');sfx('research',undefined,undefined,b);}}
+      else if(q.k==='r'){const R=TECH[q.id];T[R.key]=(T[R.key]|0)+1;if(b.team===0&&!G.ais[0]){toast(R.name+(R.lv.length>1?' '+['I','II','III'][T[R.key]-1]:'')+' researched','good');sfx('research',undefined,undefined,b);}}
       else if(q.k==='era'){T.era=q.to;G.events.push({t:G.time,team:b.team,txt:'Era '+ERAS[q.to].rom});
         if(b.team===0&&!G.ais[0]){toast('Era '+ERAS[q.to].rom+': '+ERAS[q.to].name+' — new technology unlocked!','good');sfx('era',undefined,undefined,{faction:T.faction});}
         G.fx.push({x:b.x,y:b.y,t:0,max:1.4,kind:'ring',r:b.r*2.5,col:'#ffe27a'});}
@@ -400,7 +403,7 @@ function step(){
   }
   for(const p of G.parts){p.x+=p.vx*TICK;p.y+=p.vy*TICK;p.vx*=0.95;p.vy*=0.95;p.life-=TICK;}
   for(const f of G.fx)f.t+=TICK;
-  updateZones(TICK);
+  arsenalZones(TICK);updateZones(TICK);arsenalStep(TICK);   // 33_abilities.js: lance / scan / barrage zones (before updateZones advances z.t), structure barrier upkeep
   for(let t=0;t<2;t++){const ai=G.ais[t];if(ai&&G.time>=ai.next){ai.next=G.time+ai.P.iv;aiThink(ai);}}
   economyStep(TICK);
   swarmStep(TICK);

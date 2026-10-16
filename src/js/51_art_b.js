@@ -104,7 +104,7 @@ function glyph(g,name){
     case'agent':{g.strokeStyle='#9fe8ff';g.lineWidth=2.6;g.beginPath();g.arc(0,0,13,0,TAU);g.stroke();g.setLineDash([3,4]);g.beginPath();g.arc(0,0,8,0,TAU);g.stroke();g.setLineDash([]);g.fillStyle='#9fe8ff';g.beginPath();g.arc(0,0,3.4,0,TAU);g.fill();g.fillStyle='#ffe27a';g.beginPath();g.arc(10,-10,3,0,TAU);g.fill();break;}
     case'auto':{g.strokeStyle='#9fe8ff';g.lineWidth=3;g.beginPath();g.arc(0,0,10,0.4,TAU*0.5+0.1);g.stroke();g.beginPath();g.arc(0,0,10,TAU*0.5+0.4,TAU+0.1);g.stroke();g.fillStyle='#9fe8ff';g.beginPath();g.moveTo(-14,3);g.lineTo(-6,3);g.lineTo(-10,-4);g.closePath();g.fill();g.beginPath();g.moveTo(14,-3);g.lineTo(6,-3);g.lineTo(10,4);g.closePath();g.fill();break;}
     case'roles':{g.strokeStyle='#ffd45a';g.lineWidth=2.6;g.beginPath();g.moveTo(0,-12);g.lineTo(0,0);g.moveTo(0,0);g.lineTo(-10,10);g.moveTo(0,0);g.lineTo(10,10);g.stroke();g.fillStyle='#ffd45a';for(const p of[[0,-12],[-10,10],[10,10]]){g.beginPath();g.arc(p[0],p[1],4,0,TAU);g.fill();}break;}
-    default:if(typeof fortGlyph==='function'&&fortGlyph(g,name))break;g.beginPath();g.arc(0,0,10,0,TAU);g.stroke();   // 68_fortify_ui.js glyphs
+    default:if(typeof fortGlyph==='function'&&fortGlyph(g,name))break;if(!glx(g,name)){g.beginPath();g.arc(0,0,10,0,TAU);g.stroke();}
   }
 }
 function iconURL(spec){
