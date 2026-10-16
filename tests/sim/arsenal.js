@@ -209,7 +209,7 @@ function suite(xform,quiet){
     ok(G.teams[0].arsOff===true&&G.teams[1].arsOff===true,'G: a campaign mission starts with the arsenal off for both sides');
     const hasDone=()=>{};void hasDone;
     const gar=S.addBuilding('garrison',0,10,10,true),fou=S.addBuilding('foundry',0,14,10,true),air=S.addBuilding('airfield',0,18,10,true),arm=S.addBuilding('armory',0,22,10,true);
-    ok(S.prodList(gar).join()===['rifleman','raptor','rocketeer','mender',S.FACTIONS[G.teams[0].faction].unique].join()&&S.prodList(fou).join()==='howitzer,juggernaut,titan'&&S.prodList(air).join()==='skiff','G: Garrison / Foundry / Airfield train exactly the v5 lists');
+    ok(S.prodList(gar).join()===['rifleman','raptor','rocketeer','mender',S.FACTIONS[G.teams[0].faction].unique].join()&&S.prodList(fou).join()==='howitzer,juggernaut,titan'&&S.prodList(air).filter(k=>k!=='dropship').join()==='skiff'&&!S.reqUnit(0,'dropship').ok,'G: Garrison / Foundry / Airfield train exactly the v5 lists');
     G.teams[0].era=3;G.teams[0].c=5000;G.teams[0].e=5000;
     ok(!S.reqUnit(0,'lancer').ok&&!S.reqUnit(0,'dreadnought').ok&&!S.reqBuild(0,'lab').ok&&!S.reqBuild(0,'siegeworks').ok,'G: new units and structures are locked ("'+S.reqUnit(0,'lancer').why+'")');
     G.teams[0].stims=1;ok(S.techNext(G.teams[0],'stims')===null&&S.techNext(G.teams[0],'barrier')===null&&S.techNext(G.teams[0],'weapons')!==null,'G: stims has only tier I, the new lines are closed, weapons keep their 3 tiers');
