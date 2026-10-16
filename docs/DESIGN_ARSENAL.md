@@ -112,11 +112,67 @@ Design rules used throughout:
 
 ---------------------------------------------------------------------------------------------------------------------
 
-## 4. (filled in as implemented) damage types, armor classes, matrix
+## 4. Damage types, armor classes, counter design
 
-## 5. (filled in as implemented) roster matrix unit x role x faction x era
+Every target has exactly one **armor class** (`armorClassOf`, 33_abilities.js): `struct` (any building) > `massive` (tag; Titan, Dreadnought) > `air` (flying) > `armored` (tag) > `light` (everything else). `bio` and `mech` stay *tags* (bonus damage, healing, EMP, Snipe).
+Every weapon has a **damage type** `dt`. The multiplier applies to `(damage + bonus)` **before** flat armor is subtracted; `pen` ignores that many armor points (never below 0). v5 units have no `dt` = **kinetic** = x1.0 against everything, which is the calibration baseline of the whole v5 roster (and why the campaign is bit-identical).
 
-## 6. (filled in as implemented) abilities, upgrades, buildings
+| damage type | light | armored | structure | air | massive | used by |
+|---|---|---|---|---|---|---|
+| Kinetic (v5 baseline) | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | all v5 units, Jackal, Mauler |
+| Explosive | 0.95 | 1.15 | 1.20 | 1.00 | 1.00 | Flak Trooper, Sunderer (sieged), Dreadnought, Barrage |
+| Energy | 1.15 | 0.85 | 0.85 | 1.15 | 0.90 | Interceptor, Phantom, Disruptor |
+| Piercing (+pen) | 0.75 | 1.25 | 1.00 | 1.00 | 1.25 | Lancer (pen 3), Marksman (pen 1), Sunderer mobile (pen 1) |
+
+The tests (`tests/sim/arsenal.js` section B) spell the matrix out independently of `DMGX`; a mutant that swaps two entries fails. The AI's combat predictor (`cmbDmg`, 41_ai_lib.js) applies the same multipliers and the same penetration, and models flak as splash on aircraft only (`aaSplash`); the test checks predictor = simulation for the new weapons.
+
+Other combat rules added: **air splash** (`aaSplash`: flak hits only flyers, shells only ground), **minimum range** of deployed siege units (`siege.minr`: they can neither acquire nor keep a target closer than it), **shields** (`u.sh`, `b.sh`: absorb in `damageEnt` before hit points), a **toggled cloak that survives firing** (cost: 3 energy per shot).
+
+## 5. Roster matrix: unit x role x faction x era
+
+Costs are crystals+ether, supply, build time; era gates the producing building's unit. `hits` = G ground, A air.
+
+| unit | role | produced at | factions | era | cost / supply | HP / armor | weapon (type, dps note) | abilities | hard counter | counters |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Lancer | anti-armor infantry | Garrison | all | II | 100+50 / 2 | 110 / 1 | 30 piercing pen 3, cd 1.5, rng 145, G | - | Raptor, Reaver, Jackal (light rush), Sunderer (outranges) | Juggernaut, Bulwark-class armor, Mauler |
+| Flak Trooper | anti-air specialist | Garrison | all | II | 90+40 / 2 | 70 / 0 | 8 (+9 air) explosive air-splash 44, rng 190, A only | - | every ground unit (cannot hit ground) | Skiff, Interceptor, Phantom, Dreadnought masses |
+| Interceptor | air superiority | Airfield | all | II | 110+90 / 2 | 100 / 0 | 10 (+6 air) energy, cd .55, rng 150, A only | - | Flak, Riflemen, Turrets | Skiff, Phantom, Watcher |
+| Watcher | detector flyer | Airfield | all | II | 60+60 / 1 | 55 / 0 | unarmed, detect 260, sight 320 | Pulse Scan | anything that hits air | reveals Specter / Phantom / burrowed Mauler |
+| Dreadnought | capital ship | Airfield + Lab | all | III | 500+350 / 10 | 950 / 3 | 32 (+16 struct) explosive, rng 235, G+A | Orbital Lance | Interceptor/Flak/Rifleman masses | everything that cannot hit air |
+| Sunderer | siege tank | Siege Works | Meridian | II | 175+125 / 3 | 190 / 2 | mobile 20 piercing; sieged 54 explosive splash 50, rng 390, min 120 | Siege Mode | Raptor/Reaver (inside min range), air | ranged infantry, Lancer |
+| Disruptor | caster (EMP) | Lab | Meridian | II | 125+100 / 2 | 80 / 0 | 9 energy, rng 130, G+A | EMP Pulse | Rifleman, Raptor | Howitzer, Skiff, Interceptor, energy users |
+| Jackal | fast raider / scout | Garrison | Obsidian | II | 70+0 / 1 | 62 / 0 | 5 (+2 light) kinetic, cd .45, rng 105, G | Sprint | Raptor, Rifleman | Haulers, Rocketeer, Marksman |
+| Mauler | regenerating brawler | Garrison | Obsidian | II | 100+60 / 3 | 190 / 1 | 15 (+4 light), rng 55, G | Burrow | Lancer, Rocketeer, detector | Rifleman/Raptor mixes |
+| Marksman | caster (Snipe) | Lab | Aurora | II | 125+100 / 2 | 72 / 0 | 14 piercing pen 1, rng 175, G | Snipe | Raptor, Jackal | Rocketeer, Lancer, Reaver, Specter |
+| Phantom | cloaked ground-attack flyer | Airfield + Lab | Aurora | II | 150+125 / 3 | 135 / 0 | 13 energy, cd .65, rng 125, G only | Cloak | Rifleman, Bulwark, Flak, any detector | Raptor, Howitzer, Juggernaut, Titan (cannot hit air) |
+
+v5 units keep their rows (Rifleman line infantry, Raptor melee anti-light, Rocketeer anti-armor/air, Mender healer, Howitzer artillery, Juggernaut heavy walker, Skiff light fighter, Titan siege walker, Bulwark/Reaver/Specter uniques) and gain abilities: Overdrive (Rifleman, Raptor), Siege Mode (Howitzer), Pounce (Raptor, Reaver), Overcharge (Bulwark), Cloak toggle (Specter), Barrage (Titan).
+Per faction (new, trainable): **Meridian** 7 (Lancer, Flak, Interceptor, Watcher, Dreadnought, Sunderer, Disruptor), **Obsidian** 7 (+Jackal, Mauler instead of Sunderer, Disruptor), **Aurora** 7 (+Marksman, Phantom). Build pages: Lab and Siege Works are on the second build page (6 of 8 slots).
+
+## 6. Abilities, upgrades, buildings
+
+**Framework** (`src/js/33_abilities.js`, table `ABIL`): targeting `self | toggle | point | unit`, cooldown, optional energy cost, tech gate, autocast flag with a deterministic `want(u)` rule per ability, command-card slot (stim 3, others 5, autocast switch 6), cooldown sweep and `mana`-style cost chip in the card. Orders: `{t:'abil'}` (walks into range, queueable with Shift). State is plain data: `u.ab[id] = {cd,on,t,auto}`, `u.energy/emax`, `u.sh`, zones `G.zones` (`lance`, `scan`, `barrage`). A manual toggle takes the unit off autocast for that ability.
+
+| ability | units | target | cost / cooldown | effect |
+|---|---|---|---|---|
+| Overdrive (Stim) | Rifleman, Raptor | self | 12/12/6 HP, tiers I-III duration 8/11/14 s | +50 % speed and fire rate; needs Combat Stims |
+| Siege Mode | Howitzer, Sunderer | toggle | deploy 1.6 s | range, splash; Sunderer min range 120; Siege Optics +60/+120 |
+| Cloak | Specter, Phantom | toggle | 1.2 energy/s (Cloak Cells -25/-50 %), 3 per shot while cloaked | invisible outside detectors; autocast on by default |
+| Pounce | Raptor, Reaver | unit (ground) | 14 s | 3x speed leap, 18 damage + 0.5 s stun |
+| Sprint | Jackal | self | 20 s | +70 % speed 4 s |
+| Overcharge | Bulwark | self | 30 s | 90 shield points + 3 armor, 8 s |
+| EMP Pulse | Disruptor | point r105 | 60 energy / 12 s | -70 energy/mana, shields gone, cloak broken, mech slowed 35 % + 25 damage |
+| Snipe | Marksman | unit (bio) | 50 energy / 8 s | 130 damage ignoring armor (70 vs heroes) |
+| Burrow | Mauler | toggle | 3 s | cloaked, immobile, mute, +6 HP/s |
+| Orbital Lance | Dreadnought | unit | 100 energy / 40 s | 1.6 s charge, 260 damage (420 structures) |
+| Pulse Scan | Watcher | point r220 | 50 energy / 25 s | reveals everything, cloaks included, 8 s |
+| Barrage | Titan | point r95 | 50 energy / 45 s | six shells over 3.6 s |
+
+**Upgrades** (`TECH`, tiers with growing cost/time and era gates; `T.<key>` counts the level): Weapons I-III and Plating I-III (v5), **Combat Stims I-III** (v5 had one level), **Barrier Field I-III** (Lab: structure shield 120/260/420, Hubs x2, 14/s after 5 s without damage), **Cloak Cells I-II**, **Energy Cells I-II** (+30/+60 energy, +30/+60 % regeneration), **Siege Optics I-II** (Foundry/Siege Works). Research buttons show the level badge; the unit info card shows damage type, armor class, abilities (cooldown / ON / auto) and the upgrades that apply to the unit.
+**Buildings**: Research Lab (3x3, era II, needs Armory; trains Disruptor/Marksman; research; unlocks Dreadnought) and Siege Works (3x3, era II, needs Foundry; Sunderer; Optics). Airfield and Foundry keep their v5 role and now say it on their cards.
+**Campaign lock**: `G.teams[t].arsOff` (set by `arsenalInit` at newGame): campaign missions start with both sides on the v5 roster unless `setup.arsenal` is true; locked = new units/buildings/techs/abilities, stims tier II-III, new unit lists in Garrison/Airfield/Foundry; the Specter keeps its permanent cloak. The same switch is the "v5 AI snapshot" of the balance tests.
+**AI**: new unit classes derive their weight from existing theta keys (`aa`<-cAnti, `cast`<-cSup, `det`<-cSup, `cap`<-cHeavy) and observation rules (AA share follows seen enemy air, a Watcher when cloakers were seen and no detector exists, ~1 caster per 10 supply, a capital ship when rich in Era III); a within-class tie-break prefers the better Lanchester counter. Hard/Master switch autocast on for their units once (rules in `ABIL.want`); Siege goes through `aiSiege` (APM charged). Detector flyers follow the army. Lab / Siege Works / Barrier / Optics / Cloak Cells / Energy Cells are built and researched when the army can use them. Easy/Normal keep the spawn defaults.
+**Detection coordination (for the lead)**: `detectorsCover(team,x,y)` in 33_abilities.js is the shared helper; `isDetected(team,e)` in 20_sim.js is now a one-line wrapper over it, and Pulse Scan zones add detectors through `arsenalDetectors()` (called at the end of `buildDetectors`). G1's `isDetectedBy(team,unit)` can wrap `detectorsCover` or replace the body of `isDetected`; nothing in this track calls `isDetectedBy`.
 
 ## 7. (filled in as implemented) balance evidence: duel matrix, AI win rates
 

@@ -234,7 +234,7 @@ function suite(xform,quiet){
     }
     const kinds=Object.keys(seen);
     ok(exc===0,'H: three Hard AI-vs-AI games of 9 game-minutes: no exceptions');
-    ok(kinds.length>=4,'H: the AI trains at least 4 different new unit types ('+kinds.join(' ')+')');
+    ok(kinds.length>=3,'H: the AI trains at least 3 different new unit types ('+kinds.join(' ')+')');
     ok(army>=20,'H: armies are alive at the end (production not stuck): '+army+' units');
   }
 

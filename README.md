@@ -12,6 +12,10 @@ offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) f
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
 
+## 0000. v6 ARSENAL (track G2): abilities, new units, tiers, damage types
+
+11 new combat units (Lancer, Flak Trooper, Interceptor, Watcher, Dreadnought for everyone; Sunderer + Disruptor for Meridian, Jackal + Mauler for Obsidian, Marksman + Phantom for Aurora), a generic unit-ability framework (`src/js/33_abilities.js`: cooldown, energy, autocast, targeting, queueable; Overdrive, Siege Mode, Cloak, Pounce, Sprint, Overcharge, EMP, Snipe, Burrow, Orbital Lance, Pulse Scan, Barrage), two tech structures (Research Lab, Siege Works), tiered upgrades (Stims I-III, Barrier Field I-III, Siege Optics, Cloak Cells, Energy Cells), damage types x armor classes, shields. Campaign missions keep the v5 roster (locked). Design, numbers, matrices and evidence: `docs/DESIGN_ARSENAL.md`; gates: `node tests/sim/arsenal.js [--mutants]`, `tests/sim/duel.js`, `tests/sim/arsenal_ab.js`, `tests/sim/arsenal_cpu.js`, `python3 tests/e2e/e2e_arsenal.py`, `tests/audio/arsenal_gate.py`.
+
 ## 000. What changed in 5.0 (12 Oct 2026): 3D-style sprites, console HUD, no speech, lean + robust file
 
 | Area | What is in the build | Evidence (Chromium headless / Node; nothing heard, no real phone) | Not verified / honest limits |
