@@ -12,7 +12,7 @@ function hashG(S){const G=S.G;let h=2166136261>>>0;const add=n=>{h^=Math.round(n
   for(const t of G.teams){add(t.c||0);add(t.e||0);add(t.used||0);}let v=0;for(let i=0;i<G.vis[0].length;i++)if(G.vis[0][i]===2)v++;add(v);add(G.rng()*1e6);return h;}
 /* a fresh game with an empty, flat 13x13 arena on the low ground; creeps removed, both sides rich */
 function arena(xform,opts){
-  const S=load(undefined,xform);pin(S,7);S.newGame(Object.assign({seed:5,faction:'aurora',enemy:'obsidian'},opts||{}));
+  const S=load(undefined,xform);pin(S,7);S.newGame(Object.assign({seed:5,faction:'aurora',enemy:'obsidian',arsenalOff:[true,true]},opts||{}));
   S.__run(`G.units=G.units.filter(u=>u.team<2);for(const c of G.camps)c.units=[];G.teams[0].c=G.teams[1].c=20000;G.teams[0].e=G.teams[1].e=20000;G.ais=[null,null];`);
   const A=S.__run(`(function(){for(let r=0;r<40;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const cx=36+dx,cy=44+dy;let good=true;const h0=G.H[cy*MW+cx];
     for(let y=cy-6;y<=cy+6&&good;y++)for(let x=cx-6;x<=cx+6;x++){const i=y*MW+x;if(x<3||y<3||x>=MW-3||y>=MH-3||G.blocked[i]||G.RAMP[i]||G.H[i]!==h0){good=false;break;}}
@@ -44,7 +44,7 @@ check('wall line',[`c:50,e:0},time:8,sight:90`,`c:5,e:0},time:8,sight:90`],(xf)=
   const walls=S.G.buildings.filter(b=>b.type==='wall'&&b.done).length;
   a=ok(walls===9,'wall line: one Hauler builds the 9 segments one after another ('+walls+' done after 110 s)')&&a;
   // self-seal: a closed ring around the own hub is refused (the last segment that would close it)
-  const S2=load(undefined,xf);pin(S2,7);S2.newGame({seed:5,faction:'aurora',enemy:'obsidian'});C(S2,`G.teams[0].c=99999;for(let i=0;i<NN;i++)G.vis[0][i]=2`);
+  const S2=load(undefined,xf);pin(S2,7);S2.newGame({seed:5,faction:'aurora',enemy:'obsidian',arsenalOff:[true,true]});C(S2,`G.teams[0].c=99999;for(let i=0;i<NN;i++)G.vis[0][i]=2`);
   const hub=S2.G.buildings.find(b=>b.team===0&&b.type==='hub');
   const sealed=C(S2,`(function(){const h=G.buildings.find(b=>b.id===${hub.id}),t=[];for(let y=h.ty-3;y<=h.ty+h.h+2;y++)for(let x=h.tx-3;x<=h.tx+h.w+2;x++){if(x===h.tx-3||x===h.tx+h.w+2||y===h.ty-3||y===h.ty+h.h+2)if(!G.blocked[y*MW+x])t.push(y*MW+x);}return fortSealOK(0,t);})()`);
   a=ok(sealed===false,'self-seal: a closed wall ring around your own Hub is refused (fortSealOK=false)')&&a;
@@ -176,7 +176,7 @@ check('mines',[`if(hyp(e.x-m.x,e.y-m.y)-e.r<=R)hit=true;`,`if(hyp(e.x-m.x,e.y-m.
 
 /* 8. scanner sweep: reveals fog and detects for 10 s, costs 50 Hub energy */
 check('scan',[`(G.scans||(G.scans=[])).push({team,x:clamp(x,0,WW),y:clamp(y,0,WH),r:S.r,t:S.t,t0:S.t});`,`void 0;`],(xf)=>{
-  const S=load(undefined,xf);pin(S,7);S.newGame({seed:5,faction:'aurora',enemy:'obsidian'});C(S,'G.ais=[null,null]');run(S,30);
+  const S=load(undefined,xf);pin(S,7);S.newGame({seed:5,faction:'aurora',enemy:'obsidian',arsenalOff:[true,true]});C(S,'G.ais=[null,null]');run(S,30);
   const em=S.G.sites[1],x=em.cx*32,y=em.cy*32,i=Math.floor(em.cy)*88+Math.floor(em.cx);
   let a=ok(S.G.vis[0][i]!==2,'scan: the enemy main is in fog before');
   const hub=S.G.buildings.find(b=>b.team===0&&b.type==='hub'),e0=hub.energy;
@@ -227,7 +227,7 @@ check('campaign lock',[`if(FORT_NEW[id]&&!(C.allowNew&&C.allowNew[id]))return LO
 /* 12. map features: rocks + rich field only when asked, connectivity kept, campaign never */
 check('map features',[`if(G.mapFx)fortMapFeatures(rnd);`,`void 0;`],(xf)=>{
   let a=true,rocks=0;
-  for(const seed of[1,2,3,4,5,6]){const S=load(undefined,xf);pin(S,7);S.newGame({seed,mapFx:true});
+  for(const seed of[1,2,3,4,5,6]){const S=load(undefined,xf);pin(S,7);S.newGame({seed,mapFx:true,arsenalOff:[true,true]});
     const n=S.G.buildings.filter(b=>b.type==='rocks').length;rocks+=n;
     a=ok(S.mapConnected()&&S.G.res.some(r=>r.rich),'mapFx seed '+seed+': '+n+' rock blocks, map connected, rich field present')&&a;}
   a=ok(rocks>0,'mapFx: rocks were placed on some maps ('+rocks+' blocks over 6 seeds)')&&a;
