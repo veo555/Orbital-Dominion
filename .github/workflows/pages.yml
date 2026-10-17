@@ -1,3 +1,4 @@
+# (touched to trigger a deploy after Pages was enabled)
 # Publishes the installable web app (dist/pwa, committed by `python3 build.py`) to GitHub Pages.
 # One-time owner step: Settings > Pages > Build and deployment > Source = "GitHub Actions".
 # Then every push that changes dist/pwa (or a manual run from the Actions tab) redeploys it.
