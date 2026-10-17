@@ -823,3 +823,36 @@ html.compact.portrait .cu-foot .btn.big{flex:1 0 100%;order:-1}
 html.compact.portrait .cm-bar .btn,html.compact.portrait .cu-foot .btn{white-space:nowrap}
 html.compact.portrait .cm-bar .btn:not(.big){padding-left:6px;padding-right:6px}
 /* CAMP:END */
+
+/* ------------------------------ 14. Spectator mode (v6.1, 75_spectate.js): agents play each other ------------------------------ */
+.wm{width:min(520px,100%);max-height:100%;overflow:auto}
+.wm-sub{margin:0 0 12px;color:var(--txt2);line-height:1.45}
+.wm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-bottom:10px}
+.wm-grid label{display:flex;flex-direction:column;gap:4px;color:var(--dim);font-size:12px}
+.wm-grid .wm-full{grid-column:1/-1}
+.wm-grid .wm-chk{flex-direction:row;align-items:center;gap:8px;color:var(--txt2)}
+.wm select,.wm input[type=text]{min-height:var(--md-target);padding:8px 10px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--panel);color:var(--txt);font:inherit;-webkit-user-select:text;user-select:text}
+.wm input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc)}
+.wm-err{margin:0 0 10px;padding:8px 10px;border-radius:var(--r2);background:var(--md-error-container);color:var(--md-on-error-container)}
+#spec{position:fixed;z-index:25;top:max(8px,var(--sat));right:max(8px,var(--sar));width:min(340px,46vw);max-height:calc(100% - 16px);overflow:auto;padding:10px;border:1px solid var(--line2);border-radius:var(--r3);background:rgba(10,19,34,.92);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);box-shadow:var(--sh2);font-size:12px;color:var(--txt2)}
+#spec .sp-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#spec .sp-head b{color:var(--txt);flex:1}
+#spec .sp-t{font-variant-numeric:tabular-nums;color:var(--txt)}
+#spec .btn.sm{padding:5px 9px;min-height:30px}
+html.touch #spec .btn.sm{min-height:40px;min-width:40px}
+#spec .sp-vs{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-weight:650}
+#spec .sp-vs span:first-child{color:var(--info)}#spec .sp-vs span:last-child{color:var(--warn);text-align:right}
+#spGraph{display:block;width:100%;height:84px;border:1px solid var(--line);border-radius:var(--r1);background:var(--bg)}
+#spec .sp-leg{display:flex;flex-wrap:wrap;gap:4px 10px;margin:4px 0 6px;color:var(--dim);font-size:11px}
+#spec .sp-leg i{display:inline-block;width:14px;height:3px;margin-right:4px;vertical-align:middle;border-radius:2px}
+#spec .sp-leg .la{background:var(--info)}#spec .sp-leg .lb{background:var(--warn)}#spec .sp-leg .lm{background:var(--txt2)}
+#spec .sp-tab{width:100%;border-collapse:collapse;margin-bottom:6px}
+#spec .sp-tab td{padding:2px 0;border-bottom:1px solid var(--line)}#spec .sp-tab td:nth-child(2){text-align:center;color:var(--dim);font-size:11px}#spec .sp-tab td:last-child{text-align:right}
+#spec .sp-why{margin:3px 0;padding:5px 7px;border-left:3px solid var(--line2);background:rgba(255,255,255,.03);border-radius:0 var(--r1) var(--r1) 0;line-height:1.35}
+#spec .sp-ev{margin:6px 0;padding-left:16px;max-height:92px;overflow:auto;color:var(--dim)}
+#spec .sp-ctl,#spec .sp-code{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+#spec .sp-code code{flex:1 1 100%;padding:4px 6px;border-radius:var(--r1);background:var(--bg);color:var(--txt);word-break:break-all;-webkit-user-select:text;user-select:text}
+#spec .sp-res{margin-top:8px;padding:8px;border-radius:var(--r2);background:var(--md-primary-container);color:var(--txt);font-weight:650}
+#spec.fold #spBody{display:none}
+html.compact #spec{width:min(268px,48vw);font-size:11px;padding:8px}
+html.compact.portrait #spec{top:auto;bottom:max(8px,var(--sab));right:8px;left:8px;width:auto;max-height:46%}

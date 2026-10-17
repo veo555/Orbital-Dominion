@@ -11,21 +11,25 @@ function mkTeam(faction){
   for(const id in TECH)if(t_[TECH[id].key]===undefined)t_[TECH[id].key]=0;   // v6: every tech line has a level counter (06_content_units.js adds lines)
   return t_;
 }
+/* replay stream: with newGame({replay:true}) every sim-affecting random draw (jitter, pop-out, v3 AI and Overseer picks) comes from G.rrng, a seeded stream saved with the game, so (options, seed) reproduces a match bit for bit; without it the draws stay Math.random exactly as before (baselines and tests unchanged). Particles/FX keep Math.random (cosmetic). */
+function rnd(){return G&&G.rrng?G.rrng():Math.random();}
 function mkG(seed,diff,f0,f1){
   return{seed,diff,time:0,tick:0,nextId:1,units:[],buildings:[],res:[],neutrals:[],camps:[],proj:[],parts:[],fx:[],decals:[],zones:[],
     blocked:new Uint8Array(NN),vis:[new Uint8Array(NN),new Uint8Array(NN)],cells:Array.from({length:CW*CH},()=>[]),
     teams:[mkTeam(f0),mkTeam(f1),{c:0,e:0,used:0,cap:0,wl:0,al:0,pal:NEUTRAL_COL,faction:'neutral',era:1}],ais:[null,null],over:null,paused:false,speed:1,pathBudget:0,
-    alertPos:null,alertT:-99,needBlocked:false,daylight:1,sightMul:1,mkt:{p:1,hist:[1],t:0,vol:0},rng:mulberry32(seed^0xabcdef),
+    alertPos:null,alertT:-99,needBlocked:false,daylight:1,sightMul:1,mkt:{p:1,hist:[1],t:0,vol:0},rng:mulberry32(seed^0xabcdef),rrng:null,rp:null,
     det:[[],[]],stats:[],statT:0,events:[],shake:0,terrainCv:null,mmBg:null,decalDirty:[],lastAlertT:-99,fightT:0,popups:0};
 }
 function newGame(opts){
   opts=opts||{};if(opts.campaign)opts=campaignOpts(opts);   // 45_campaign.js: seed/faction/enemy/diff default to the mission's setup
   const diff=opts.diff||'normal',f0=opts.faction||'meridian';
+  const dfs=Array.isArray(opts.diffs)&&DIFF[opts.diffs[0]]&&DIFF[opts.diffs[1]]?opts.diffs:[diff,diff];   // spectator / replays: a different tier per side
   let seed=opts.seed!==undefined?opts.seed:((Math.random()*1e9)|0),att=0,f1=opts.enemy&&opts.enemy!=='random'?opts.enemy:null;
   if(!f1){const others=FACTION_IDS.filter(f=>f!==f0);f1=others[Math.floor(mulberry32(seed+3)()*others.length)];}
   if(f1===f0)f1=FACTION_IDS.find(f=>f!==f0);
   do{G=mkG(seed+att*131,diff,f0,f1);if(opts.mapFx&&!opts.campaign)G.mapFx=true;genMap();att++;}while(!mapConnected()&&att<30);   // mapFx: rocks + rich field (skirmish/random maps only, 31_defense.js)
   G.mapAttempts=att;
+  if(opts.replay){G.rrng=mulberry32(seed^0x5bd1e995);G.rp={v:1,seed,faction:f0,enemy:f1,diff,diffs:dfs,aiBoth:!!opts.aiBoth,mapFx:!!opts.mapFx,arsenalOff:opts.arsenalOff||null};}
   arsenalInit(opts);   // 33_abilities.js: campaign missions play the v5 roster (G.teams[t].arsOff) unless setup.arsenal
   G.aiKind=opts.aiKind||(opts.campaign?'v3':'t2');   // skirmish: T2 opponent (42_ai_agent.js); campaign missions keep the v3 wave AI they were balanced with
   for(let t=0;t<2;t++){
@@ -35,8 +39,8 @@ function newGame(opts){
     G.teams[t].hubId=hub.id;
   }
   rebuildBlocked();
-  G.ais[1]=makeAI(1,DIFF[diff]);
-  if(opts.aiBoth)G.ais[0]=makeAI(0,DIFF[diff]);
+  G.ais[1]=makeAI(1,DIFF[dfs[1]]);
+  if(opts.aiBoth)G.ais[0]=makeAI(0,DIFF[dfs[0]]);
   recalcTeams();
   for(let i=0;i<3;i++)updateVision();
   G.sampleT=0;
@@ -134,7 +138,7 @@ function approachPoint(e,fx,fy){
   return{x:nx+dx/d*10,y:ny+dy/d*10};}
 function turn(a,b,k){let d=b-a;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;return a+d*Math.min(1,k);}
 function popOut(u){const f=nearestFree(clamp(u.x/TILE|0,0,MW-1),clamp(u.y/TILE|0,0,MH-1),8,u.team);
-  if(f){u.x=(f[0]+.5)*TILE+(Math.random()-.5)*8;u.y=(f[1]+.5)*TILE+(Math.random()-.5)*8;}u.path=null;}
+  if(f){u.x=(f[0]+.5)*TILE+(rnd()-.5)*8;u.y=(f[1]+.5)*TILE+(rnd()-.5)*8;}u.path=null;}
 
 /* ----------------------------- pathfinding --------------------------- */
 const gS=new Float32Array(NN),par=new Int32Array(NN),openSt=new Uint32Array(NN),closedSt=new Uint32Array(NN);
@@ -454,7 +458,7 @@ function navigate(u,gx,gy,dt,stopDist,cap){
   u.stuckT+=dt;
   if(u.stuckT>=0.5){
     const moved=hyp(u.x-u.lx,u.y-u.ly);u.lx=u.x;u.ly=u.y;u.stuckT=0;
-    if(moved<sp*0.12){u.stuck++;u.path=null;u.repathCd=0;if(u.stuck>=4&&dd<90){u.stuck=0;return true;}if(u.stuck>=8){u.stuck=0;u.x+=(Math.random()-.5)*6;u.y+=(Math.random()-.5)*6;}}
+    if(moved<sp*0.12){u.stuck++;u.path=null;u.repathCd=0;if(u.stuck>=4&&dd<90){u.stuck=0;return true;}if(u.stuck>=8){u.stuck=0;u.x+=(rnd()-.5)*6;u.y+=(rnd()-.5)*6;}}
     else u.stuck=0;
   }
   return false;
@@ -466,7 +470,7 @@ function separate(){
     forNear(u.x,u.y,36,v=>{
       if(v.id<=u.id||v.hidden||v.flying!==u.flying)return;
       const dx=v.x-u.x,dy=v.y-u.y,rr=u.r+v.r-1,d2=dx*dx+dy*dy;if(d2>=rr*rr)return;
-      let d=Math.sqrt(d2),nx,ny;if(d<0.01){nx=Math.random()-.5;ny=Math.random()-.5;d=0.5;}else{nx=dx/d;ny=dy/d;}
+      let d=Math.sqrt(d2),nx,ny;if(d<0.01){nx=rnd()-.5;ny=rnd()-.5;d=0.5;}else{nx=dx/d;ny=dy/d;}
       const ov=Math.min(4,rr-d);let wu=0.5,wv=0.5;
       if(u.moving&&!v.moving){wu=0.15;wv=0.85;}else if(!u.moving&&v.moving){wu=0.85;wv=0.15;}
       if(u.order.t==='hold'||u.sieged){wu=0;wv=1;}else if(v.order.t==='hold'||v.sieged){wv=0;wu=1;}

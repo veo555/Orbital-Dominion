@@ -82,7 +82,43 @@
       <div class="diffrow" id="diffRow"></div>
     </div>
     <div class="mfoot"><div class="row actions"><button class="btn big hidden" id="bContinue">Continue</button><button class="btn big camp hidden" id="bCamp">Campaign</button><button class="btn big" id="bStart">Start Mission</button><button class="btn" id="bHelp">How to play</button><button class="btn" id="bSet">Settings</button><button class="btn hidden" id="bArchive">Archive</button></div>
-      <div class="row links"><button class="btn link hidden" id="bInstall">⬇ Install app</button><button class="btn link hidden" id="bFull">⛶ Fullscreen</button><button class="btn link hidden" id="bShare">↗ Share</button><button class="btn link hidden" id="bSupport">♥ Support</button></div></div>
+      <div class="row links"><button class="btn link" id="bWatch">▶ Watch agents</button><button class="btn link hidden" id="bInstall">⬇ Install app</button><button class="btn link hidden" id="bFull">⛶ Fullscreen</button><button class="btn link hidden" id="bShare">↗ Share</button><button class="btn link hidden" id="bSupport">♥ Support</button></div></div>
+  </div>
+</div>
+
+<div id="watchMenu" class="overlay dim hidden">
+  <div class="card narrow wm">
+    <h2 class="ttl">Watch agents play</h2>
+    <p class="wm-sub">Two AI agents play a full match against each other. Every match has a short <b>replay code</b>: the same code always gives the same match, so you can share it, replay it and compare how different agents handle the same map. No human plays; nothing is sent anywhere.</p>
+    <div class="wm-grid">
+      <label>Side A<select id="wmFa"></select></label><label>Tier<select id="wmTa"></select></label>
+      <label>Side B<select id="wmFb"></select></label><label>Tier<select id="wmTb"></select></label>
+      <label class="wm-full">Map seed <small>(blank = random)</small><input id="wmSeed" type="text" inputmode="numeric" placeholder="random" autocomplete="off" spellcheck="false"></label>
+      <label class="wm-full wm-chk"><input id="wmFx" type="checkbox" checked> Rocks and rich crystal fields on the map</label>
+      <label class="wm-full">…or paste a replay code<input id="wmCode" type="text" placeholder="OD1-424242-aurora-obsidian-master-hard-m" autocomplete="off" spellcheck="false"></label>
+    </div>
+    <div id="wmErr" class="wm-err hidden" role="alert"></div>
+    <div class="row end"><button class="btn" id="wmBack">Back</button><button class="btn big" id="wmGo">Watch</button></div>
+  </div>
+</div>
+
+<div id="spec" class="hidden" role="region" aria-label="Spectator panel">
+  <div class="sp-head"><b>Agents playing</b><span class="sp-t" id="spT">0:00</span><button class="btn sm" id="spFold" aria-label="Collapse panel" aria-expanded="true">▾</button></div>
+  <div id="spBody">
+    <div class="sp-vs"><span id="spA"></span><span id="spB"></span></div>
+    <canvas id="spGraph" width="300" height="84" aria-label="Each agent's own estimate of its chance to win, over time"></canvas>
+    <div class="sp-leg"><i class="la"></i>A's own win estimate <i class="lb"></i>B's <i class="lm"></i>army share of A</div>
+    <table class="sp-tab" id="spTab"></table>
+    <div class="sp-why" id="spWhyA"></div><div class="sp-why" id="spWhyB"></div>
+    <ol class="sp-ev" id="spEv" aria-label="Key moments"></ol>
+    <div class="sp-ctl" role="group" aria-label="Playback">
+      <button class="btn sm" id="spPause">Pause</button>
+      <button class="btn sm" data-sp="1">1×</button><button class="btn sm" data-sp="2">2×</button><button class="btn sm" data-sp="4">4×</button><button class="btn sm" data-sp="8">8×</button>
+      <button class="btn sm" id="spFollow" aria-pressed="true">Follow action</button>
+    </div>
+    <div class="sp-code"><code id="spCode"></code><button class="btn sm" id="spCopy">Copy code</button><button class="btn sm" id="spLink">Copy link</button></div>
+    <div class="sp-ctl"><button class="btn sm" id="spNew">New match</button><button class="btn sm danger" id="spExit">Exit</button></div>
+    <div class="sp-res hidden" id="spRes" role="status"></div>
   </div>
 </div>
 

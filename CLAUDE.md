@@ -16,13 +16,13 @@ App Store release. Read `README.md`, then `docs/STORE_RELEASE_ROADMAP.md` and `d
    alphabetical order (`00_core` … `90_main`). Add new modules with the right numeric prefix. The browser gate asserts
    zero network requests — keep it that way. The only deliberate exceptions are the **opt-in** payment calls (`77_support.js`, off unless `src/support.config.json` enables them, only after a player action)
    and the PWA service-worker registration (`BUILD.variant==='pwa'`, http(s) only).
-2. **The simulation is headless-testable.** Modules `00,05,06,10,20,25,26,27,30,31,32,33,40,41,42,43` must not touch DOM, canvas or audio
+2. **The simulation is headless-testable.** Modules `00,05,06,10,20,25,26,27,30,31,32,33,40,41,42,43,47` must not touch DOM, canvas or audio
    directly (the Node harness loads only these, stubbing `toast/sfx/say/uiDirty/onVision/onStepEnd/onGameOver`).
    UI code lives in `50+`. If you add a sim → UI call, add a stub for it in `tests/sim/simlib3.js`.
 3. **Fixed timestep:** the sim advances in `TICK = 1/30` s steps (`step()`); rendering interpolates nothing — keep
    sim state changes inside `step()`. Never use wall-clock time (`Date`, `performance.now`) in sim modules.
 4. **Determinism:** for a fixed `(seed, Math.random stream)` the sim is bit-exact (tested). ~30 sim-affecting
-   `Math.random()` calls remain (see docs/BACKLOG.md B-20). New sim code must use `G.rng`/`S.rng` (mulberry32), not `Math.random`.
+   `Math.random()` calls remain (see docs/BACKLOG.md B-20). New sim code must use `G.rng`/`S.rng` (mulberry32), not `Math.random`. Replays (`newGame({replay:true})`, 47_replay.js): the remaining sim-affecting draws go through `rnd()` (20_sim.js), which uses the saved stream `G.rrng` in replay games and `Math.random` otherwise; a new sim-side random draw must use `rnd()` or `G.rng`, and `tests/sim/replay.js` must stay green.
 5. **Swarm off must stay inert.** With `G.sw.on === false` the player side behaves like v2 (`tests/sim/off.js`
    compares against `baseline/v2`). The Overseer is a **rule-based** system, not an LLM — don't describe it as AI
    language understanding in store text.

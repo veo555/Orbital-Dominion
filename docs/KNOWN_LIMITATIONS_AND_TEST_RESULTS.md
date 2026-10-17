@@ -3,6 +3,10 @@
 Purpose: so the next engineer knows exactly what was verified, how, and what was **not**. "Perfect" is not a state a
 game reaches; the release gates in `QA_CHECKLIST.md` define "good enough to ship".
 
+## 000. v6.1 (17 Oct 2026): spectator mode and replays
+
+New: `47_replay.js`, `75_spectate.js`, `tests/sim/replay.js` (+ `--mutants`: 6 mutants, all caught after three were not caught at first: the seed mutant needed a direct "two seeds, two streams" check, the hash mutant a "unit moves 5 px" check, and the save mutant had to target the real save code), `tests/e2e/e2e_spectate.py` (desktop, phone landscape and portrait; mutated pause, deep link, camera keys, graph and phone layout each fail it; the first version of the graph check was vacuous because the 50 % line alone passed it). The sim-affecting `Math.random` calls were routed through `rnd()`; without `replay:true` they are unchanged, so the v5/v6 baselines are unaffected. Not verified: that people learn from watching (no study), phone behaviour on a real device, replays across builds, human-match replays (not implemented).
+
 ## 00. v6.0 (16 Oct 2026): merged FORTIFY + ARSENAL
 
 Full `bash tests/run_all.sh` on the merged tree: ALL GATES PASSED (includes sim smoke, fortify 100+ checks with mutants, arsenal 116 checks, e2e fortify/arsenal, touch, platform, PWA, audio). Two merge-induced test expectations were corrected (campaign Airfield list now includes a locked Dropship; fortify tests run with the arsenal off to keep v5 units). Not verified: balance of the new units beyond the duel simulator and `fortify_ab.js`; any real device; sound heard by a person; grounding judged by screenshots only.

@@ -387,6 +387,7 @@ function endGame(res){
 function step(){
   if(G.camp&&G.camp.hold)return;   // a blocking `dispatch` action card is open: the world stands still until campaignResume() (45_campaign.js)
   G.tick++;G.time+=TICK;G.pathBudget=16;
+  if(G.rp)replayTick();   // 47_replay.js: state-hash checkpoints for exact-replay verification
   dayNight();rebuildCells();recalcTeams();buildDetectors();
   for(const b of G.buildings){b.nb=b._cnt;b._cnt=0;}
   neutralsStep(TICK);

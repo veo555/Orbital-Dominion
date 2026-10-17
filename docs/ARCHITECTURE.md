@@ -55,6 +55,7 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `30_systems.js` | Per-tick systems: unit/building update, skills (`castSkill`), gather/build/repair/trade steps, economy (tax/morale/market), `step()`, `endGame` | yes |
 | `31_defense.js` | v6-G1 sim: team views of the blocked grid (`G.bt`/`G.compT`, gates open for their owner), breach rule (`fortSealed`, `fortBreachSearch`), self-seal rule, wall lines (`fortPlaceLine`), mines, Repair Battery, Fortress, Scanner Sweep, `isDetectedBy`, Sensor radar, rocks + rich field (`fortMapFeatures`, only with `newGame({mapFx:true})`) | yes |
 | `32_cargo.js` | v6-G1 generic cargo (Bunker, Dropship): `host.cargo` ids / `unit.inside`, load / unload / pickup orders, fire from inside, host-death rules | yes |
+| `47_replay.js` | **v6.1 replays** (sim-side): state hash, checkpoints every 10 s, short replay codes (`OD1-seed-A-B-tierA-tierB-flags`), `replayParse`/`replayExport`; needs `newGame({replay:true})` so that `rnd()` draws from `G.rrng` | yes |
 | `06_content_units.js` | **v6 ARSENAL data**: 11 new units, Lab + Siege Works, tier lines (`TECH`), damage-type matrix `DMGX`, armor classes; extends `UDEF/BDEF/TECH/BUILD_PAGES` (entries carry `arsenal:true`) | yes (data) |
 | `33_abilities.js` | **v6 ARSENAL rules**: generic unit abilities (`ABIL`, `abUse`, `abilTick`, autocast, orders `abil`), shields + structure barrier, Pulse Scan / Lance / Barrage zones, `detectorsCover`, per-team arsenal switch (`arsOff`: campaign lock and the "v5 AI snapshot"), faction availability (`arsenalProd`) — `docs/DESIGN_ARSENAL.md` | yes |
 | `40_ai.js` | The **legacy v3 opponent** (`makeAIV3`, `aiThinkV3`, `aiBuild`, `findSpot`, expansions, hero spells): wave AI that reads hidden state; drives **campaign missions** (balanced against it) and is the league anchor | yes |
@@ -78,6 +79,7 @@ rebuildBlocked → updateVision (every 4 ticks) → sampleStats → onStepEnd`.
 | `73_swarm_ui.js` | Swarm panel: tabs `ov` (Overseer), `ro` (Roster), `mk` (Market), `lg` (Ledger); command box; role assignment; world overlays (agent badges) | no |
 | `74_touch.js` | Pointer-Events touch layer: gestures, minimap, long-press help, touch dock, placement bar (`docs/TOUCH_SPEC.md`) | no |
 | `75_platform.js` | Lifecycle (auto-pause, wake-lock, Back), fullscreen, install helpers, service-worker registration | no |
+| `75_spectate.js` | **v6.1 spectator mode** (UI only): "Watch agents" dialog, panel (stats, each agent's own win estimate graph, one-line "why", key moments), free / follow camera, `#watch=<code>` links; reads sim state, never writes it | no |
 | `46_save.js` | Snapshot / restore of the whole match state (reference-preserving graph; statics by name; seeded generators by state) — headless, tested by `tests/sim/save.js` | **yes** (sim-side) |
 | `78_resume.js` | Autosave slot in localStorage, main-menu Continue button, `resumeGame()` (via `startGame({resume})`) | no |
 | `77_support.js` | Optional payments UI + entitlement logic (`docs/MONETIZATION.md`) | no |

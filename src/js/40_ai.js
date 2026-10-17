@@ -30,13 +30,13 @@ function pendingRects(workers){
   const out=[];for(const w of workers){if(w.order.t==='build'&&!w.order.bld){const d=BDEF[w.order.type];out.push({tx:w.order.tx,ty:w.order.ty,w:d.w,h:d.h});}}return out;}
 function findSpot(ai,type,B,workers){
   const d=BDEF[type],hubs=B.filter(b=>b.type==='hub'&&b.done);if(!hubs.length)hubs.push(B[0]);
-  const anchor=hubs[(Math.random()*hubs.length)|0],res=pendingRects(workers);
+  const anchor=hubs[(rnd()*hubs.length)|0],res=pendingRects(workers);
   const ax=anchor.x/TILE|0,ay=anchor.y/TILE|0,dx0=WW/2-anchor.x,dy0=WH/2-anchor.y,l=hyp(dx0,dy0)||1,ux=dx0/l,uy=dy0/l;
   let best=null,bs=1e9;const cands=[];
   for(let dy=-15;dy<=15;dy++)for(let dx=-15;dx<=15;dx++){
     const tx=ax+dx-(d.w>>1),ty=ay+dy-(d.h>>1),cx=(tx+d.w/2)*TILE,cy=(ty+d.h/2)*TILE;
     if(!spotOK(ai.team,type,tx,ty,d,res,cx,cy))continue;
-    let s=hyp(dx,dy)+Math.random()*3;if(type==='turret')s-=(dx*ux+dy*uy)*0.9;
+    let s=hyp(dx,dy)+rnd()*3;if(type==='turret')s-=(dx*ux+dy*uy)*0.9;
     if(hyp(dx,dy)<5)s+=8;
     if(ai.pathCheck)cands.push({s,tx,ty,cx,cy});
     if(s<bs){bs=s;best={tx,ty};}}
@@ -189,7 +189,7 @@ function aiThinkV3(ai){
   // ---- research
   for(const b of B){
     if(!b.done||b.queue.length)continue;
-    if(b.type==='armory'){const order=Math.random()<0.5?['weapons','armor','stims']:['armor','weapons','stims'];
+    if(b.type==='armory'){const order=rnd()<0.5?['weapons','armor','stims']:['armor','weapons','stims'];
       for(const id of order)if(T.c>=250&&techNext(T,id)&&queueResearch(b,id))break;}
     else if(b.type==='depot'){for(const id of['mining','compress','cargo'])if(T.c>=220&&techNext(T,id)&&queueResearch(b,id))break;}}
   // ---- trade first: queue Freighters (and reserve the money for them) before soldiers can drain the treasury
@@ -207,16 +207,16 @@ function aiThinkV3(ai){
       const list=prodList(b);
       if(!b.done||b.type==='hub'||b.type==='exchange'||!list.length||b.queue.length>=2)continue;
       const W={rifleman:3,raptor:1.4,rocketeer:2.4,mender:armySup>20&&menders<armySup/9?1.8:0.1,howitzer:1.1,juggernaut:2,skiff:1.7,titan:1.6,bulwark:2.2,reaver:2.2,specter:1.6};
-      if(Math.random()<smart){
+      if(rnd()<smart){
         if(E.armored>E.light){W.rocketeer*=2;W.skiff*=1.3;}else if(E.light>E.armored){W.raptor*=1.7;W.juggernaut*=1.5;W.howitzer*=1.3;W.reaver*=1.3;}
         if(E.air>3){W.rifleman*=2;W.rocketeer*=1.5;}}
       const opts=[];
       for(const id of list){if(!W[id])continue;const r=reqUnit(team,id);if(r.ok)opts.push([id,W[id]]);}
       if(!opts.length)continue;
-      let tot=0;for(const o of opts)tot+=o[1];let x=Math.random()*tot,pick=opts[0][0];
+      let tot=0;for(const o of opts)tot+=o[1];let x=rnd()*tot,pick=opts[0][0];
       for(const o of opts){x-=o[1];if(x<=0){pick=o[0];break;}}
       queueUnit(b,pick);
-      if(!b.rally||hyp(b.rally.x-ai.stage.x,b.rally.y-ai.stage.y)>5)b.rally={x:ai.stage.x+(Math.random()-.5)*110,y:ai.stage.y+(Math.random()-.5)*110};}}
+      if(!b.rally||hyp(b.rally.x-ai.stage.x,b.rally.y-ai.stage.y)>5)b.rally={x:ai.stage.x+(rnd()-.5)*110,y:ai.stage.y+(rnd()-.5)*110};}}
   // ---- trade: freighters + market
   const ex=B.find(b=>b.type==='exchange'&&b.done);
   if(ex){
@@ -270,7 +270,7 @@ function aiThinkV3(ai){
     else if(ai.creep){
       const c=ai.creep.camp,alive=c.units.some(id=>{const z=G.units.find(q=>q.id===id);return z&&!z.dead;});
       if(!alive||time>ai.creep.until||hero.hp<hero.maxhp*0.35){
-        for(const id of ai.creep.ids){const u=G.units.find(q=>q.id===id);if(u&&!u.dead)setOrder(u,{t:'move',x:ai.stage.x+(Math.random()-.5)*120,y:ai.stage.y+(Math.random()-.5)*120,gs:0});}
+        for(const id of ai.creep.ids){const u=G.units.find(q=>q.id===id);if(u&&!u.dead)setOrder(u,{t:'move',x:ai.stage.x+(rnd()-.5)*120,y:ai.stage.y+(rnd()-.5)*120,gs:0});}
         ai.creep=null;ai.lastCreepEnd=time;}}}
   if(!ai.attacking){
     if(!threat&&!ai.creep&&time>P.first&&sup>=P.base+ai.wave*P.step){
@@ -280,7 +280,7 @@ function aiThinkV3(ai){
         for(const u of army)if(ai.group.has(u.id))setOrder(u,{t:'attackmove',x:tg.x,y:tg.y,gs:slow<1e9?slow*1.12:0});}
     }else if(!threat&&!ai.creep){
       for(const u of army)if(free(u)&&u.order.t==='idle'&&hyp(u.x-ai.stage.x,u.y-ai.stage.y)>260)
-        setOrder(u,{t:'attackmove',x:ai.stage.x+(Math.random()-.5)*140,y:ai.stage.y+(Math.random()-.5)*140,gs:0});}
+        setOrder(u,{t:'attackmove',x:ai.stage.x+(rnd()-.5)*140,y:ai.stage.y+(rnd()-.5)*140,gs:0});}
   }else{
     const alive=army.filter(u=>ai.group.has(u.id));
     if(!alive.length||alive.length<ai.initN*0.35){ai.attacking=false;for(const u of alive)if(free(u))setOrder(u,{t:'move',x:ai.stage.x,y:ai.stage.y,gs:0});}

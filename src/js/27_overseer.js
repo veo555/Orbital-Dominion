@@ -434,11 +434,11 @@ function ovProduction(c){
     const opts=[];
     for(const id of list){if(!W[id])continue;const r=reqUnit(0,id);if(r.ok&&T.c-uCost(0,id).c>=reserve)opts.push([id,W[id]]);}
     if(!opts.length)continue;
-    let tot=0;for(const o of opts)tot+=o[1];let x=Math.random()*tot,pick=opts[0][0];
+    let tot=0;for(const o of opts)tot+=o[1];let x=rnd()*tot,pick=opts[0][0];
     for(const o of opts){x-=o[1];if(x<=0){pick=o[0];break;}}
     ovAct('army','u:'+b.id,'Train a '+UDEF[pick].name+' at the '+b.def.name,()=>{
       const ok=queueUnit(b,pick);
-      if(ok){const hub=nearestOwn(0,'hub',b.x,b.y);if(hub){const st=stagePt(hub);if(!b.rally||hyp(b.rally.x-st.x,b.rally.y-st.y)>5)b.rally={x:st.x+(Math.random()-.5)*110,y:st.y+(Math.random()-.5)*110};}}
+      if(ok){const hub=nearestOwn(0,'hub',b.x,b.y);if(hub){const st=stagePt(hub);if(!b.rally||hyp(b.rally.x-st.x,b.rally.y-st.y)>5)b.rally={x:st.x+(rnd()-.5)*110,y:st.y+(rnd()-.5)*110};}}
       return ok;});
   }
 }
@@ -456,7 +456,7 @@ function ovDefense(c){
       if(!(o.t==='attackmove'&&hyp(o.x-D.enemy.x,o.y-D.enemy.y)<200))agDo(()=>setOrder(hero,{t:'attackmove',x:D.enemy.x,y:D.enemy.y,gs:0}));}
     else if(o.t==='idle'&&!hero.hidden&&!hero.garr&&hero.casting===undefined){
       const hub=nearestOwn(0,'hub',hero.x,hero.y);
-      if(hub){const st=stagePt(hub);if(hyp(hero.x-st.x,hero.y-st.y)>280)agDo(()=>setOrder(hero,{t:'move',x:st.x+(Math.random()-.5)*90,y:st.y+(Math.random()-.5)*90}));}}}
+      if(hub){const st=stagePt(hub);if(hyp(hero.x-st.x,hero.y-st.y)>280)agDo(()=>setOrder(hero,{t:'move',x:st.x+(rnd()-.5)*90,y:st.y+(rnd()-.5)*90}));}}}
 }
 /* hunting / assault enablement for auto-directed armed agents */
 function ovWar(c){
@@ -774,7 +774,7 @@ function findBuildingSpot(type,x,y){
   let best=null,bs=1e9;const ax=x/TILE|0,ay=y/TILE|0;
   for(let dy=-14;dy<=14;dy++)for(let dx=-14;dx<=14;dx++){
     const tx=ax+dx-(d.w>>1),ty=ay+dy-(d.h>>1),cx=(tx+d.w/2)*TILE,cy=(ty+d.h/2)*TILE;
-    if(!spotOK(0,type,tx,ty,d,reserved,cx,cy))continue;const s=hyp(dx,dy)+Math.random()*2;if(s<bs){bs=s;best={tx,ty};}}
+    if(!spotOK(0,type,tx,ty,d,reserved,cx,cy))continue;const s=hyp(dx,dy)+rnd()*2;if(s<bs){bs=s;best={tx,ty};}}
   return best;
 }
 function ovBuildAt(type,x,y){
@@ -793,7 +793,7 @@ function ovTrain(type,n){
     let best=null;for(const b of G.buildings){if(b.dead||!b.done||b.team!==0)continue;if(!prodList(b).includes(type))continue;if(b.queue.length>=5)continue;if(!best||b.queue.length<best.queue.length)best=b;}
     if(!best){why=done?'':'You have no building that trains '+def.name+'s yet';break;}
     const r=reqUnit(0,type);if(!r.ok){why=r.why;break;}
-    if(queueUnit(best,type)){done++;const hub=nearestOwn(0,'hub',best.x,best.y);if(hub&&!best.rally){const st=stagePt(hub);best.rally={x:st.x+(Math.random()-.5)*110,y:st.y+(Math.random()-.5)*110};}}else break;}
+    if(queueUnit(best,type)){done++;const hub=nearestOwn(0,'hub',best.x,best.y);if(hub&&!best.rally){const st=stagePt(hub);best.rally={x:st.x+(rnd()-.5)*110,y:st.y+(rnd()-.5)*110};}}else break;}
   return{done,why};
 }
 function ovFindHire(type,roles,cad,role){

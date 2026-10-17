@@ -13,7 +13,7 @@ Keep the repository rule: no claim without numbers, and report intervals (a win 
 * **Conditions:** (a) watch 5 agent-vs-agent games (menu attract mode or a recorded seed) before playing, (b) advisor on, (c) control.
 * **Measures:** economy and army value at minute 8 on a fixed seed before and after a 5-game training block; build-order distance to the agent's.
 * **Hypothesis:** (a) and (b) improve minute-8 economy over control. Beware ceiling and learning-by-playing effects: use pre/post with a control.
-* **Needed engineering:** replay export (seed + command log is enough because the simulator is deterministic).
+* **Engineering status:** agent-vs-agent matches are already reproducible from a replay code (`docs/SPECTATE_AND_REPLAY.md`), so condition (a) can use one fixed match for everyone. Still missing: logging of human commands (needed to replay the participants' own games) and a measurement hook for minute-8 economy.
 
 ## S3. Delegation
 * **Conditions:** Manual, Advisor, Autopilot-economy.

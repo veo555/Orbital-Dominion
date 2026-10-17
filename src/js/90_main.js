@@ -18,6 +18,7 @@ function startGame(opts){
   }
   else if(camp)newGame({campaign:camp,diff:opts.diff||SET.diff});
   else newGame({diff:SET.diff,faction:SET.faction,enemy:SET.enemy,seed:ui.seedOverride!=null?ui.seedOverride:undefined});
+  if(typeof specHide==='function')specHide();
   ui.demo=false;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateVision();updateFog(1,true);
   if(typeof campMatchStart==='function')campMatchStart(camp);
   cam.z=cam.tz=rootEl.classList.contains('compact')?1.2:1;const hub=G.buildings.find(b=>b.team===0&&b.type==='hub');centerOn(hub.x,hub.y);
@@ -32,6 +33,7 @@ function startGame(opts){
   return true;
 }
 function startDemo(){
+  if(typeof specHide==='function')specHide();
   const fs=FACTION_IDS.slice().sort(()=>Math.random()-.5);
   newGame({diff:'normal',faction:fs[0],enemy:fs[1],aiBoth:true});
   ui.demo=true;ui.running=true;resetUI();applyTeamPalettes();buildTerrain();initFog();updateFog(1,true);G.speed=3;cam.z=cam.tz=0.9;ui.demoT=0;ui.demoPt=null;ui.demoEnd=0;
@@ -49,9 +51,10 @@ function setSpeed(dir,cycle){
 }
 /* menu background: a slow camera over an AI-vs-AI match */
 function demoUpdate(dt){
+  if(ui.spec&&!SP.follow)return;   // 75_spectate.js: free camera
   ui.demoT-=dt;
   if(G.over){if(!ui.demoEnd)ui.demoEnd=performance.now()+4000;else if(performance.now()>ui.demoEnd&&!$('menu').classList.contains('hidden')===false){}}
-  if(G.over&&ui.demoEnd&&performance.now()>ui.demoEnd){const wasMenu=!$('menu').classList.contains('hidden');startDemo();if(wasMenu)showOverlay('menu');return;}
+  if(G.over&&!ui.spec&&ui.demoEnd&&performance.now()>ui.demoEnd){const wasMenu=!$('menu').classList.contains('hidden');startDemo();if(wasMenu)showOverlay('menu');return;}
   if(ui.demoT<=0){ui.demoT=6+Math.random()*4;
     let fight=null;for(const u of G.units){if(u.dead||u.team>1||u.def.worker)continue;if(u.target&&!u.target.dead&&u.target.team!==u.team){fight=u;break;}}
     if(fight)ui.demoPt={x:fight.x,y:fight.y};
@@ -248,6 +251,7 @@ function frameBody(dt,t){
   guardRun('view',frameView,dt);
   guardRun('render',frameRender,dt,t);
   if(!ui.demo)guardRun('ui',frameUi,dt);
+  else if(ui.spec)guardRun('ui',specFrame,dt);
 }
 /* stage 1: the fixed-step simulation, with the spiral-of-death guard: at most 14 steps (2 in shed mode) and a wall-clock budget per frame; whatever is left over is dropped
    (the game runs slower than real time instead of falling further behind).  A step slower than 250 ms three frames in a row switches the loop to shed mode. */
@@ -302,13 +306,14 @@ function bootInner(){
   if(window.__TEST&&window.__FAULT_BOOT)throw new Error('injected boot fault');   // test seam (tests/e2e/e2e_robust_core.py)
   cv=$('game');ctx=cv.getContext('2d');mm=$('mm');mmCtx=mm.getContext('2d');
   setTouchMode(!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches));rootEl.classList.toggle('rm',!!SET.rm);
-  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();campInit();soundLabInit();m3Init();ui.inWin=true;
+  initQuality();resizeView();hydrateGlyphs();buildMenus();bindInput();campInit();soundLabInit();m3Init();specInit();ui.inWin=true;
   if(window.ResizeObserver){const ro=new ResizeObserver(()=>{sizeMinimap();measureHud();});ro.observe($('top'));ro.observe($('bottom'));ro.observe($('mmWrap'));}
   showOverlay('menu');
   if(!window.__TEST||window.__TEST==='live')startDemo();
+  if(!window.__TEST||window.__TEST==='live')specBoot();   // #watch=<replay code> in the URL opens that match
   if(!window.__TEST||window.__TEST==='live')requestAnimationFrame(frame);
 }
-if(window.__TEST){window.__RTS={BUILD,makeAI,DIFF,newGame,startGame,startDemo,step,get G(){return G;},ui,cam,SET,UDEF,BDEF,TECH,FACTIONS,aiThink,setSel,buildCommands,runCmd,renderInfo,renderCmdCard,hudUpdate,entityAt,issueGroup,contextCommand,clickSelect,boxSelect,
+if(window.__TEST){window.__RTS={BUILD,makeAI,DIFF,newGame,startGame,startDemo,step,replayHash,replayCode,replayParse,specStart,specRefresh,SP,get G(){return G;},ui,cam,SET,UDEF,BDEF,TECH,FACTIONS,aiThink,setSel,buildCommands,runCmd,renderInfo,renderCmdCard,hudUpdate,entityAt,issueGroup,contextCommand,clickSelect,boxSelect,
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),

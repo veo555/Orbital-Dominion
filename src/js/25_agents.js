@@ -421,7 +421,7 @@ function runMedic(u,ag,S){
   // otherwise trail the nearest armed group
   let cx=0,cy=0,n=0;
   forNear(u.x,u.y,700,e=>{if(e.team===u.team&&!e.dead&&!e.hidden&&!e.def.worker&&!e.def.noWeapon){cx+=e.x;cy+=e.y;n++;}});
-  if(n){cx/=n;cy/=n;ag.why='Following the line';if(hyp(cx-u.x,cy-u.y)>130)agSet(u,{t:'move',x:cx+(Math.random()-.5)*50,y:cy+(Math.random()-.5)*50});return;}
+  if(n){cx/=n;cy/=n;ag.why='Following the line';if(hyp(cx-u.x,cy-u.y)>130)agSet(u,{t:'move',x:cx+(rnd()-.5)*50,y:cy+(rnd()-.5)*50});return;}
   const hub=agHub(u);if(hub){ag.why='Standing by at the Hub';if(hyp(hub.x-u.x,hub.y-u.y)>200)agSet(u,{t:'move',x:hub.x,y:hub.y+100});}
 }
 function runFree(u,ag,S){ag.why='No directive';}

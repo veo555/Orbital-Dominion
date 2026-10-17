@@ -10,6 +10,16 @@
 | **Evidence** | `docs/AI_LEAGUE_RESULTS.md` (league, Elo, ablations), `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` |
 | **Licence** | MIT, contributions welcome: `CONTRIBUTING.md` |
 
+## Watch the agents play (new in 6.1)
+
+Main menu -> **Watch agents**: two AI agents play a full match while a panel shows **each agent's own win estimate over time, what it is doing and why, and the key moments**. Every match has a short **replay code**, and a page link plus `#watch=<code>` opens that exact match, so you can share a game, replay it, or compare tiers and factions on the same map. Details: [`docs/SPECTATE_AND_REPLAY.md`](docs/SPECTATE_AND_REPLAY.md).
+
+![Spectator mode: two agents fighting, with live win estimates, stats and reasons](docs/img/spectate.gif)
+
+<p><img src="docs/img/spectate_desktop.png" alt="Spectator panel on desktop" width="62%"> <img src="docs/img/spectate_phone.png" alt="Spectator panel on a phone in landscape" width="36%"></p>
+
+Example match: `OD1-424242-aurora-obsidian-master-hard-m`.
+
 **Why it is interesting.** The same deterministic simulator runs a full match in your browser *and* much faster than real time headless (not benchmarked here), so one codebase is simultaneously a game you can play, a spectator sport (the menu is agents playing each other), and a benchmark for multi-agent methods (league self-play with CMA-ES and PFSP, Bradley-Terry ratings, an AlphaGo-style planner shipped off after a documented null result).
 
 **What it is not.** No language model anywhere (the Overseer's text box is a rule-based grammar); not a reproduction of AlphaStar; no human study has been run yet, so "makes games more interesting" and "humans learn from agents" are *hypotheses this project exists to test*, not results. See the research vision for the exact status of each claim.
@@ -39,6 +49,7 @@ python3 build.py                 # -> dist/orbital_dominion_v4.html, dist/pwa/, 
 node tests/sim/smoke.js          # headless simulation checks (seconds)
 node tests/sim/fortify.js        # walls / gates / bunkers / mines (~1 min)
 node tests/sim/arsenal.js        # units / abilities (~1 min; add --mutants to prove the tests can fail)
+node tests/sim/replay.js         # replay determinism: same code, same match (add --mutants)
 bash tests/run_all.sh            # full gate incl. Playwright browser tests (~30 min; needs Playwright 1.56 + Chromium)
 ```
 

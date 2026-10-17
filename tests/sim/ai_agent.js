@@ -21,7 +21,7 @@ function pinRandom(S, seed) { let s = seed >>> 0; S.sandbox.Math.random = functi
 function start(S, seed, f0, f1, a0, a1) { pinRandom(S, seed * 7919 + 13); S.newGame({ seed, faction: f0, enemy: f1, diff: 'normal', aiBoth: true }); S.G.ais[0] = makeAgent(S, a0, 0); S.G.ais[1] = makeAgent(S, a1, 1); return S.G; }
 function mutatedTree(edits) { // a temporary copy of the sim sources with string edits applied to 42_ai_agent.js
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-ai-mut-'));
-  for (const f of fs.readdirSync(SRC)) if (/^(00|05|06|10|20|25|26|27|30|31|32|33|40|41|42|43|44|45|46)_/.test(f)) {
+  for (const f of fs.readdirSync(SRC)) if (/^(00|05|06|10|20|25|26|27|30|31|32|33|40|41|42|43|44|45|46|47)_/.test(f)) {
     let t = fs.readFileSync(path.join(SRC, f), 'utf8');
     if (f === '42_ai_agent.js') for (const [a, b] of edits) { if (!t.includes(a)) throw new Error('mutation anchor not found: ' + a.slice(0, 60)); t = t.replace(a, b); }
     fs.writeFileSync(path.join(dir, f), t);

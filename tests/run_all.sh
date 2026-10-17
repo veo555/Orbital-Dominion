@@ -18,9 +18,12 @@ node tests/sim/ai_agent.js --quick
 node tests/sim/ai_mcts.js --quick
 node tests/sim/campaign.js
 node tests/sim/campaign_walkthrough.js
+node tests/sim/replay.js
+node tests/sim/replay.js --mutants
 python3 tests/e2e/e2e_smoke.py
 python3 tests/e2e/e2e_touch.py
 python3 tests/e2e/e2e_fortify.py
+python3 tests/e2e/e2e_spectate.py
 python3 tests/e2e/e2e_terrain.py
 python3 tests/e2e/e2e_platform.py
 python3 tests/e2e/e2e_resume.py
