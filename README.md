@@ -1,3 +1,21 @@
+# Orbital Dominion: swarm agents as game design
+
+> **An open-source RTS and research testbed for putting small, inspectable AI agents *into* gameplay: as opponents, as delegates, as teammates and as teachers.** Inspired by StarCraft-style play and by DeepMind's AlphaStar / AlphaGo line of work, scaled down to run in a single HTML file, with no server, no GPU and no language model.
+
+| | |
+|---|---|
+| **Play** | open `dist/orbital_dominion_v4.html` in any modern browser (desktop or phone), or install the PWA in `dist/pwa/` |
+| **Idea** | agents play against each other, agents play *for* you (swarm / Overseer), agents explain themselves and advise you, humans learn from watching them |
+| **Research** | `docs/RESEARCH_VISION.md` (thesis, system, honest scope), `docs/RESEARCH_AGENDA.md` (unrun studies and open problems) |
+| **Evidence** | `docs/AI_LEAGUE_RESULTS.md` (league, Elo, ablations), `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` |
+| **Licence** | MIT, contributions welcome: `CONTRIBUTING.md` |
+
+**Why it is interesting.** The same deterministic simulator runs a full match in your browser *and* ~100x faster headless, so one codebase is simultaneously a game you can play, a spectator sport (the menu is agents playing each other), and a benchmark for multi-agent methods (league self-play with CMA-ES and PFSP, Bradley-Terry ratings, an AlphaGo-style planner shipped off after a documented null result).
+
+**What it is not.** No language model anywhere (the Overseer's text box is a rule-based grammar); not a reproduction of AlphaStar; no human study has been run yet, so "makes games more interesting" and "humans learn from agents" are *hypotheses this project exists to test*, not results. See the research vision for the exact status of each claim.
+
+---
+
 # Orbital Dominion v6 — project handoff package
 
 A real-time strategy game (three factions, three eras, fog of war, heroes, a Caesar-style colony economy, a
