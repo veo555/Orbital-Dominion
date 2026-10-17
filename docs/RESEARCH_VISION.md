@@ -97,5 +97,5 @@ node tests/sim/ai_agent.js --quick            # no-peek, determinism, APM-cap te
 Contributions are welcome: see `CONTRIBUTING.md`. Everything is MIT licensed; fork it, swap in your own agent, publish your league results.
 
 ## 7. Citing
-If you use this in research, please cite the repository (`veo555/claude`, Orbital Dominion v6.0) and the papers it builds on
+If you use this in research, please cite the repository (`veo555/Orbital-Dominion`, Orbital Dominion v6.1) and the papers it builds on
 (listed in `docs/RESEARCH_ALPHASTAR_AND_SWARMS.md`).

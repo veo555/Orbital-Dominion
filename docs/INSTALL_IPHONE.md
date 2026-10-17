@@ -1,7 +1,7 @@
 # Install Orbital Dominion on an iPhone (web app, no App Store)
 
 You need: an iPhone with iOS 16 or newer, Safari (the built-in browser), and the HTTPS link to the published game (for this repository:
-`https://veo555.github.io/claude/` once GitHub Pages is switched on; see "Publishing" below).
+`https://veo555.github.io/Orbital-Dominion/` once GitHub Pages is switched on, which it now is; see "Publishing" below).
 
 ## Install (about 1 minute)
 1. On the iPhone open **Safari** and go to the link. (Use Safari itself: other browsers on iOS can add home-screen apps too since iOS 16.4, but Safari is the reference.)

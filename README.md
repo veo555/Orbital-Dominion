@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Play** | open `dist/orbital_dominion_v4.html` in any modern browser (desktop or phone), or install the PWA in `dist/pwa/` |
+| **Play** | **https://veo555.github.io/Orbital-Dominion/** (any modern browser, desktop or phone; installable as an app), or open `dist/orbital_dominion_v4.html` locally. Watch a match directly: `https://veo555.github.io/Orbital-Dominion/#watch=OD1-424242-aurora-obsidian-master-hard-m` |
 | **Idea** | agents play against each other, agents play *for* you (swarm / Overseer), agents explain themselves and advise you, humans learn from watching them |
 | **Research** | `docs/RESEARCH_VISION.md` (thesis, system, honest scope), `docs/RESEARCH_AGENDA.md` (unrun studies and open problems) |
 | **Evidence** | `docs/AI_LEAGUE_RESULTS.md` (league, Elo, ablations), `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` |
