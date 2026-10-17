@@ -19,7 +19,7 @@ Most game AI is a *difficulty slider* bolted on at the end. We treat agents as a
 | Q1 | **Agents as opponents.** Can a fog-honest, human-rate-limited agent tuned by self-play give a more varied and fairer opponent than scripted waves? | Skirmish opponent with belief grid, scouting, fight prediction, 4 tiers, league-tuned parameters | Built and measured bot-vs-bot; **no human study yet** |
 | Q2 | **Agents as delegates (swarm).** Can a player hand parts of the game to agents (every unit may be an agent with a role, a wallet and XP, plus a collective "Overseer") and so play at a different level of abstraction? | 12 agent roles, Overseer with 7 domains (off / advise / act), Autopilot / Advisor / Manual presets, a labour marketplace | Built; **delegation effects on human play not yet measured** |
 | Q3 | **Agents as teachers.** Can people learn from watching agents and from agent advice? | Agents explain *why* they act (info card), the advisor shows a calibrated win chance with reasons, the menu runs agents against each other (attract mode) | Prototype; **learning gain not yet measured** |
-| Q4 | **Agents vs agents as a lab.** Can the same game serve as a fast, deterministic benchmark for multi-agent methods? | Headless deterministic simulator at ~100x real time, league tools (CMA-ES, PFSP, Bradley-Terry), mutation-proofed tests | Built and used for all numbers in `docs/AI_LEAGUE_RESULTS.md` |
+| Q4 | **Agents vs agents as a lab.** Can the same game serve as a fast, deterministic benchmark for multi-agent methods? | Headless deterministic simulator, much faster than real time, league tools (CMA-ES, PFSP, Bradley-Terry), mutation-proofed tests | Built and used for all numbers in `docs/AI_LEAGUE_RESULTS.md` |
 
 **What this project is not.** It does not claim to reproduce AlphaStar (which used orders of magnitude more compute and a deep
 network), and it contains **no language model**. The Overseer's text box is a rule-based keyword grammar. Claims in this repository
@@ -91,7 +91,7 @@ Full discussion with sources: `docs/RESEARCH_ALPHASTAR_AND_SWARMS.md`, design an
 ```
 python3 build.py                              # build the playable game
 node tests/sim/smoke.js                       # fast headless checks
-node tools/league/run.js --help               # self-play league (see docs/AI_LEAGUE_RESULTS.md for commands)
+node tools/league/run.js --hours 2.5 --out tests/out/league   # self-play league (more: docs/AI_LEAGUE_RESULTS.md)
 node tests/sim/ai_agent.js --quick            # no-peek, determinism, APM-cap tests for the agent
 ```
 Contributions are welcome: see `CONTRIBUTING.md`. Everything is MIT licensed; fork it, swap in your own agent, publish your league results.
