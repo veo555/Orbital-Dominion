@@ -9,6 +9,29 @@ It ships three ways from one source tree (`python3 build.py`): a **single self-c
 (`dist/orbital_dominion_v4.html`, ≈ 1.2 MB since 5.0 (2.0 MB with the 3.x films), no external requests, no libraries) to download and share; an **installable,
 offline-capable web app** (`dist/pwa/`); and a **store build** (`dist/store/`) for Capacitor wrappers. See `docs/DEPLOY.md`.
 
+## For evaluators: how to look at this project in 10 minutes
+
+**What it is.** A canvas real-time-strategy game in one self-contained HTML file (no libraries, no network requests), built from ~90 plain JavaScript modules by `python3 build.py`. Three factions, fog of war, a rule-based opponent AI trained by self-play league tuning (no LLM), walls/bunkers/abilities (v6), a campaign, PWA install, optional cosmetic-only payments (off by default).
+
+**Play it.** Open `dist/orbital_dominion_v4.html` in a browser (nothing to install), or serve `dist/pwa/` over http(s) to install it on a phone (`docs/INSTALL_IPHONE.md`).
+
+**Build and test.**
+```
+python3 build.py                 # -> dist/orbital_dominion_v4.html, dist/pwa/, dist/store/
+node tests/sim/smoke.js          # headless simulation checks (seconds)
+node tests/sim/fortify.js        # walls / gates / bunkers / mines (~1 min)
+node tests/sim/arsenal.js        # units / abilities (~1 min; add --mutants to prove the tests can fail)
+bash tests/run_all.sh            # full gate incl. Playwright browser tests (~30 min; needs Playwright 1.56 + Chromium)
+```
+
+**Where to read the code.** `docs/ARCHITECTURE.md` (module map: numeric prefixes, which modules are headless-testable), then `src/js/20_sim.js` (rules), `41_ai_*`/`42_ai_agent.js` (opponent), `56_mesh3d.js` + `57_recipes.js` (bake-time 3D sprites), `31_defense.js`/`33_abilities.js` (v6). Engineering rules and known traps are in `CLAUDE.md`; design intent in `docs/DESIGN_FORTIFY.md`, `docs/DESIGN_ARSENAL.md`, `docs/AI_DESIGN.md`, `docs/RESEARCH_ALPHASTAR_AND_SWARMS.md`.
+
+**Properties worth checking.** Fixed-timestep deterministic simulation (same seed, same result; tested); tests are mutation-proofed (a test must fail when the code is broken, `--mutants`); zero network requests asserted in the browser gate; the build is generated, so review `src/`, not `dist/`.
+
+**Honest limits.** It has never been run on a real phone; no person has listened to the audio; the full gate passed on the author's cloud container only; the AlphaGo-style planner ships off because it showed no measured gain; balance of the v6 units rests on a duel simulator and small matches, not a 24-seed A/B; the Master and Hard AI tiers are not statistically separated. Details: `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md`.
+
+**Licence.** MIT, see `LICENSE`.
+
 > **Read first:** `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` (what has and has not been verified — **no real phone has run
 > this yet**) and `docs/STORE_RELEASE_ROADMAP.md` (what stands between this and the stores).
 
