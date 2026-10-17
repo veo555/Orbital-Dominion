@@ -1,21 +1,21 @@
-# Runs every gate on each push / pull request. NOTE: written for GitHub Actions but not executed in the environment where
-# it was authored (no runner available there); the commands are exactly the ones used locally -- check the first run.
+# Fast checks for pull requests (the full gate, tests/run_all.sh, needs Playwright 1.56 + Chromium and takes ~30 min; run it locally before a release).
 name: CI
 on:
-  push: { branches: ['**'] }
-  pull_request: {}
+  push:
+  pull_request:
 jobs:
-  gates:
+  fast:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install playwright==1.56.0 pillow
-      - run: playwright install --with-deps chromium
-      - run: bash tests/run_all.sh
-      - name: committed dist/ matches the sources
-        run: python3 build.py && git diff --exit-code -- dist
+      - name: Build is up to date (dist/ matches src/)
+        run: |
+          python3 build.py
+          git diff --exit-code -- dist
+      - run: python3 tools/design_check.py
+      - run: node tests/sim/smoke.js
+      - run: node tests/sim/replay.js

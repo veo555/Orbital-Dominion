@@ -8,7 +8,9 @@
 | **Idea** | agents play against each other, agents play *for* you (swarm / Overseer), agents explain themselves and advise you, humans learn from watching them |
 | **Research** | `docs/RESEARCH_VISION.md` (thesis, system, honest scope), `docs/RESEARCH_AGENDA.md` (unrun studies and open problems) |
 | **Evidence** | `docs/AI_LEAGUE_RESULTS.md` (league, Elo, ablations), `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` |
-| **Licence** | MIT, contributions welcome: `CONTRIBUTING.md` |
+| **Licence** | MIT, contributions welcome: `CONTRIBUTING.md` (name and logo: `TRADEMARKS.md`; cite: `CITATION.cff`) |
+| **Try and give feedback** | `docs/launch/TESTER_GUIDE.md`, issue template *Playtest report* |
+| **Direction** | `docs/HYBRID_STRATEGY.md` (open core, optional cosmetic-only paid layer, tripwires) |
 
 ## Watch the agents play (new in 6.1)
 

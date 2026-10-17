@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software or its results in research, please cite it as below."
+title: "Orbital Dominion: swarm agents as game design (a playable RTS research testbed)"
+type: software
+version: 6.1.0
+date-released: 2026-10-17
+license: MIT
+authors:
+  - alias: veo555
+repository-code: "https://github.com/veo555/claude"
+keywords:
+  - real-time strategy
+  - multi-agent systems
+  - self-play
+  - game AI
+  - swarm intelligence
+  - AlphaStar
+abstract: >-
+  A single-file browser RTS with fog-honest, rate-limited agents tuned by league self-play, a swarm/delegation layer,
+  a deterministic simulator with replay codes, and a spectator mode. No language model. Results and limits are documented in the repository.
