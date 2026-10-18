@@ -20,6 +20,7 @@ Keep the repository rule: no claim without numbers, and report intervals (a win 
 * **Measures:** action rate, time spent on the minimap vs the army, result vs the same opponent.
 
 ## S4. Agent science (no humans needed)
+* **Harness:** `node tools/tournament.js` (see `docs/EVALUATE.md`) runs round-robin tournaments with Wilson intervals and a replay code per game; a first 48-game table is committed in `docs/results/tournament_example/`.
 * Replace the strategy layer with: a neural policy trained by imitation of the current agent then RL fine-tuning, an evolutionary controller, a MCTS variant with a better abstract model. The harness is `tools/league/*`; the baseline to beat is Master at ~Elo 981-1042 (see `docs/AI_LEAGUE_RESULTS.md`).
 * **Known weak spot:** the abstract model predicts the economy well but battles poorly (material share is about as predictable as "nothing changes"), which is the main reason the planner found little. A better battle model is the highest-value open problem.
 

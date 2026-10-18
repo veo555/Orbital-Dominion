@@ -10,6 +10,7 @@
 | **Evidence** | `docs/AI_LEAGUE_RESULTS.md` (league, Elo, ablations), `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` |
 | **Licence** | MIT, contributions welcome: `CONTRIBUTING.md` (name and logo: `TRADEMARKS.md`; cite: `CITATION.cff`) |
 | **Try and give feedback** | `docs/launch/TESTER_GUIDE.md`, issue template *Playtest report* |
+| **Evaluate it** | [`docs/EVALUATE.md`](docs/EVALUATE.md): 15-minute checklist, `node tools/tournament.js` (agent tournament with intervals and replay codes) |
 | **Direction** | `docs/HYBRID_STRATEGY.md` (open core, optional cosmetic-only paid layer, tripwires) |
 
 ## Watch the agents play (new in 6.1)
@@ -51,6 +52,7 @@ python3 build.py                 # -> dist/orbital_dominion_v4.html, dist/pwa/, 
 node tests/sim/smoke.js          # headless simulation checks (seconds)
 node tests/sim/fortify.js        # walls / gates / bunkers / mines (~1 min)
 node tests/sim/arsenal.js        # units / abilities (~1 min; add --mutants to prove the tests can fail)
+node tools/tournament.js --quick  # agent tournament: scores with intervals, replay code per game
 node tests/sim/replay.js         # replay determinism: same code, same match (add --mutants)
 bash tests/run_all.sh            # full gate incl. Playwright browser tests (~30 min; needs Playwright 1.56 + Chromium)
 ```
