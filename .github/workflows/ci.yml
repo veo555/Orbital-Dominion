@@ -19,3 +19,5 @@ jobs:
       - run: python3 tools/design_check.py
       - run: node tests/sim/smoke.js
       - run: node tests/sim/replay.js
+      - name: MCP server (engine checks + real MCP client over stdio)
+        run: cd mcp && npm ci && node test/engine_test.js && node test/server_test.js

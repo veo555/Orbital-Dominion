@@ -20,6 +20,7 @@ node tests/sim/campaign.js
 node tests/sim/campaign_walkthrough.js
 node tests/sim/replay.js
 node tests/sim/replay.js --mutants
+(cd mcp && npm ci --silent && node test/engine_test.js && node test/server_test.js)
 python3 tests/e2e/e2e_smoke.py
 python3 tests/e2e/e2e_touch.py
 python3 tests/e2e/e2e_fortify.py

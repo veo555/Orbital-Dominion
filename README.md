@@ -10,6 +10,7 @@
 | **Evidence** | `docs/AI_LEAGUE_RESULTS.md` (league, Elo, ablations), `docs/KNOWN_LIMITATIONS_AND_TEST_RESULTS.md` |
 | **Licence** | MIT, contributions welcome: `CONTRIBUTING.md` (name and logo: `TRADEMARKS.md`; cite: `CITATION.cff`) |
 | **Try and give feedback** | `docs/launch/TESTER_GUIDE.md`, issue template *Playtest report* |
+| **Play it with an AI (MCP)** | [`mcp/README.md`](mcp/README.md): an MCP server so Claude, Cursor or your own client can play or watch matches through tools (fog-honest, replayable, local) |
 | **Evaluate it** | [`docs/EVALUATE.md`](docs/EVALUATE.md): 15-minute checklist, `node tools/tournament.js` (agent tournament with intervals and replay codes) |
 | **Direction** | `docs/HYBRID_STRATEGY.md` (open core, optional cosmetic-only paid layer, tripwires) |
 
