@@ -18,6 +18,8 @@ tags:
 
 # Orbital Dominion: swarm agents as game design
 
+![Watch agents mode: two agents fighting, with live win estimates, stats and reasons](preview.png)
+
 A StarCraft-inspired real-time strategy game that doubles as an open research testbed. Everything runs in your browser from one HTML file: no server, no GPU, no language model, no network requests.
 
 **What to try**
@@ -25,6 +27,8 @@ A StarCraft-inspired real-time strategy game that doubles as an open research te
 - Or press **Start Mission** to play against the computer (press `H` for help). Works on phones too.
 
 **Why it is interesting:** fog-honest, rate-limited agents tuned by league self-play (CMA-ES, prioritised fictitious self-play, Bradley-Terry ratings); deterministic, replayable matches; an MCP server so an AI client can play it through tools. An AlphaGo-style planner is implemented but ships **off**: it showed no measurable gain. No human study has been run yet, and it has not been tested on a real phone.
+
+**Data:** the 48-game agent tournament with replay codes is on the Hub as a dataset (see the link on my profile: `orbital-dominion-tournament`).
 
 **Code, docs, tests, MCP server (MIT):** https://github.com/veo555/Orbital-Dominion
 **Play on GitHub Pages:** https://veo555.github.io/Orbital-Dominion/

@@ -3,4 +3,5 @@
 set -e
 cp dist/orbital_dominion_v4.html hf-space/index.html
 cp docs/brand/logo-action-512.png hf-space/logo.png
-echo "hf-space/ refreshed. Upload its contents to your Space (README.md, index.html, logo.png)."
+cp docs/img/spectate_desktop.png hf-space/preview.png
+echo "hf-space/ refreshed. Upload its contents to your Space (README.md, index.html, logo.png, preview.png)."
