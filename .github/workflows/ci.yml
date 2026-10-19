@@ -19,5 +19,7 @@ jobs:
       - run: python3 tools/design_check.py
       - run: node tests/sim/smoke.js
       - run: node tests/sim/replay.js
+      - name: manager-diligence (numpy only)
+        run: pip install numpy && python3 research/manager-diligence/tests/run_tests.py
       - name: MCP server (engine checks + real MCP client over stdio)
         run: cd mcp && npm ci && node test/engine_test.js && node test/server_test.js
