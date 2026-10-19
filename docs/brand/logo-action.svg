@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Orbital Dominion: two forces clash on a planet's surface under an orbital ring">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="46%" r="70%"><stop offset="0" stop-color="#14264a"/><stop offset=".6" stop-color="#0a1428"/><stop offset="1" stop-color="#050913"/></radialGradient>
+    <radialGradient id="boom" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#fff3b0"/><stop offset=".5" stop-color="#ffb347" stop-opacity=".95"/><stop offset="1" stop-color="#ff5a2a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bolt-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3d8bff" stop-opacity="0"/><stop offset=".55" stop-color="#7cc4ff"/><stop offset="1" stop-color="#e8f6ff"/></linearGradient>
+    <linearGradient id="bolt-r" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ff5a4a" stop-opacity="0"/><stop offset=".55" stop-color="#ff8a6a"/><stop offset="1" stop-color="#fff0e8"/></linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b3a6e"/><stop offset="1" stop-color="#08101f"/></linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#27d3a2"/><stop offset=".5" stop-color="#8fc8ff"/><stop offset="1" stop-color="#e6f2ff"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".55" stop-color="#f6c04a"/><stop offset="1" stop-color="#c9780f"/></linearGradient>
+    <clipPath id="plate"><rect width="512" height="512" rx="96"/></clipPath>
+  </defs>
+  <g clip-path="url(#plate)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <g fill="#bcd8ff"><circle cx="70" cy="70" r="2"/><circle cx="150" cy="40" r="1.5"/><circle cx="430" cy="64" r="2"/><circle cx="470" cy="150" r="1.5"/><circle cx="40" cy="170" r="1.5"/><circle cx="330" cy="36" r="1.5"/></g>
+    <!-- orbital ring -->
+    <g transform="rotate(-14 256 150)"><ellipse cx="256" cy="150" rx="236" ry="48" fill="none" stroke="url(#ring)" stroke-width="9" opacity=".55"/></g>
+    <circle cx="470" cy="104" r="11" fill="#b985ff"/><circle cx="470" cy="104" r="22" fill="#b985ff" opacity=".22"/>
+    <!-- planet surface -->
+    <path d="M-20 372 Q256 300 532 372 L532 540 L-20 540Z" fill="url(#ground)"/>
+    <path d="M-20 372 Q256 300 532 372" fill="none" stroke="#8fc8ff" stroke-width="3" opacity=".7"/>
+    <!-- explosion at the clash point -->
+    <circle cx="256" cy="300" r="118" fill="url(#boom)"/>
+    <g fill="#fff6c8" opacity=".95"><path d="M256 196l12 78 62-46-44 60 80 8-80 14 46 62-62-42-14 70-14-70-62 42 46-62-80-14 80-8-44-60 62 46z"/></g>
+    <circle cx="256" cy="300" r="20" fill="#fff"/>
+    <!-- beams -->
+    <path d="M40 286 L240 300 L40 326Z" fill="url(#bolt-b)"/><path d="M130 297 L240 300 L130 306Z" fill="#fff" opacity=".9"/>
+    <path d="M472 286 L272 300 L472 326Z" fill="url(#bolt-r)"/><path d="M382 297 L272 300 L382 306Z" fill="#fff" opacity=".9"/>
+    <!-- blue force (left): hub dome + two walkers -->
+    <g transform="translate(-8 -34) scale(1.12) translate(0 34)">
+      <path d="M26 372 L26 338 L48 318 L96 318 L118 338 L118 372Z" fill="#2a5db8" stroke="#a6ceff" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="72" cy="330" r="14" fill="#cfe8ff"/><circle cx="72" cy="330" r="7" fill="#3d8bff"/>
+      <rect x="112" y="338" width="30" height="8" rx="3" fill="#a6ceff"/>
+      <circle cx="40" cy="322" r="4" fill="#7cc4ff"/><circle cx="104" cy="322" r="4" fill="#7cc4ff"/>
+      <g fill="#a6ceff" stroke="#17408f" stroke-width="2" stroke-linejoin="round"><path d="M146 372 l8-34 l16 0 l8 34z"/><path d="M178 372 l8-28 l14 0 l8 28z"/></g>
+      <circle cx="162" cy="334" r="7" fill="#17408f"/><circle cx="193" cy="340" r="6" fill="#17408f"/>
+      <path d="M166 326 L214 306" stroke="#e8f6ff" stroke-width="5" stroke-linecap="round"/><path d="M197 334 L226 320" stroke="#e8f6ff" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <!-- red force (right): spiked structure + two raiders -->
+    <g transform="translate(60 -34) scale(1.12) translate(0 34)">
+      <path d="M486 372 L486 340 L466 304 L446 340 L430 316 L410 372Z" fill="#9a2a22" stroke="#ff9a86" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M466 304 L460 340 L472 340Z" fill="#ffb347"/><circle cx="450" cy="352" r="6" fill="#ffb347"/>
+      <g fill="#ff8a6a" stroke="#5a120e" stroke-width="2" stroke-linejoin="round"><path d="M366 372 l-8-34 l-16 0 l-8 34z"/><path d="M334 372 l-8-28 l-14 0 l-8 28z"/></g>
+      <circle cx="350" cy="334" r="7" fill="#5a120e"/><circle cx="319" cy="340" r="6" fill="#5a120e"/>
+      <path d="M346 326 L298 306" stroke="#fff0e8" stroke-width="5" stroke-linecap="round"/><path d="M315 334 L286 320" stroke="#fff0e8" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <!-- crystals in the foreground -->
+    <g stroke="#7a4a08" stroke-opacity=".45" stroke-width="2" stroke-linejoin="round">
+      <path d="M84 478 l22-70 l26 70z" fill="url(#gold)"/><path d="M126 482 l14-44 l18 44z" fill="url(#gold)"/>
+      <path d="M372 482 l20-62 l24 62z" fill="url(#gold)"/><path d="M344 486 l12-38 l16 38z" fill="url(#gold)"/>
+    </g>
+    <circle cx="110" cy="440" r="34" fill="#f6c04a" opacity=".14"/><circle cx="398" cy="448" r="34" fill="#f6c04a" opacity=".14"/>
+    <!-- sparks -->
+    <g fill="#fff3b0"><circle cx="196" cy="258" r="3"/><circle cx="320" cy="262" r="3"/><circle cx="238" cy="236" r="2.5"/><circle cx="286" cy="240" r="2.5"/><circle cx="176" cy="296" r="2"/><circle cx="340" cy="294" r="2"/></g>
+  </g>
+</svg>
