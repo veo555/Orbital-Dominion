@@ -19,6 +19,8 @@ node tools/tournament.js --tiers master,hard,normal --games 8 --cap 540 --seed0 
 ```
 Every ordered pair of tiers plays N games; sides and factions rotate. The report gives each pair's score with a 95 % Wilson interval and a Bradley-Terry Elo, and `games.csv` lists every game with its **replay code** and final state hash. Paste any code into "Watch agents" to see that exact match, or verify it headlessly (two of the 48 games below were re-run with a different `Math.random` stream and reproduced their final hash exactly).
 
+The same 48 games are published as a dataset on the Hub: https://huggingface.co/datasets/veo555/orbital-dominion-tournament .
+
 ### Example result (committed in `docs/results/tournament_example/`, seeds 7000-7047, 540 s cap)
 | pair | games | score of first | 95 % interval |
 |---|---|---|---|
