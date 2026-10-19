@@ -32,6 +32,9 @@ Happy to talk about the agent design, the league results, or the determinism/rep
 
 Lead with the GIF (`docs/img/spectate.gif`), then three sentences: what it is, what is unusual (agents explain themselves, replay codes, runs on a phone browser), where to play. Ask for blunt feedback and point at the tester guide.
 
+## 3b. Hugging Face (already live)
+Space: https://huggingface.co/spaces/veo555/orbital-dominion . Post it in the Hub's community/posts section with the spectator GIF and the finding that the tiers are not statistically separated; add the tournament dataset (`hf-dataset/`) and a Collection.
+
 ## 4. itch.io page (optional, free)
 Upload `orbital_dominion_v4.html` as an HTML5 game ("This file will be played in the browser"), tag: strategy, rts, ai, open-source. Description = the Show HN text. Screenshots from `docs/img/`.
 

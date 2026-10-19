@@ -17,7 +17,7 @@ Selection-bias-aware statistics for evaluating hedge-fund-style track records: p
 ### 🛰️ [Orbital Dominion](https://github.com/veo555/Orbital-Dominion): swarm agents as game design
 An open-source, StarCraft-inspired RTS that doubles as a research testbed: fog-honest, rate-limited agents tuned by league self-play (CMA-ES, prioritised fictitious self-play, Bradley-Terry ratings), a delegation/swarm layer, deterministic replays with shareable codes, and a spectator mode that shows each agent's own win estimate and reasons. One HTML file, no server, no language model.
 
-**▶ Play / watch:** https://veo555.github.io/Orbital-Dominion/ · **Evaluate in 15 minutes:** [docs/EVALUATE.md](https://github.com/veo555/Orbital-Dominion/blob/HEAD/docs/EVALUATE.md)
+**▶ Play / watch:** https://veo555.github.io/Orbital-Dominion/ · [Hugging Face Space](https://huggingface.co/spaces/veo555/orbital-dominion) · **Evaluate in 15 minutes:** [docs/EVALUATE.md](https://github.com/veo555/Orbital-Dominion/blob/HEAD/docs/EVALUATE.md)
 
 What I care about in it: results with intervals (not point estimates), tests that are proven able to fail, and an honest limits list. Example: an AlphaGo-style planner is implemented but ships **off** because it showed no measurable gain.
 
