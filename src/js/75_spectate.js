@@ -5,7 +5,8 @@
    short CODE (and a #watch=CODE link): the same code reproduces the same match.  Reads simulation state, never writes it (rule 12);
    wall-clock and Math.random are fine here (UI), the simulation's own draws come from the replay stream.
    ============================================================================= */
-const SP={follow:true,hist:[],ev:[],prevMil:[null,null],prevBases:[0,0],prevEra:[1,1],lastUi:0,lastHist:-99,evKey:'',keys:{},drag:null,setup:null,rows:null,fold:false};
+const SP={follow:true,hist:[],ev:[],prevMil:[null,null],prevBases:[0,0],prevEra:[1,1],lastUi:0,lastHist:-99,evKey:'',keys:{},drag:null,setup:null,rows:null,fold:false,pick:null,scored:false};
+const SP_PREDKEY='od_predict_v1',SP_LOCK=90;   // calls close at 1:30 of game time so the opening can't be 'read'
 const SP_TIERS=[['easy','Easy'],['normal','Normal'],['hard','Hard'],['master','Master']];
 function specSetErr(m){const e=$('wmErr');e.textContent=m||'';e.classList.toggle('hidden',!m);}
 function specFill(){
@@ -13,7 +14,23 @@ function specFill(){
   for(const id of['wmFa','wmFb'])$(id).innerHTML=opts;for(const id of['wmTa','wmTb'])$(id).innerHTML=t;
   $('wmFa').value=FACTION_IDS[0];$('wmFb').value=FACTION_IDS[1];$('wmTa').value='master';$('wmTb').value='hard';
 }
-function specOpen(){specSetErr('');openSub('watchMenu');}
+const specDay=()=>Math.floor(Date.now()/864e5);
+function specDayLabel(){const o=replayDailySetup(specDay()),nm=f=>FACTIONS[f].name;return new Date(specDay()*864e5).toISOString().slice(0,10)+' · '+nm(o.faction)+' vs '+nm(o.enemy)+' ('+o.diffs[0]+' / '+o.diffs[1]+')';}
+function specOpen(){specSetErr('');setTxt('wmDailyT',specDayLabel());openSub('watchMenu');}
+function specPredRead(){try{const o=JSON.parse(localStorage.getItem(SP_PREDKEY)||'null'),n=v=>Number.isInteger(v)&&v>=0&&v<1e6?v:0;return{w:n(o&&o.w),l:n(o&&o.l),s:n(o&&o.s),b:n(o&&o.b)};}catch(e){return{w:0,l:0,s:0,b:0};}}
+function specPredWrite(r){try{localStorage.setItem(SP_PREDKEY,JSON.stringify(r));}catch(e){}}
+function specPredScore(){   // called once when the match ends; a draw or no call changes nothing
+  SP.scored=true;if(SP.pick===null||(G.over!=='victory'&&G.over!=='defeat'))return'';
+  const won=(SP.pick===0)===(G.over==='victory'),r=specPredRead();
+  if(won){r.w++;r.s++;r.b=Math.max(r.b,r.s);}else{r.l++;r.s=0;}
+  specPredWrite(r);
+  return(won?' You called it ('+'AB'[SP.pick]+').':' Not this time: you called '+'AB'[SP.pick]+'.')+' Streak '+r.s+' · best '+r.b+' · record '+r.w+'–'+r.l+'.';
+}
+function specPredUi(){
+  const open=!G.over&&G.time<SP_LOCK,r=specPredRead();
+  for(const b of document.querySelectorAll('#spPred [data-pick]')){b.disabled=!open;b.setAttribute('aria-pressed',String(SP.pick!==null&&+b.dataset.pick===SP.pick));}
+  setTxt('spPredT',SP.pick!==null?'Your call: '+'AB'[SP.pick]+' · streak '+r.s:open?'Call the winner (until '+specClock(SP_LOCK)+') · streak '+r.s:'Calls closed · streak '+r.s);
+}
 function specFromForm(){
   const code=$('wmCode').value.trim();
   if(code){const o=replayParse(code);if(!o){specSetErr('That replay code is not valid. Format: OD1-<seed>-<factionA>-<factionB>-<tierA>-<tierB>-<flags>');return null;}return o;}
@@ -24,7 +41,7 @@ function specFromForm(){
   return{replay:true,aiBoth:true,seed,faction:fa,enemy:fb,diff:ta,diffs:[ta,tb],mapFx:$('wmFx').checked,arsenalOff:[false,false]};
 }
 function specStart(setup){
-  SP.setup=setup;SP.hist=[];SP.ev=[];SP.prevMil=[null,null];SP.prevBases=[2,2];SP.lastHist=-99;SP.evKey='';SP.follow=true;
+  SP.setup=setup;SP.hist=[];SP.ev=[];SP.prevMil=[null,null];SP.prevBases=[2,2];SP.lastHist=-99;SP.evKey='';SP.follow=true;SP.pick=null;SP.scored=false;
   platMatchStop();if(typeof campMatchStop==='function')campMatchStop();
   newGame(setup);
   ui.demo=true;ui.running=true;resetUI();ui.spec=true;applyTeamPalettes();buildTerrain();initFog();updateFog(1,true);
@@ -38,6 +55,8 @@ function specStart(setup){
 }
 function specHide(){if(!ui.spec&&$('spec').classList.contains('hidden'))return;ui.spec=false;$('spec').classList.add('hidden');try{if(/^#watch=/.test(location.hash))history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
 function specExit(){specHide();toMenu();}
+function specSurprise(){specStart(replaySetupFromSeed((Math.random()*4294967296)>>>0,['normal','hard','master']));}
+function specDaily(){specStart(replayDailySetup(specDay()));}
 function specNew(){const o=Object.assign({},SP.setup);o.seed=(Math.random()*1e9)|0;specStart(o);}
 function specBoot(){
   const m=/^#watch=(.+)$/.exec(location.hash||'');if(!m)return;
@@ -94,7 +113,8 @@ function specRefresh(force){
   for(const b of document.querySelectorAll('#spec [data-sp]'))b.setAttribute('aria-pressed',String(+b.dataset.sp===G.speed));
   if(G.over&&$('spRes').classList.contains('hidden')){
     const r=$('spRes');r.classList.remove('hidden');
-    r.textContent=G.over==='victory'?'Side A wins at '+specClock(G.time)+'.':G.over==='defeat'?'Side B wins at '+specClock(G.time)+'.':'Draw at '+specClock(G.time)+'.';}
+    r.textContent=(G.over==='victory'?'Side A wins at '+specClock(G.time)+'.':G.over==='defeat'?'Side B wins at '+specClock(G.time)+'.':'Draw at '+specClock(G.time)+'.')+(SP.scored?'':specPredScore());}
+  specPredUi();
 }
 function specGraph(){
   const c=$('spGraph');if(!c||!SP.hist.length)return;
@@ -121,7 +141,8 @@ function specCopy(txt,btn){
 function specInit(){
   specFill();
   $('bWatch').onclick=()=>{audioInit();specOpen();};
-  $('wmBack').onclick=closeSub;
+  $('wmBack').onclick=closeSub;$('wmDaily').onclick=specDaily;$('wmSurprise').onclick=specSurprise;
+  for(const b of document.querySelectorAll('#spPred [data-pick]'))b.onclick=()=>{if(G.over||G.time>=SP_LOCK)return;SP.pick=+b.dataset.pick;specPredUi();};
   $('wmGo').onclick=()=>{const o=specFromForm();if(o)specStart(o);};
   $('wmCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('wmGo').click();e.stopPropagation();});
   $('wmSeed').addEventListener('keydown',e=>{if(e.key==='Enter')$('wmGo').click();e.stopPropagation();});

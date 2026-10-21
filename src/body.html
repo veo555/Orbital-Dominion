@@ -90,6 +90,10 @@
   <div class="card narrow wm">
     <h2 class="ttl">Watch agents play</h2>
     <p class="wm-sub">Two AI agents play a full match against each other. Every match has a short <b>replay code</b>: the same code always gives the same match, so you can share it, replay it and compare how different agents handle the same map. No human plays; nothing is sent anywhere.</p>
+    <div class="wm-quick">
+      <button class="btn" id="wmDaily"><b>📅 Match of the day</b><small id="wmDailyT"></small></button>
+      <button class="btn" id="wmSurprise"><b>🎲 Surprise me</b><small>random agents, random map</small></button>
+    </div>
     <div class="wm-grid">
       <label>Side A<select id="wmFa"></select></label><label>Tier<select id="wmTa"></select></label>
       <label>Side B<select id="wmFb"></select></label><label>Tier<select id="wmTb"></select></label>
@@ -106,6 +110,7 @@
   <div class="sp-head"><b>Agents playing</b><span class="sp-t" id="spT">0:00</span><button class="btn sm" id="spFold" aria-label="Collapse panel" aria-expanded="true">▾</button></div>
   <div id="spBody">
     <div class="sp-vs"><span id="spA"></span><span id="spB"></span></div>
+    <div class="sp-pred" id="spPred" role="group" aria-label="Call the winner"><span id="spPredT">Call the winner:</span><button class="btn sm" data-pick="0" aria-pressed="false">A wins</button><button class="btn sm" data-pick="1" aria-pressed="false">B wins</button></div>
     <canvas id="spGraph" width="300" height="84" aria-label="Each agent's own estimate of its chance to win, over time"></canvas>
     <div class="sp-leg"><i class="la"></i>A's own win estimate <i class="lb"></i>B's <i class="lm"></i>army share of A</div>
     <table class="sp-tab" id="spTab"></table>

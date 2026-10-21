@@ -28,6 +28,13 @@ function replayParse(code){   // -> newGame options, or null when the code is no
   if(!DIFF[p[4]]||!DIFF[p[5]])return null;if(!/^(0|[mab]+)$/.test(p[6]))return null;
   return{replay:true,aiBoth:true,seed,faction:p[2],enemy:p[3],diff:p[4],diffs:[p[4],p[5]],mapFx:p[6].includes('m'),arsenalOff:[p[6].includes('a'),p[6].includes('b')]};
 }
+function replaySetupFromSeed(n,tiers){   // a deterministic, valid agent-vs-agent setup from one number (factions, tiers, map seed): "Match of the day", "Surprise me"
+  const r=mulberry32(n>>>0),pick=a=>a[Math.floor(r()*a.length)];
+  const fa=pick(FACTION_IDS);let fb;do{fb=pick(FACTION_IDS);}while(fb===fa);
+  const ta=pick(tiers),tb=pick(tiers),seed=Math.floor(r()*1e9);
+  return{replay:true,aiBoth:true,seed,faction:fa,enemy:fb,diff:ta,diffs:[ta,tb],mapFx:true,arsenalOff:[false,false]};
+}
+function replayDailySetup(day){return replaySetupFromSeed(Math.imul(day|0,2654435761)^0x0D15EA5E,['hard','master']);}   // day = whole days since 1970-01-01 UTC (the UI supplies it)
 function replayExport(){   // a self-describing record: setup + the checkpoints reached so far (+ result when over)
   if(!G.rp)return null;
   return{format:'orbital-dominion-replay',v:1,code:replayCode(),setup:G.rp,tick:G.tick,checkpoints:(G.rcp||[]).map(c=>c.slice()),

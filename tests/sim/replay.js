@@ -43,6 +43,18 @@ function suite(xform){
   ok(S.__run('replayHash()')===hA,'save at 60 s, restore, run 60 s: same hash as without the round trip');
   const ex=a.S.__run('JSON.stringify(replayExport())'),X=JSON.parse(ex);
   ok(X.format==='orbital-dominion-replay'&&X.code===code&&X.checkpoints.length===T/300&&X.tick===T,'export record carries code, tick and checkpoints');
+  /* match of the day / surprise generator */
+  {const g=d=>JSON.parse(a.S.__run('JSON.stringify(replayDailySetup('+d+'))')),code=o=>a.S.__run('replayCode('+JSON.stringify(o)+')');
+   const D=20000,x=g(D),y=g(D),z=g(D+1);
+   ok(JSON.stringify(x)===JSON.stringify(y),'daily setup: same day, same match');
+   ok(JSON.stringify(x)!==JSON.stringify(z),'daily setup: the next day is a different match');
+   ok(a.S.__run('JSON.stringify(replayParse(replayCode(replayDailySetup('+D+'))))')===JSON.stringify(x),'daily setup survives a code round trip (valid, parseable)');
+   const days=[];for(let d=D;d<D+200;d++)days.push(g(d));
+   ok(days.every(o=>o.faction!==o.enemy),'daily setup: two different factions on every one of 200 days');
+   ok(days.every(o=>['hard','master'].includes(o.diffs[0])&&['hard','master'].includes(o.diffs[1])),'daily setup: only Hard/Master agents (no lopsided matches)');
+   const fids=JSON.parse(a.S.__run('JSON.stringify(FACTION_IDS)'));ok(fids.every(f=>days.some(o=>o.faction===f))&&fids.every(f=>days.some(o=>o.enemy===f)),'daily setup: every faction appears on both sides within 200 days');
+   ok(new Set(days.map(o=>o.seed)).size>190,'daily setup: map seeds do not repeat');
+   const sp=JSON.parse(a.S.__run('JSON.stringify(replaySetupFromSeed(5,["normal"]))'));ok(sp.diffs.join()==='normal,normal','surprise generator respects the tier list');}
   return{fails,n};
 }
 if(!MUTANTS){const r=suite();console.log('\n'+(r.n-r.fails.length)+' checks passed, '+r.fails.length+' failed');if(r.fails.length){console.log('FAILED:\n  '+r.fails.join('\n  '));process.exit(1);}console.log('ALL REPLAY CHECKS PASSED');}
@@ -53,6 +65,9 @@ else{
     ['hash ignores unit positions',c=>c.replace('add(u.x);add(u.y);add(u.hp);}','add(u.hp);}')],
     ['code drops the second tier',c=>c.replace("d[0],d[1],fl","d[0],d[0],fl")],
     ['parse accepts any faction pair',c=>c.replace("||p[2]===p[3])return null","||false)return null")],
+    ['daily setup ignores the day',c=>c.replace("Math.imul(day|0,2654435761)^0x0D15EA5E","0x0D15EA5E")],
+    ['daily setup may pick the same faction twice',c=>c.replace("while(fb===fa)","while(false)")],
+    ['daily setup allows easy agents',c=>c.replace("['hard','master']);}","['easy','hard','master']);}")],
     ['save drops every random stream',c=>c.replace("if(typeof v[k]==='function'&&!v[k].rngState)continue;","if(typeof v[k]==='function')continue;")],
   ];
   let bad=0;for(const[name,fn]of M){let caught;try{const r=suite(c=>{const o=fn(c);if(o===c)throw new Error('mutation did not apply: '+name);return o;});caught=r.fails.length>0;}catch(e){caught=!/did not apply/.test(String(e));if(!caught)throw e;}

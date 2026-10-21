@@ -313,7 +313,7 @@ function bootInner(){
   if(!window.__TEST||window.__TEST==='live')specBoot();   // #watch=<replay code> in the URL opens that match
   if(!window.__TEST||window.__TEST==='live')requestAnimationFrame(frame);
 }
-if(window.__TEST){window.__RTS={BUILD,makeAI,DIFF,newGame,startGame,startDemo,step,replayHash,replayCode,replayParse,specStart,specRefresh,SP,get G(){return G;},ui,cam,SET,UDEF,BDEF,TECH,FACTIONS,aiThink,setSel,buildCommands,runCmd,renderInfo,renderCmdCard,hudUpdate,entityAt,issueGroup,contextCommand,clickSelect,boxSelect,
+if(window.__TEST){window.__RTS={BUILD,makeAI,DIFF,newGame,startGame,startDemo,step,replayHash,replayCode,replayParse,replayDailySetup,replaySetupFromSeed,specStart,specDaily,specSurprise,specPredRead,specRefresh,SP,get G(){return G;},ui,cam,SET,UDEF,BDEF,TECH,FACTIONS,aiThink,setSel,buildCommands,runCmd,renderInfo,renderCmdCard,hudUpdate,entityAt,issueGroup,contextCommand,clickSelect,boxSelect,
   orderBuild,queueUnit,canPlace,addUnit,addBuilding,findPath,canStand,tryPlace,updatePlaceGhost,beginPlace,cancelQueue,setRally,groupSet,groupRecall,cmdStop,cmdHold,togglePause,togglePanel,renderEco,
   render:(t)=>{updateFog(0.05,true);render(t||1,0.016);},drawMinimap,frameBody,s2w,w2s,centerOn,setZoom,clampCam,showEnd,toMenu,showOverlay,mktTrade,heroUnit,castHero,learnSkill,applyTarget,TILE,MW,MH,WW,WH,
   endGame,buildTerrain,initFog,updateVision,updateFog,resetUI,hideOverlays,getScreen:(e)=>w2s(e.x,e.y),

@@ -39,3 +39,10 @@ console.log(JSON.stringify(S.__run('replayExport()')));
 * Replays are valid for the **same build**: a balance or AI change alters the match. The code does not carry a build id yet.
 * The graph shows each agent's own `V(s)` (a small model trained on league games, AUC about 0.8 on held-out games), not a ground-truth win probability.
 * Nobody has yet measured whether watching these matches teaches people anything: that is study S2 in `docs/RESEARCH_AGENDA.md`.
+
+
+## Match of the day, Surprise me, Call the winner (6.2)
+* **Match of the day**: `replayDailySetup(day)` maps the UTC day number (days since 1970-01-01) to a Hard/Master pairing, map and seed. Everyone who opens it on the same UTC day watches the identical match (determinism, see above), so "who called it?" is comparable across people without any server.
+* **Surprise me**: `replaySetupFromSeed(random, [normal, hard, master])`; the resulting code is shown and shareable like any other.
+* **Call the winner**: before 1:30 of game time you pick A or B; when the match ends the result line shows whether you were right, your streak, best streak and record. Stored in `localStorage` key `od_predict_v1` on your device only; a draw or no call changes nothing.
+* Honest limits: the "game" rewards guessing from the agents' tiers and factions, not skill measured against anyone; there is no leaderboard and no server.

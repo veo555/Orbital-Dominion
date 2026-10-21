@@ -77,10 +77,38 @@ with sync_playwright() as p:
     ok(abs(pg.evaluate("()=>__RTS.cam.x") - x1) + abs(pg.evaluate("()=>__RTS.cam.y") - y1) > 5, 'free camera: dragging pans')
     pg.click('#spFollow'); ok(pg.evaluate("()=>__RTS.SP.follow"), 'the Follow button turns following back on')
     pg.click('#spFold'); ok(pg.evaluate("()=>document.getElementById('spBody').offsetParent===null"), 'the panel folds'); pg.click('#spFold')
-    # result banner
+    # call-the-winner game (localStorage record) -- the match above is at ~1 min, so calls are still open
+    pg.evaluate("()=>{localStorage.removeItem('od_predict_v1')}")
+    ok(pg.evaluate("()=>[...document.querySelectorAll('#spPred [data-pick]')].every(b=>!b.disabled)") and 'Call the winner' in txt(pg, '#spPredT'), 'prediction: calls are open early in the match (' + txt(pg, '#spPredT') + ')')
+    pg.click('#spPred [data-pick="0"]'); pg.wait_for_timeout(80)
+    ok(pg.evaluate("()=>__RTS.SP.pick")==0 and pg.evaluate("()=>document.querySelector('#spPred [data-pick=\"0\"]').getAttribute('aria-pressed')")=='true' and 'Your call: A' in txt(pg, '#spPredT'), 'prediction: clicking "A wins" records the call')
     pg.evaluate("()=>{__RTS.G.over='defeat';__RTS.specRefresh(true)}")
+    # result banner
     ok(vis(pg, '#spRes') and 'Side B wins' in txt(pg, '#spRes'), 'a finished match shows the winner (' + txt(pg, '#spRes') + ')')
+    ok('Not this time' in txt(pg, '#spRes') and '0–1' in txt(pg, '#spRes') and pg.evaluate("()=>JSON.stringify(__RTS.specPredRead())")=='{"w":0,"l":1,"s":0,"b":0}', 'prediction: calling A when B wins records a loss (' + txt(pg, '#spRes')[-50:] + ')')
+    pg.evaluate("()=>{const S=__RTS.SP;S.scored=true}"); pg.evaluate("()=>__RTS.specRefresh(true)")
+    ok(pg.evaluate("()=>[...document.querySelectorAll('#spPred [data-pick]')].every(b=>b.disabled)") and 'Your call: A' in txt(pg, '#spPredT'), 'prediction: after the match the call buttons are locked and the call stays shown')
     # exit
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(500)
+    # quick starts: match of the day (same for everyone on a given UTC day) and Surprise me
+    pg.click('#bWatch'); pg.wait_for_timeout(150)
+    lab = txt(pg, '#wmDailyT'); day = pg.evaluate("()=>new Date(Math.floor(Date.now()/864e5)*864e5).toISOString().slice(0,10)")
+    ok(day in lab and ' vs ' in lab, 'Match of the day shows today\'s UTC date and the pairing (' + lab + ')')
+    pg.click('#wmDaily'); pg.wait_for_timeout(500)
+    want = pg.evaluate("()=>__RTS.replayCode(__RTS.replayDailySetup(Math.floor(Date.now()/864e5)))")
+    ok(vis(pg, '#spec') and pg.evaluate("()=>__RTS.replayCode()") == want, 'Match of the day starts the match of the day (' + want + ')')
+    # second prediction flow on this match: pick B, B wins -> streak 1; then a draw changes nothing
+    pg.click('#spPred [data-pick="1"]'); pg.evaluate("()=>{__RTS.G.over='defeat';__RTS.specRefresh(true)}")
+    ok('You called it' in txt(pg, '#spRes') and pg.evaluate("()=>JSON.stringify(__RTS.specPredRead())")=='{"w":1,"l":1,"s":1,"b":1}', 'prediction: a correct call raises the streak (' + txt(pg, '#spRes')[-60:] + ')')
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(400); pg.click('#bWatch'); pg.wait_for_timeout(150); pg.click('#wmSurprise'); pg.wait_for_timeout(500)
+    sc = pg.evaluate("()=>__RTS.replayCode()")
+    ok(vis(pg, '#spec') and pg.evaluate("(c)=>__RTS.replayParse(c)!==null", sc), 'Surprise me starts a valid match (' + sc + ')')
+    pg.click('#spPred [data-pick="0"]'); pg.evaluate("()=>{__RTS.G.over='draw';__RTS.specRefresh(true)}")
+    ok(pg.evaluate("()=>JSON.stringify(__RTS.specPredRead())")=='{"w":1,"l":1,"s":1,"b":1}', 'prediction: a draw leaves the record unchanged')
+    pg.evaluate("()=>{__RTS.specStart(__RTS.replayParse('%s'))}" % CODE); pg.click('#spPred [data-pick="0"]'); pg.evaluate("()=>{__RTS.G.over='defeat';__RTS.specRefresh(true)}")
+    ok(pg.evaluate("()=>JSON.stringify(__RTS.specPredRead())")=='{"w":1,"l":2,"s":0,"b":1}', 'prediction: a wrong call resets the streak but keeps the best (%s)' % pg.evaluate("()=>JSON.stringify(__RTS.specPredRead())"))
+    pg.evaluate("()=>{__RTS.specStart(__RTS.replayParse('%s'));__RTS.G.time=100;__RTS.specRefresh(true)}" % CODE)
+    ok(pg.evaluate("()=>[...document.querySelectorAll('#spPred [data-pick]')].every(b=>b.disabled)") and 'closed' in txt(pg, '#spPredT'), 'prediction: calls close after 1:30 of game time')
     pg.keyboard.press('Escape'); pg.wait_for_timeout(500)
     ok(not vis(pg, '#spec') and vis(pg, '#menu') and pg.evaluate("()=>!__RTS.ui.spec&&location.hash===''"), 'Escape leaves spectator mode, back to the menu, link cleared')
     # determinism in the browser, with Math.random replaced two different ways
