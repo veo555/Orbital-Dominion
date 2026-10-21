@@ -14,6 +14,9 @@ Selection-bias-aware statistics for evaluating hedge-fund-style track records: p
 
 [Sample due-diligence memo](https://github.com/veo555/manager-diligence/blob/HEAD/examples/sample_memo_M09.md) · [Lucky-manager experiment](https://github.com/veo555/manager-diligence/blob/HEAD/results/lucky_manager.md)
 
+### 🧮 [quant-lab](https://github.com/veo555/Orbital-Dominion/tree/HEAD/research/quant-lab): reference implementations that are tested to be right
+Black–Scholes/Greeks/implied vol, CRR trees, Monte Carlo, VaR/ES with Kupiec backtest, GARCH(1,1) QMLE, min-variance/tangency/risk parity, PBO and purged CV. Verified against textbook values and finite differences; 27 mutants all caught. Result: under a known GARCH truth a 250-day historical 99% VaR breaches 1.49% of days (Kupiec rejects), the oracle 1.04%.
+
 ### 🛰️ [Orbital Dominion](https://github.com/veo555/Orbital-Dominion): swarm agents as game design
 An open-source, StarCraft-inspired RTS that doubles as a research testbed: fog-honest, rate-limited agents tuned by league self-play (CMA-ES, prioritised fictitious self-play, Bradley-Terry ratings), a delegation/swarm layer, deterministic replays with shareable codes, and a spectator mode that shows each agent's own win estimate and reasons. One HTML file, no server, no language model.
 
