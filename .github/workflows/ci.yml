@@ -21,5 +21,7 @@ jobs:
       - run: node tests/sim/replay.js
       - name: manager-diligence (numpy only)
         run: pip install numpy && python3 research/manager-diligence/tests/run_tests.py
+      - name: quant-lab (numpy only, with mutants)
+        run: pip install numpy && python3 research/quant-lab/tests/run_tests.py && python3 research/quant-lab/tests/run_tests.py --mutants
       - name: MCP server (engine checks + real MCP client over stdio)
         run: cd mcp && npm ci && node test/engine_test.js && node test/server_test.js

@@ -1,0 +1,10 @@
+[project]
+name = "quant-lab"
+version = "0.1.0"
+description = "Numpy-only reference implementations of option pricing/Greeks, VaR/ES + Kupiec, GARCH(1,1), portfolio construction and backtest-overfitting diagnostics, each mutation-tested"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.22"]
+[tool.setuptools]
+packages = ["qlab"]
