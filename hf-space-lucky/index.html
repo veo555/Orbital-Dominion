@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lucky Manager Lab</title>
+<style>
+:root{--bg:#f7f8fa;--fg:#14181f;--mut:#566070;--card:#fff;--line:#d9dee6;--acc:#2457d6;--bad:#b3261e;--good:#17693a}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1319;--fg:#e6e9ee;--mut:#9aa5b5;--card:#171d26;--line:#2b3442;--acc:#7da2ff;--bad:#ff8a80;--good:#6fd39a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 48px}h1{font-size:1.5rem;margin:.2em 0}h2{font-size:1.1rem;margin-top:1.6em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+label{display:block;margin:8px 0;color:var(--mut)}input{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+button{font:inherit;padding:10px 18px;border:0;border-radius:8px;background:var(--acc);color:#fff;cursor:pointer;min-height:44px}
+@media (prefers-color-scheme:dark){button{color:#0f1319}}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.big{font-size:2rem;font-weight:700}.bad{color:var(--bad)}.good{color:var(--good)}small,.mut{color:var(--mut)}
+@media (max-width:560px){.grid{grid-template-columns:1fr}}
+</style></head><body><main>
+<h1>Lucky Manager Lab</h1>
+<p class="mut">Every manager below has <b>zero</b> true skill. Pick the one with the best Sharpe ratio and test it. How often does it look skilled?</p>
+<div class="card">
+<label>Managers in the universe (N)<input id="N" type="number" min="2" max="500" value="50"></label>
+<label>Track-record length (months, T)<input id="T" type="number" min="12" max="240" value="36"></label>
+<label>Simulated universes<input id="U" type="number" min="20" max="1000" value="300"></label>
+<button id="go">Run simulation</button>
+</div>
+<div class="card" id="out" aria-live="polite"><span class="mut">Press “Run simulation”.</span></div>
+<h2>What you are seeing</h2>
+<p><b>Naive PSR</b>: the best manager tested alone with the Probabilistic Sharpe Ratio (Bailey &amp; López de Prado). <b>Deflated</b>: the same test after raising the bar to the Sharpe you would expect from the best of N skill-less managers (Deflated Sharpe Ratio). With 5 % tests and N = 50 the chance that <i>some</i> manager passes is 1 − 0.95<sup>50</sup> = 92.3 %.</p>
+<h2>Limits</h2>
+<p class="mut">Independent managers, normal returns, 8 % annual volatility, no fees, no survivorship bias. Real universes are correlated and fat-tailed, which usually makes selection bias worse. Simulated data; not investment advice. The JavaScript is a port of <a href="https://github.com/veo555/Orbital-Dominion/tree/HEAD/research/manager-diligence">manager-diligence</a>, checked against the Python reference to 1e-9 with mutation tests.</p>
+<script src="lucky.js"></script>
+<script>
+document.getElementById('go').onclick=function(){
+  var N=+document.getElementById('N').value,T=+document.getElementById('T').value,U=+document.getElementById('U').value,o=document.getElementById('out');
+  if(!(N>=2&&N<=500&&T>=12&&T<=240&&U>=20&&U<=1000)){o.textContent='Please keep N in 2–500, T in 12–240, universes in 20–1000.';return;}
+  o.textContent='Running…';setTimeout(function(){var e=Lucky.experiment(N,T,U,12345),p=function(x){return (100*x).toFixed(1)+' %';};
+  o.innerHTML='<div class="grid"><div><div class="big">'+e.meanBestAnnual.toFixed(2)+'</div><small>mean best annual Sharpe (true value: 0)</small></div>'+
+  '<div><div class="big bad">'+p(e.naive)+'</div><small>best manager “significant” by naive PSR &gt; 95 %</small></div>'+
+  '<div><div class="big good">'+p(e.deflated)+'</div><small>still significant after deflating for N</small></div></div>'+
+  '<p class="mut">Seeded (12345): the same inputs always give the same numbers. A correct 5 % test should fool you about 5 % of the time.</p>';},30);};
+</script></main></body></html>

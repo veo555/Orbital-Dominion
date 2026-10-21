@@ -23,5 +23,7 @@ jobs:
         run: pip install numpy && python3 research/manager-diligence/tests/run_tests.py
       - name: quant-lab (numpy only, with mutants)
         run: pip install numpy && python3 research/quant-lab/tests/run_tests.py && python3 research/quant-lab/tests/run_tests.py --mutants
+      - name: lucky-manager Space (JS vs Python parity, mutants)
+        run: node hf-space-lucky/tests/parity.js && node hf-space-lucky/tests/parity.js --mutants
       - name: MCP server (engine checks + real MCP client over stdio)
         run: cd mcp && npm ci && node test/engine_test.js && node test/server_test.js
