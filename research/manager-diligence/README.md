@@ -63,4 +63,4 @@ The honest lesson: three years cannot separate skill from luck in a crowd; ten y
 * BH assumes independence or positive dependence of the tests. The Newey-West t-test uses Student-t critical values with n-k-1 degrees of freedom, a practical but approximate choice at short sample sizes.
 * No optimisation, no portfolio construction beyond risk contributions and inverse-volatility weights, no data connectors.
 
-MIT licence. Part of the [Orbital Dominion](https://github.com/veo555/Orbital-Dominion) repository (folder `research/manager-diligence`); `git subtree split` makes it a standalone repository (see the project's `docs/profile/PROFILE_SETUP.md`).
+MIT licence. Part of the [Orbital Dominion](https://github.com/veo555/Orbital-Dominion) repository (folder `research/manager-diligence`); `git subtree split` makes it a standalone repository.
