@@ -13,6 +13,7 @@
 | **Try and give feedback** | `docs/launch/TESTER_GUIDE.md`, issue template *Playtest report* |
 | **Play it with an AI (MCP)** | [`mcp/README.md`](mcp/README.md): an MCP server so Claude, Cursor or your own client can play or watch matches through tools (fog-honest, replayable, local) |
 | **Evaluate it** | [`docs/EVALUATE.md`](docs/EVALUATE.md): 15-minute checklist, `node tools/tournament.js` (agent tournament with intervals and replay codes) |
+| **Quant research** | [`research/manager-diligence`](research/manager-diligence) (selection-bias-aware track-record statistics) · [`research/quant-lab`](research/quant-lab) (pricing, VaR/ES backtests, GARCH, overfitting diagnostics; mutation-tested) · [`docs/papers/lucky_manager.md`](docs/papers/lucky_manager.md) |
 | **Direction** | `docs/HYBRID_STRATEGY.md` (open core, optional cosmetic-only paid layer, tripwires) |
 
 ## Watch the agents play (new in 6.1)
